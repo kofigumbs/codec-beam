@@ -7,6 +7,9 @@ import Data.ByteString (ByteString)
 import Data.Binary.Put
 
 
+-- AST
+
+
 data Module
   = Module
       { _name :: ByteString
@@ -21,6 +24,19 @@ type Code
   = ()
 
 
+
+-- SERIALIZE
+
+
+put :: Module -> Put
+put _modul =
+  do  return ()
+
+
+
+-- HELPERS
+
+
 empty :: ByteString -> Module
 empty name =
   Module
@@ -30,12 +46,3 @@ empty name =
     , _imports = []
     , _exports = []
     }
-
-
-
--- SERIALIZE
-
-
-put :: Module -> Put
-put _modul =
-  do  return ()
