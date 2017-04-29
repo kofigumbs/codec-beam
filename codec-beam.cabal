@@ -1,0 +1,63 @@
+
+Name: codec-beam
+Version: 0.1.0
+
+License: BSD3
+License-file: LICENSE
+
+Category: Codec
+
+Cabal-version: >=1.9
+Build-type: Simple
+
+source-repository head
+    type:     git
+    location: git://github.com/hkgumbs/codec-beam.git
+
+
+Library
+    ghc-options:
+        -O2
+
+    extensions:
+        OverloadedStrings
+
+    Hs-Source-Dirs:
+        src
+
+    exposed-modules:
+        Codec.Beam
+
+    Build-depends:
+        base,
+        binary,
+        bytestring,
+        process,
+        text
+
+
+Test-Suite codec-beam-tests
+    ghc-options:
+        -O0 -W -Werror
+
+    extensions:
+        OverloadedStrings
+
+    Hs-Source-Dirs:
+        src, test
+
+    Type:
+        exitcode-stdio-1.0
+
+    Main-is:
+        Main.hs
+
+    Build-depends:
+        base,
+        binary,
+        bytestring,
+        process,
+        text,
+        test-framework,
+        test-framework-hunit,
+        HUnit
