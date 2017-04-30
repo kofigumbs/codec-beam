@@ -6,6 +6,7 @@ module Codec.Beam
 import qualified Data.ByteString.Lazy as BS
 import Data.ByteString.Lazy (ByteString)
 import Data.Monoid ((<>))
+import Data.Bits ((.&.))
 
 
 -- AST
@@ -33,9 +34,6 @@ data Statement
 encode :: Module -> ByteString
 encode beam =
   let
-    packLength =
-      BS.singleton . fromIntegral . BS.length
-
     chunk id body =
       id <> packLength body <> body
 
@@ -88,3 +86,17 @@ empty name =
     , _imports = []
     , _exports = []
     }
+
+
+packLength :: ByteString -> ByteString
+packLength string =
+  let
+    word offset =
+      fromIntegral (offset .&. BS.length string)
+  in
+    BS.pack
+      [ word 0o7000
+      , word 0o0700
+      , word 0o0070
+      , word 0o0007
+      ]
