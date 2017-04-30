@@ -6,7 +6,8 @@ module Codec.Beam
 import qualified Data.ByteString.Lazy as BS
 import Data.ByteString.Lazy (ByteString)
 import Data.Monoid ((<>))
-import Data.Bits ((.&.))
+import Data.Binary.Put (runPut, putWord32be)
+import Data.Word (Word32)
 
 
 -- AST
@@ -16,14 +17,14 @@ data Module
   = Module
       { _name :: ByteString
       , _atoms :: [ByteString]
-      , _code :: [Statement]
+      , _code :: [Definition]
       , _strings :: [ByteString]
       , _imports :: [(ByteString, ByteString, Int)]
       , _exports :: [(ByteString, Int)]
       }
 
 
-data Statement
+data Definition
   = TODO
 
 
@@ -34,26 +35,29 @@ data Statement
 encode :: Module -> ByteString
 encode beam =
   let
-    chunk id body =
-      id <> packLength body <> body
+    chunk bytes =
+      pack32 (BS.length bytes) <> align bytes
 
     sections =
-      BS.concat
-        [ chunk "Atom" (atoms (_name beam : _atoms beam))
-        , chunk "Code" (code (_code beam))
-        , chunk "StrT" (strings (_strings beam))
-        , chunk "ImpT" (imports (_imports beam))
-        , chunk "ExpT" (exports (_exports beam))
-        ]
+         "Atom" <> chunk (atoms (_name beam : _atoms beam))
+      <> "Code" <> chunk (code (_code beam))
+      <> "StrT" <> chunk (strings (_strings beam))
+      <> "ImpT" <> chunk (imports (_imports beam))
+      <> "ExpT" <> chunk (exports (_exports beam))
   in
-    "FOR1" <> packLength sections <> "BEAM" <> sections
+    "FOR1" <> pack32 (BS.length sections) <> "BEAM" <> sections
 
 
 atoms :: [ByteString] -> ByteString
-atoms _ =
-  ""
+atoms names =
+  pack32 (length names) <> concatM atom names
 
-code :: [Statement] -> ByteString
+  where
+    atom name =
+      pack8 (BS.length name) <> name
+
+
+code :: [Definition] -> ByteString
 code _ =
   ""
 
@@ -88,15 +92,21 @@ empty name =
     }
 
 
-packLength :: ByteString -> ByteString
-packLength string =
-  let
-    word offset =
-      fromIntegral (offset .&. BS.length string)
-  in
-    BS.pack
-      [ word 0o7000
-      , word 0o0700
-      , word 0o0070
-      , word 0o0007
-      ]
+pack8 :: Integral n => n -> ByteString
+pack8 =
+  BS.singleton . fromIntegral
+
+
+pack32 :: Integral n => n -> ByteString
+pack32 n =
+  runPut (putWord32be (fromIntegral n :: Word32))
+
+
+align :: ByteString -> ByteString
+align bytes =
+  bytes <> BS.replicate (BS.length bytes `mod` 4) 0
+
+
+concatM :: Monoid m => (a -> m) -> [a] -> m
+concatM f =
+  mconcat . map f
