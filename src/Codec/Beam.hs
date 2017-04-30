@@ -5,7 +5,7 @@ module Codec.Beam
 
 import qualified Data.ByteString.Lazy as BS
 import Data.ByteString.Lazy (ByteString)
-import Data.Binary.Put
+import Data.Monoid ((<>))
 
 
 -- AST
@@ -33,47 +33,45 @@ data Statement
 encode :: Module -> ByteString
 encode beam =
   let
+    packLength =
+      BS.singleton . fromIntegral . BS.length
+
+    chunk id body =
+      id <> packLength body <> body
+
     sections =
       BS.concat
-        [ makeChunk "Atom" (atoms (_name beam : _atoms beam))
-        , makeChunk "Code" (code (_code beam))
-        , makeChunk "StrT" (strings (_strings beam))
-        , makeChunk "ImpT" (imports (_imports beam))
-        , makeChunk "ExpT" (exports (_exports beam))
+        [ chunk "Atom" (atoms (_name beam : _atoms beam))
+        , chunk "Code" (code (_code beam))
+        , chunk "StrT" (strings (_strings beam))
+        , chunk "ImpT" (imports (_imports beam))
+        , chunk "ExpT" (exports (_exports beam))
         ]
   in
-    runPut $
-      do  putByteString "FOR1"
-          putWord8 (fromIntegral (BS.length sections))
-          putByteString "BEAM"
-          putLazyByteString sections
+    "FOR1" <> packLength sections <> "BEAM" <> sections
 
 
-makeChunk :: ByteString -> Put -> ByteString
-makeChunk _id _body =
+atoms :: [ByteString] -> ByteString
+atoms _ =
   ""
 
-atoms :: [ByteString] -> Put
-atoms _ =
-  return ()
-
-code :: [Statement] -> Put
+code :: [Statement] -> ByteString
 code _ =
-  return ()
+  ""
 
 
-strings :: [ByteString] -> Put
+strings :: [ByteString] -> ByteString
 strings _ =
-  return ()
+  ""
 
 
-imports :: [(ByteString, ByteString, Int)] -> Put
+imports :: [(ByteString, ByteString, Int)] -> ByteString
 imports _ =
-  return ()
+  ""
 
-exports :: [(ByteString, Int)] -> Put
+exports :: [(ByteString, Int)] -> ByteString
 exports _ =
-  return ()
+  ""
 
 
 

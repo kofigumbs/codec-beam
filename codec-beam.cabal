@@ -55,7 +55,6 @@ Test-Suite codec-beam-tests
     Build-depends:
         codec-beam,
         base,
-        binary,
         bytestring,
         filepath,
         process,
