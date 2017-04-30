@@ -1,7 +1,6 @@
 module Main where
 
 import qualified Data.ByteString.Lazy as BS
-import Data.Binary.Put (runPut)
 import System.Process (readProcess)
 import System.FilePath ((</>), (<.>))
 import Control.Exception (try, IOException)
@@ -43,7 +42,7 @@ testChunk chunkName expectedOutput beam =
 
   where
     testIO =
-      do  BS.writeFile testFileName (runPut (Beam.put beam))
+      do  BS.writeFile testFileName (Beam.encode beam)
 
           assertion <-
             assertEqual chunkName expectedOutput <$> getChunk chunkName
