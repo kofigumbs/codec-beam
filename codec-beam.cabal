@@ -44,7 +44,7 @@ Test-Suite codec-beam-tests
         OverloadedStrings
 
     Hs-Source-Dirs:
-        src, test
+        test
 
     Type:
         exitcode-stdio-1.0
@@ -52,10 +52,15 @@ Test-Suite codec-beam-tests
     Main-is:
         Main.hs
 
+    other-modules:
+        Paths_codec_beam
+
     Build-depends:
+        codec-beam,
         base,
         binary,
         bytestring,
+        filepath,
         process,
         text,
         test-framework,

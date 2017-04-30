@@ -3,6 +3,7 @@ module Main where
 import qualified Data.ByteString.Lazy as BS
 import Data.Binary.Put (runPut)
 import System.Process (readProcess)
+import System.FilePath ((</>), (<.>))
 
 import Test.Framework (Test, buildTest, defaultMain)
 import Test.Framework.Providers.HUnit (testCase)
@@ -13,12 +14,12 @@ import qualified Codec.Beam as Beam
 
 runnerFileName :: FilePath
 runnerFileName =
-  "runner.erl"
+  "test" </> "runner" <.> "erl"
 
 
 testFileName :: FilePath
 testFileName =
-  "test.beam"
+  "test" </> "module" <.> "beam"
 
 
 getChunk :: String -> IO String
@@ -42,7 +43,7 @@ testChunk chunkName expectedOutput beam =
 
 tests :: [Test]
 tests =
-  [ testChunk "atom" "[]" (Beam.empty "test")
+  [ testChunk "atoms" "[]" (Beam.empty "module")
   ]
 
 
