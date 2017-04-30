@@ -1,9 +1,9 @@
 module Main where
 
 import qualified Data.ByteString.Lazy as BS
-import System.Process (readProcess)
+import System.Process (readProcessWithExitCode)
 import System.FilePath ((</>), (<.>))
-import Control.Exception (try, IOException)
+import System.Exit
 
 import Test.Framework (Test, buildTest, defaultMain)
 import Test.Framework.Providers.HUnit (testCase)
@@ -22,9 +22,11 @@ testFileName =
   "test" </> "module" <.> "beam"
 
 
-showError :: IOException -> String
-showError =
-  show
+getOutput :: (ExitCode, String, String) -> String
+getOutput (exitCode, stdout, stderr) =
+  case exitCode of
+    ExitSuccess -> stdout
+    ExitFailure _ -> stderr
 
 
 getChunk :: String -> IO String
@@ -33,7 +35,7 @@ getChunk chunkName =
     args =
       [runnerFileName, testFileName, chunkName]
   in
-    either showError id <$> try (readProcess "escript" args "")
+    getOutput <$> readProcessWithExitCode "escript" args ""
 
 
 testChunk :: String -> String -> Beam.Module -> Test
