@@ -4,6 +4,7 @@ import qualified Data.ByteString.Lazy as BS
 import Data.Binary.Put (runPut)
 import System.Process (readProcess)
 import System.FilePath ((</>), (<.>))
+import Control.Exception (try, IOException)
 
 import Test.Framework (Test, buildTest, defaultMain)
 import Test.Framework.Providers.HUnit (testCase)
@@ -22,9 +23,18 @@ testFileName =
   "test" </> "module" <.> "beam"
 
 
+showError :: IOException -> String
+showError =
+  show
+
+
 getChunk :: String -> IO String
 getChunk chunkName =
-  readProcess "escript" [runnerFileName, testFileName, chunkName] ""
+  let
+    args =
+      [runnerFileName, testFileName, chunkName]
+  in
+    either showError id <$> try (readProcess "escript" args "")
 
 
 testChunk :: String -> String -> Beam.Module -> Test

@@ -52,9 +52,6 @@ Test-Suite codec-beam-tests
     Main-is:
         Main.hs
 
-    other-modules:
-        Paths_codec_beam
-
     Build-depends:
         codec-beam,
         base,
