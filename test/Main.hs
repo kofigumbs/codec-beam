@@ -54,7 +54,7 @@ testChunk chunkName expectedOutput beam =
 
 tests :: [Test]
 tests =
-  [ testChunk "atoms" "[]" (Beam.empty "module")
+  [ testChunk "atoms" "[{1,module}]" (Beam.empty "module")
   ]
 
 
