@@ -6,8 +6,8 @@ main([BeamFile, ChunkName]) ->
     Id = list_to_atom(ChunkName),
 
     case catch beam_lib:chunks(Bin, [Id]) of
-        { ok, Chunks } ->
-            io:fwrite("~w", [Chunks]);
+        { ok, { module, [{ Id, Data }] } } ->
+            io:fwrite("~w", [Data]);
 
         { error, _, Reason } ->
             fail(beam_lib:format_error(Reason));
