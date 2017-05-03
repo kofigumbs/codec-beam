@@ -1,63 +1,63 @@
 module Main where
 
 import qualified Data.ByteString.Lazy as BS
-import System.Process (readProcessWithExitCode)
+import System.Process (callProcess)
 import System.FilePath ((</>), (<.>))
-import System.Exit
 
-import Test.Framework (Test, buildTest, defaultMain)
-import Test.Framework.Providers.HUnit (testCase)
-import Test.HUnit (assertEqual)
+import qualified Codec.Beam
 
-import qualified Codec.Beam as Beam
+import qualified Test.Atoms
 
 
-runnerFileName :: FilePath
-runnerFileName =
-  "test" </> "runner" <.> "erl"
+erlangDir :: FilePath
+erlangDir =
+  "test"
 
 
-testFileName :: FilePath
-testFileName =
-  "test" </> "module" <.> "beam"
+erlangModuleName :: String
+erlangModuleName =
+  "codec_tests"
 
 
-getOutput :: (ExitCode, String, String) -> String
-getOutput (exitCode, stdout, stderr) =
-  case exitCode of
-    ExitSuccess -> stdout
-    ExitFailure _ -> stderr
+eunit :: (Codec.Beam.Module, String, String) -> IO String
+eunit (beam, name, body) =
+  do  let fixture =
+            erlangDir </> name <.> "beam"
+
+      BS.writeFile fixture (Codec.Beam.encode beam)
+
+      return $
+        unlines
+          [ name ++ "_test() ->"
+          , "{ok,BEAM} = file:read_file(\"" ++ fixture ++ "\"),"
+          , body ++ "."
+          ]
 
 
-getChunk :: String -> IO String
-getChunk chunkName =
-  let
-    args =
-      [runnerFileName, testFileName, chunkName]
-  in
-    getOutput <$> readProcessWithExitCode "escript" args ""
+run :: [String] -> IO ()
+run functions =
+  do  let fileContents =
+            unlines $
+              ("-module(" ++ erlangModuleName ++ ").")
+                : "-include_lib(\"eunit/include/eunit.hrl\")."
+                : functions
 
+          fileName =
+            erlangDir </> erlangModuleName <.> "erl"
 
-testChunk :: String -> String -> Beam.Module -> Test
-testChunk chunkName expectedOutput beam =
-  buildTest testIO
+      writeFile fileName fileContents
 
-  where
-    testIO =
-      do  BS.writeFile testFileName (Beam.encode beam)
+      callProcess "erlc" [fileName]
 
-          assertion <-
-            assertEqual chunkName expectedOutput <$> getChunk chunkName
-
-          return (testCase chunkName assertion)
-
-
-tests :: [Test]
-tests =
-  [ testChunk "atoms" "[{1,module}]" (Beam.empty "module")
-  ]
+      callProcess "erl"
+        [ "-noshell", "-pa", erlangDir
+        , "-eval", "eunit:test(" ++ erlangModuleName ++ ", [verbose])"
+        , "-run", "init", "stop"
+        ]
 
 
 main :: IO ()
 main =
-  defaultMain tests
+  run =<< mapM eunit
+    [ Test.Atoms.test
+    ]

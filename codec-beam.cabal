@@ -58,7 +58,4 @@ Test-Suite codec-beam-tests
         bytestring,
         filepath,
         process,
-        text,
-        test-framework,
-        test-framework-hunit,
-        HUnit
+        text
