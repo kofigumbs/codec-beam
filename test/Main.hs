@@ -4,7 +4,7 @@ import qualified Data.ByteString.Lazy as BS
 import System.Process (callProcess)
 import System.FilePath ((</>), (<.>))
 
-import qualified Codec.Beam
+import qualified Codec.Beam.Builder as Beam
 
 import qualified Test.Atoms
 
@@ -19,12 +19,12 @@ erlangModuleName =
   "codec_tests"
 
 
-eunit :: (Codec.Beam.Module, String, String) -> IO String
+eunit :: (Beam.Builder, String, String) -> IO String
 eunit (beam, name, body) =
   do  let fixture =
             erlangDir </> name <.> "beam"
 
-      BS.writeFile fixture (Codec.Beam.encode beam)
+      BS.writeFile fixture (Beam.encode beam)
 
       return $
         unlines

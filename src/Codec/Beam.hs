@@ -1,6 +1,5 @@
 module Codec.Beam
-  ( Module(..), empty
-  , encode
+  ( Module(..), Statement(..), encode
   ) where
 
 import qualified Data.ByteString.Lazy as BS
@@ -15,16 +14,15 @@ import Data.Word (Word32)
 
 data Module
   = Module
-      { _name :: ByteString
-      , _atoms :: [ByteString]
-      , _code :: [Definition]
+      { _atoms :: [ByteString]
+      , _code :: [Statement]
       , _strings :: [ByteString]
       , _imports :: [(ByteString, ByteString, Int)]
       , _exports :: [(ByteString, Int)]
       }
 
 
-data Definition
+data Statement
   = TODO
 
 
@@ -35,15 +33,18 @@ data Definition
 encode :: Module -> ByteString
 encode beam =
   let
-    chunk bytes =
+    prefixSize bytes =
       pack32 (BS.length bytes) <> align bytes
 
+    chunk toSection lens =
+      prefixSize (toSection (lens beam))
+
     sections =
-         "Atom" <> chunk (atoms (_name beam : _atoms beam))
-      <> "Code" <> chunk (code (_code beam))
-      <> "StrT" <> chunk (strings (_strings beam))
-      <> "ImpT" <> chunk (imports (_imports beam))
-      <> "ExpT" <> chunk (exports (_exports beam))
+         "Atom" <> chunk atoms _atoms
+      <> "Code" <> chunk code _code
+      <> "StrT" <> chunk strings _strings
+      <> "ImpT" <> chunk imports _imports
+      <> "ExpT" <> chunk exports _exports
   in
     "FOR1" <> pack32 (BS.length sections) <> "BEAM" <> sections
 
@@ -57,7 +58,7 @@ atoms names =
       pack8 (BS.length name) <> name
 
 
-code :: [Definition] -> ByteString
+code :: [Statement] -> ByteString
 code _ =
   ""
 
@@ -78,18 +79,6 @@ exports _ =
 
 
 -- HELPERS
-
-
-empty :: ByteString -> Module
-empty name =
-  Module
-    { _name = name
-    , _atoms = []
-    , _code = []
-    , _strings = []
-    , _imports = []
-    , _exports = []
-    }
 
 
 pack8 :: Integral n => n -> ByteString

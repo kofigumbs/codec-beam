@@ -1,13 +1,12 @@
 module Test.Atoms where
 
-import qualified Codec.Beam
+import qualified Codec.Beam.Builder as Builder
 
 
-test :: (Codec.Beam.Module, String, String)
 test =
-  ( Codec.Beam.empty "module"
+  ( Builder.withAtom "another_one" (Builder.named "module")
   , "module_name_and_atoms"
   , "?assertMatch(\
-      \ {ok, {module, [{atoms, [{1,module}]}]}},\
+      \ {ok, {module, [{atoms, [{1,module},{2,another_one}]}]}},\
       \ beam_lib:chunks(BEAM, [atoms]))"
   )

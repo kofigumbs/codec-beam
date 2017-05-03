@@ -27,11 +27,13 @@ Library
 
     exposed-modules:
         Codec.Beam
+        Codec.Beam.Builder
 
     Build-depends:
         base,
         binary,
         bytestring,
+        containers,
         process,
         text
 
@@ -51,6 +53,9 @@ Test-Suite codec-beam-tests
 
     Main-is:
         Main.hs
+
+    other-modules:
+        Test.Atoms
 
     Build-depends:
         codec-beam,
