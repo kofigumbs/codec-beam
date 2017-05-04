@@ -36,6 +36,7 @@ Library
         binary,
         bytestring,
         containers,
+        mtl,
         process,
         text
 

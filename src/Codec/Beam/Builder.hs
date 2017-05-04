@@ -1,8 +1,9 @@
 module Codec.Beam.Builder
   ( Builder, encode
-  , named
-  , withAtom
+  , Atom, atom
   ) where
+
+import qualified Control.Monad.State as State
 
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.Set as Set
@@ -14,35 +15,41 @@ import qualified Codec.Beam as Beam
  -}
 
 
-data Builder
-  = Builder
-      { _name :: ByteString
-      , _atoms :: Set.Set ByteString
+type Builder a
+  = State.State Env a
+
+
+data Env
+  = Env
+      { _atoms :: Set.Set ByteString
       }
 
 
-encode :: Builder -> ByteString
-encode (Builder name atoms) =
-  Beam.encode $ Beam.Module
-    (name : Set.toList (Set.delete name atoms))
-    []
-    []
-    []
-    []
+data Atom =
+  Atom ByteString
+
+
+encode :: ByteString -> Builder a -> ByteString
+encode name builder =
+  let
+    Env atomTable =
+      State.execState builder (Env Set.empty)
+  in
+    Beam.encode $ Beam.Module
+      (name : Set.toList (Set.delete name atomTable))
+      []
+      []
+      []
+      []
 
 
 
 -- CONSTRUCTING
 
 
-named :: ByteString -> Builder
-named name =
-  Builder
-    { _name = name
-    , _atoms = Set.empty
-    }
+atom :: ByteString -> Builder Atom
+atom name =
+  do  State.modify $
+        \(Env atomTable) -> Env (Set.insert name atomTable)
 
-
-withAtom :: ByteString -> Builder -> Builder
-withAtom atom old =
-  old { _atoms = Set.insert atom (_atoms old) }
+      return (Atom name)

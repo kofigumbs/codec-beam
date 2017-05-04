@@ -1,6 +1,8 @@
 module Main where
 
 import qualified Data.ByteString.Lazy as BS
+import Data.Text.Lazy (unpack)
+import Data.Text.Lazy.Encoding (decodeUtf8)
 import System.Process (callProcess)
 import System.FilePath ((</>), (<.>))
 
@@ -17,16 +19,19 @@ erlangModuleName =
   "codec_tests"
 
 
-eunit :: (String, String, Beam.Builder) -> IO String
+eunit :: (BS.ByteString, String, Beam.Builder b) -> IO String
 eunit (name, body, beam) =
-  do  let fixture =
-            erlangDir </> name <.> "beam"
+  do  let stringName =
+            unpack (decodeUtf8 name)
 
-      BS.writeFile fixture (Beam.encode beam)
+          fixture =
+            erlangDir </> stringName <.> "beam"
+
+      BS.writeFile fixture (Beam.encode name beam)
 
       return $
         unlines
-          [ name ++ "_test() ->"
+          [ stringName ++ "_test() ->"
           , "{ok,BEAM} = file:read_file(\"" ++ fixture ++ "\"),"
           , body ++ "."
           ]
@@ -59,18 +64,16 @@ main =
   run =<< mapM eunit
     [ ( "atoms"
       , "?assertMatch(\
-          \ {ok, {module_name, [{atoms, [{1,module_name},{2,another_one}]}]}},\
+          \ {ok, {atoms, [{atoms, [{1,atoms},{2,some_atom}]}]}},\
           \ beam_lib:chunks(BEAM, [atoms]))"
-      , Beam.withAtom "another_one"
-          $ Beam.named "module_name"
+      , Beam.atom "some_atom"
       )
 
     , ( "atoms_repeated"
       , "?assertMatch(\
-          \ {ok, {module_name, [{atoms, [{1,module_name},{2,another_one}]}]}},\
+          \ {ok, {atoms_repeated, [{atoms, [{1,atoms_repeated},{2,another_one}]}]}},\
           \ beam_lib:chunks(BEAM, [atoms]))"
-      , Beam.withAtom "another_one"
-          $ Beam.withAtom "module_name"
-          $ Beam.named "module_name"
+      , do  Beam.atom "atoms_repeated"
+            Beam.atom "another_one"
       )
     ]
