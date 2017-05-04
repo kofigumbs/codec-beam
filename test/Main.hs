@@ -64,4 +64,13 @@ main =
       , Beam.withAtom "another_one"
           $ Beam.named "module_name"
       )
+
+    , ( "atoms_repeated"
+      , "?assertMatch(\
+          \ {ok, {module_name, [{atoms, [{1,module_name},{2,another_one}]}]}},\
+          \ beam_lib:chunks(BEAM, [atoms]))"
+      , Beam.withAtom "another_one"
+          $ Beam.withAtom "module_name"
+          $ Beam.named "module_name"
+      )
     ]

@@ -23,7 +23,12 @@ data Builder
 
 encode :: Builder -> ByteString
 encode (Builder name atoms) =
-  Beam.encode $ Beam.Module (name : Set.toList atoms) [] [] [] []
+  Beam.encode $ Beam.Module
+    (name : Set.toList (Set.delete name atoms))
+    []
+    []
+    []
+    []
 
 
 
