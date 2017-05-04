@@ -19,7 +19,7 @@ erlangModuleName =
   "codec_tests"
 
 
-eunit :: (BS.ByteString, String, Beam.Builder b) -> IO String
+eunit :: (BS.ByteString, String, Beam.Code) -> IO String
 eunit (name, body, beam) =
   do  let stringName =
             unpack (decodeUtf8 name)
@@ -66,14 +66,35 @@ main =
       , "?assertMatch(\
           \ {ok, {atoms, [{atoms, [{1,atoms},{2,some_atom}]}]}},\
           \ beam_lib:chunks(BEAM, [atoms]))"
-      , Beam.atom "some_atom"
+      , do
+          Beam.atom "some_atom"
+          return []
       )
 
     , ( "atoms_repeated"
       , "?assertMatch(\
           \ {ok, {atoms_repeated, [{atoms, [{1,atoms_repeated},{2,another_one}]}]}},\
           \ beam_lib:chunks(BEAM, [atoms]))"
-      , do  Beam.atom "atoms_repeated"
-            Beam.atom "another_one"
+      , do
+          Beam.atom "atoms_repeated"
+          Beam.atom "another_one"
+          return []
+      )
+
+    , ( "constant_function"
+      , unlines
+          [ "{module, constant_function} = code:load_binary(constant_function, BEAM),"
+          , "?assertEqual(hello, constant_function:function())"
+          ]
+      , do
+          hello <-
+            Beam.atom "hello"
+
+          return
+            [ (,) "function"
+                [ Beam.move (Beam.AOp hello) (Beam.XOp 0)
+                , Beam.ret
+                ]
+            ]
       )
     ]
