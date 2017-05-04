@@ -54,9 +54,6 @@ Test-Suite codec-beam-tests
     Main-is:
         Main.hs
 
-    other-modules:
-        Test.Atoms
-
     Build-depends:
         codec-beam,
         base,
