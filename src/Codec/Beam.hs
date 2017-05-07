@@ -1,5 +1,5 @@
 module Codec.Beam
-  ( Module(..), Statement(..), encode
+  ( Module(..), Instruction(..), encode
   ) where
 
 import qualified Data.ByteString.Lazy as BS
@@ -15,14 +15,14 @@ import Data.Word (Word32)
 data Module
   = Module
       { _atoms :: [ByteString]
-      , _code :: [Statement]
+      , _code :: [Instruction]
       , _strings :: [ByteString]
       , _imports :: [(ByteString, ByteString, Int)]
       , _exports :: [(ByteString, Int)]
       }
 
 
-data Statement
+data Instruction
   = TODO
 
 
@@ -56,7 +56,7 @@ atoms names =
       pack8 (BS.length name) <> name
 
 
-code :: [Statement] -> ByteString
+code :: [Instruction] -> ByteString
 code _ =
   ""
 
