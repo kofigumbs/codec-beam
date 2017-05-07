@@ -33,18 +33,16 @@ data Statement
 encode :: Module -> ByteString
 encode beam =
   let
-    prefixSize bytes =
+    chunk bytes =
       pack32 (BS.length bytes) <> align bytes
 
-    chunk toSection lens =
-      prefixSize (toSection (lens beam))
-
     sections =
-         "Atom" <> chunk atoms _atoms
-      <> "Code" <> chunk code _code
-      <> "StrT" <> chunk strings _strings
-      <> "ImpT" <> chunk imports _imports
-      <> "ExpT" <> chunk exports _exports
+         "Atom" <> chunk (atoms (_atoms beam))
+      <> "Code" <> chunk (code (_code beam))
+      <> "LocT" <> chunk (pack32 0)
+      <> "StrT" <> chunk (pack32 0)
+      <> "ImpT" <> chunk (pack32 0)
+      <> "ExpT" <> chunk (pack32 0)
   in
     "FOR1" <> pack32 (BS.length sections) <> "BEAM" <> sections
 
@@ -60,20 +58,6 @@ atoms names =
 
 code :: [Statement] -> ByteString
 code _ =
-  ""
-
-
-strings :: [ByteString] -> ByteString
-strings _ =
-  ""
-
-
-imports :: [(ByteString, ByteString, Int)] -> ByteString
-imports _ =
-  ""
-
-exports :: [(ByteString, Int)] -> ByteString
-exports _ =
   ""
 
 

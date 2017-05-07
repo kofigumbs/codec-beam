@@ -62,7 +62,14 @@ run functions =
 main :: IO ()
 main =
   run =<< mapM eunit
-    [ ( "atoms"
+    [ ( "empty"
+      , "?assertMatch(\
+          \ {ok, {empty, [{imports, []},{labeled_exports, []},{labeled_locals, []}]}},\
+          \ beam_lib:chunks(BEAM, [imports, labeled_exports, labeled_locals]))"
+      , return []
+      )
+
+    , ( "atoms"
       , "?assertMatch(\
           \ {ok, {atoms, [{atoms, [{1,atoms},{2,some_atom}]}]}},\
           \ beam_lib:chunks(BEAM, [atoms]))"
