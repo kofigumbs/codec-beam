@@ -1,12 +1,13 @@
 module Codec.Beam
-  ( Module(..), Instruction(..), encode
+  ( Module(..), Code(..), Tagged(..), encode
   ) where
 
 import qualified Data.ByteString.Lazy as BS
 import Data.ByteString.Lazy (ByteString)
 import Data.Monoid ((<>))
 import Data.Binary.Put (runPut, putWord32be)
-import Data.Word (Word32)
+import Data.Bits (shiftL, (.&.))
+import Data.Word (Word8, Word32)
 
 
 -- AST
@@ -15,15 +16,34 @@ import Data.Word (Word32)
 data Module
   = Module
       { _atoms :: [ByteString]
-      , _code :: [Instruction]
       , _strings :: [ByteString]
       , _imports :: [(ByteString, ByteString, Int)]
       , _exports :: [(ByteString, Int)]
+      , _code :: Code
       }
 
 
-data Instruction
-  = TODO
+data Code
+  = Code
+      { _labelCount :: Int
+      , _functionCount :: Int
+      , _instructions :: [(Int, [Tagged])]
+      }
+
+
+data Tagged
+  = A Int
+  | X Word8
+
+
+instructionSetId :: Word32
+instructionSetId =
+  0
+
+
+maxOpCode :: Word32
+maxOpCode =
+  159
 
 
 
@@ -56,13 +76,39 @@ atoms names =
       pack8 (BS.length name) <> name
 
 
-code :: [Instruction] -> ByteString
-code _ =
-  ""
+code :: Code -> ByteString
+code (Code labelCount functionCount instructions) =
+  let
+    header =
+      mconcat
+        [ pack32 instructionSetId
+        , pack32 maxOpCode
+        , pack32 labelCount
+        , pack32 functionCount
+        ]
+  in
+    pack32 (BS.length header) <> header <> concatM instruction instructions
+
+
+instruction :: (Int, [Tagged]) -> ByteString
+instruction (op, args) =
+  pack8 op <> concatM (BS.pack . tagged) args
+
+  where
+    tagged (A aid) = encodeNumber 2 aid
 
 
 
 -- HELPERS
+
+
+encodeNumber :: Word8 -> Int -> [Word8]
+encodeNumber tag n =
+  if n < 16 then
+    [ shiftL (fromIntegral n) 1 .&. tag ]
+
+  else
+    error "TODO"
 
 
 pack8 :: Integral n => n -> ByteString

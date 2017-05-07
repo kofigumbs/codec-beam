@@ -99,7 +99,7 @@ main =
 
           return
             [ (,) "function"
-                [ Beam.move (Beam.AOp hello) (Beam.XOp 0)
+                [ Beam.move (Beam.A hello) (Beam.X 0)
                 , Beam.ret
                 ]
             ]

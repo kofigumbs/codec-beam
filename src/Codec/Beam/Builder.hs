@@ -33,8 +33,8 @@ data Atom =
 
 
 data Operand
-  = AOp Atom
-  | XOp Int
+  = A Atom
+  | X Word8
 
 
 data Operation
@@ -56,7 +56,7 @@ encode name builder =
       []
       []
       []
-      []
+      (Beam.Code 0 0 [])
 
 
 
