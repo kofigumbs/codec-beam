@@ -26,9 +26,6 @@ Library
         src
 
     exposed-modules:
-        Codec.Beam.Builder
-
-    other-modules:
         Codec.Beam
 
     Build-depends:

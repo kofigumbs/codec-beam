@@ -6,7 +6,7 @@ import Data.Text.Lazy.Encoding (decodeUtf8)
 import System.Process (callProcess)
 import System.FilePath ((</>), (<.>))
 
-import qualified Codec.Beam.Builder as Beam
+import qualified Codec.Beam as Beam
 
 
 erlangDir :: FilePath
@@ -19,7 +19,7 @@ erlangModuleName =
   "codec_tests"
 
 
-eunit :: (BS.ByteString, String, Beam.Code) -> IO String
+eunit :: (BS.ByteString, String, [Beam.Instruction]) -> IO String
 eunit (name, body, beam) =
   do  let stringName =
             unpack (decodeUtf8 name)
@@ -66,26 +66,14 @@ main =
       , "?assertMatch(\
           \ {ok, {empty, [{imports, []},{labeled_exports, []},{labeled_locals, []}]}},\
           \ beam_lib:chunks(BEAM, [imports, labeled_exports, labeled_locals]))"
-      , return []
+      , []
       )
 
-    , ( "atoms"
+    , ( "module_atom"
       , "?assertMatch(\
-          \ {ok, {atoms, [{atoms, [{1,atoms},{2,some_atom}]}]}},\
+          \ {ok, {module_atom, [{atoms, [{1,module_atom}]}]}},\
           \ beam_lib:chunks(BEAM, [atoms]))"
-      , do
-          Beam.atom "some_atom"
-          return []
-      )
-
-    , ( "atoms_repeated"
-      , "?assertMatch(\
-          \ {ok, {atoms_repeated, [{atoms, [{1,atoms_repeated},{2,another_one}]}]}},\
-          \ beam_lib:chunks(BEAM, [atoms]))"
-      , do
-          Beam.atom "atoms_repeated"
-          Beam.atom "another_one"
-          return []
+      , []
       )
 
     , ( "constant_function"
@@ -93,15 +81,10 @@ main =
           [ "{module, constant_function} = code:load_binary(constant_function, BEAM),"
           , "?assertEqual(hello, constant_function:function())"
           ]
-      , do
-          hello <-
-            Beam.atom "hello"
-
-          return
-            [ (,) "function"
-                [ Beam.move (Beam.A hello) (Beam.X 0)
-                , Beam.ret
-                ]
-            ]
+      , [ Beam.Label
+        , Beam.FuncInfo "constant_function" 0
+        , Beam.Move (Beam.Atom "hello") (Beam.X 0)
+        , Beam.Return
+        ]
       )
     ]
