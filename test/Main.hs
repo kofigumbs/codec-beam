@@ -19,7 +19,7 @@ erlangModuleName =
   "codec_tests"
 
 
-eunit :: (BS.ByteString, String, [Beam.Instruction]) -> IO String
+eunit :: (BS.ByteString, String, Beam.Builder [Beam.Instruction]) -> IO String
 eunit (name, body, beam) =
   do  let stringName =
             unpack (decodeUtf8 name)
@@ -27,7 +27,7 @@ eunit (name, body, beam) =
           fixture =
             erlangDir </> stringName <.> "beam"
 
-      BS.writeFile fixture (Beam.encode name beam)
+      BS.writeFile fixture (Beam.encode name [] beam)
 
       return $
         unlines
@@ -66,14 +66,14 @@ main =
       , "?assertMatch(\
           \ {ok, {empty, [{imports, []},{labeled_exports, []},{labeled_locals, []}]}},\
           \ beam_lib:chunks(BEAM, [imports, labeled_exports, labeled_locals]))"
-      , []
+      , return []
       )
 
     , ( "module_atom"
       , "?assertMatch(\
           \ {ok, {module_atom, [{atoms, [{1,module_atom}]}]}},\
           \ beam_lib:chunks(BEAM, [atoms]))"
-      , []
+      , return []
       )
 
     , ( "constant_function"
@@ -81,10 +81,10 @@ main =
           [ "{module, constant_function} = code:load_binary(constant_function, BEAM),"
           , "?assertEqual(hello, constant_function:function())"
           ]
-      , [ Beam.Label
-        , Beam.FuncInfo "constant_function" 0
-        , Beam.Move (Beam.Atom "hello") (Beam.X 0)
-        , Beam.Return
-        ]
+      , do  function <- Beam.funcInfo "constant_function" 0
+            hello <- Beam.atom "hello"
+            (_, label) <- Beam.label
+
+            return [ function , label , Beam.move (Beam.Atom hello) (Beam.X 0) ]
       )
     ]

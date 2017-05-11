@@ -1,10 +1,10 @@
 module Codec.Beam
-  ( Instruction(..), Term(..)
-  , encode
+  ( Builder, encode
+  , Instruction, Atom, Label, Tagged(..), Register(..)
+  , atom, label, funcInfo, ret, move
   ) where
 
 import qualified Control.Monad.State as State
-import Control.Applicative ((<*))
 
 import Data.Binary.Put (runPut, putWord32be)
 import Data.Bits (shiftL, (.&.))
@@ -21,31 +21,42 @@ import qualified Data.Map as Map
  -}
 
 
-data Instruction
-  = Label
-  | FuncInfo ByteString Int
-  | Return
-  | Move Term Term
+type Builder a
+  = State.State Env a
 
 
-data Term
-  = Integer Int
-  | Atom ByteString
-  | X Int
+data Env
+  = Env
+      { moduleName :: ByteString
+      , labelCount :: Word32
+      , functionCount :: Word32
+      , atomTable :: Map.Map ByteString Int
+      }
 
 
-encode :: ByteString -> [Instruction] -> ByteString
-encode name instructions =
+newtype Instruction
+  = Instruction (Word32, [Tagged])
+
+
+encode
+  :: ByteString
+  -> [(ByteString, Int, Label)]
+  -> Builder [Instruction]
+  -> ByteString
+encode name exported builder =
   let
-    (code, Env atomTable labelCount functionCount) =
-      State.runState
-        (mapM (generate name) instructions)
-        (Env (Map.singleton name 1) 0 0)
+    (instructions, env) =
+      State.runState builder $ Env
+        { moduleName = name
+        , labelCount = 0
+        , functionCount = 0
+        , atomTable = Map.singleton name 1
+        }
 
     sections =
       mconcat
-        [ "Atom" <> prefixLength (encodeAtoms atomTable)
-        , "Code" <> prefixLength (encodeCode labelCount functionCount code)
+        [ "Atom" <> prefixLength (encodeAtoms env)
+        , "Code" <> prefixLength (encodeCode env instructions)
         , "LocT" <> prefixLength (pack32 0)
         , "StrT" <> prefixLength (pack32 0)
         , "ImpT" <> prefixLength (pack32 0)
@@ -55,22 +66,8 @@ encode name instructions =
     "FOR1" <> pack32 (BS.length sections) <> "BEAM" <> sections
 
 
-instructionSetId :: Word32
-instructionSetId =
-  0
-
-
-maxOpCode :: Word32
-maxOpCode =
-  159
-
-
-
--- HELPERS
-
-
-encodeAtoms :: Map.Map ByteString Int -> ByteString
-encodeAtoms table =
+encodeAtoms :: Env -> ByteString
+encodeAtoms env =
   pack32 (length list) <> concatM fromName list
 
   where
@@ -80,115 +77,142 @@ encodeAtoms table =
     list =
       map fst
         $ List.sortOn snd
-        $ Map.toList table
+        $ Map.toList (atomTable env)
 
 
-
-encodeCode :: Word32 -> Word32 -> [ByteString] -> ByteString
-encodeCode labelCount functionCount instructions =
+encodeCode :: Env -> [Instruction] -> ByteString
+encodeCode env instructions =
   let
+    instructionSetId =
+      0
+
+    maxOpCode =
+      159
+
     header =
       mconcat
         [ pack32 instructionSetId
         , pack32 maxOpCode
-        , pack32 labelCount
-        , pack32 functionCount
+        , pack32 (labelCount env)
+        , pack32 (functionCount env)
         ]
+
+    fromInstruction (Instruction (opCode, args)) =
+      pack32 opCode <> BS.pack (concatM (fromTagged env) args)
   in
-    prefixLength header <> mconcat instructions
+    prefixLength header <> concatM fromInstruction instructions
 
 
 
--- GENERATE
+-- TERMS
 
 
-data Env
-  = Env
-      { _atoms :: Map.Map ByteString Int
-      , _labelCount :: Word32
-      , _functionCount :: Word32
-      }
+newtype Atom
+  = A ByteString
+  deriving (Eq, Ord)
 
 
-generate :: ByteString -> Instruction -> State.State Env ByteString
-generate moduleName i =
-  case i of
-    Label ->
-      op 1 [] <* incLabelCount
+atom :: ByteString -> Builder Atom
+atom name =
+  do  State.modify $
+        \env -> env { atomTable = check (atomTable env) }
 
-    FuncInfo name arity ->
-      op 2 [Atom moduleName, Atom name, Integer arity] <* incLabelCount
-
-    Return ->
-      op 19 []
-
-    Move from to ->
-      op 64 [from, to]
+      return (A name)
 
   where
-    op code args =
-      do  wordLists <-
-            mapM term args
+    check old =
+      if Map.member name old then
+        old
 
-          return $ pack32 code <> BS.pack (mconcat wordLists)
-
-
-term :: Term -> State.State Env [Word8]
-term t =
-  case t of
-    Integer value ->
-      return (encodeNumber 1 value)
-
-    Atom name ->
-      encodeNumber 2 <$> getAtom name
-
-    X reg ->
-      return (encodeNumber 3 reg)
+      else
+        Map.insert name (Map.size old + 1) old
 
 
-incLabelCount :: State.State Env ()
-incLabelCount =
-  do  old <-
-        State.gets _labelCount
+newtype Label
+  = L Word32
+
+
+label :: Builder (Label, Instruction)
+label =
+  do  next <-
+        fmap (+ 1) (State.gets labelCount)
+
+      let id =
+            L next
 
       State.modify $
-        \e -> e { _labelCount = old + 1 }
+        \env -> env { labelCount = next }
+
+      return ( id, op 1 [ Label id ] )
 
 
-incFunctionCount :: State.State Env ()
-incFunctionCount =
-  do  old <-
-        State.gets _functionCount
 
-      State.modify $
-        \e -> e { _functionCount = old + 1 }
+-- OPS
 
 
-getAtom :: ByteString -> State.State Env Int
-getAtom name =
-  do  old <-
-        State.gets _atoms
+data Register
+  = X Int
+  | Y Int
 
-      case Map.lookup name old of
-        Just id ->
-          return id
 
-        Nothing ->
-          do  let id =
-                    Map.size old + 1
+data Tagged
+  = Integer Int
+  | Atom Atom
+  | Reg Register
+  | Label Label
 
-              State.modify $
-                \e -> e { _atoms = Map.insert name id old }
 
-              return id
+op :: Word32 -> [Tagged] -> Instruction
+op code args =
+  Instruction (code, args)
+
+
+funcInfo :: ByteString -> Int -> Builder Instruction
+funcInfo name a =
+  do  State.modify $
+        \env -> env { functionCount = functionCount env + 1 }
+
+      m <- atom =<< State.gets moduleName
+      f <- atom name
+
+      return $ op 2 [ Atom m, Atom f, Integer a ]
+
+
+ret :: Instruction
+ret =
+  op 19 []
+
+
+move :: Tagged -> Register -> Instruction
+move source destination =
+  op 64 [ source, Reg destination ]
 
 
 
 -- BYTES
 
 
-encodeNumber :: Word8 -> Int -> [Word8]
-encodeNumber tag n =
+fromTagged :: Env -> Tagged -> [Word8]
+fromTagged env t =
+  case t of
+    Integer value ->
+      compact 1 value
+
+    Atom (A name) ->
+      compact 2 (atomTable env ! name)
+
+    Reg (X id) ->
+      compact 3 id
+
+    Reg (Y id) ->
+      compact 4 id
+
+    Label (L id) ->
+      compact 5 id
+
+
+compact :: Integral n => Word8 -> n -> [Word8]
+compact tag n =
   if n < 16 then
     [ shiftL (fromIntegral n) 1 .&. tag ]
 
