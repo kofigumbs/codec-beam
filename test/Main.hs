@@ -46,7 +46,7 @@ test name body beam =
   do  let fixture =
             erlangDir </> toString name <.> "beam"
 
-      BS.writeFile fixture (Beam.encode name [] beam)
+      BS.writeFile fixture (Beam.encode name beam)
 
       return $
         unlines
@@ -96,12 +96,13 @@ main =
         return []
 
     , test "constant_function"
-        [ "{module, constant_function} = code:load_binary(constant_function, BEAM),"
+        [ "{module, constant_function} ="
+        , "  code:load_binary(constant_function, \"constant_function.beam\", BEAM),"
         , "?assertEqual(hello, constant_function:function())"
         ] $
-        do  function <- Beam.funcInfo "constant_function" 0
+        do  (label, jump) <- Beam.label
+            function <- Beam.export "function" 0 label
             hello <- Beam.atom "hello"
-            (_, label) <- Beam.label
 
-            return [ function , label , Beam.move (Beam.Atom hello) (Beam.X 0) ]
+            return [ function , jump , Beam.move (Beam.Atom hello) (Beam.X 0) ]
     ]

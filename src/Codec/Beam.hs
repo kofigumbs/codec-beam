@@ -1,7 +1,7 @@
 module Codec.Beam
   ( Builder, encode
   , Instruction, Atom, Label, Tagged(..), Register(..)
-  , atom, label, funcInfo, ret, move
+  , atom, label, export, funcInfo, ret, move
   ) where
 
 import qualified Control.Monad.State as State
@@ -31,6 +31,7 @@ data Env
       , labelCount :: Word32
       , functionCount :: Word32
       , atomTable :: Map.Map ByteString Int
+      , toExport :: [(ByteString, Int, Label)]
       }
 
 
@@ -38,12 +39,8 @@ newtype Instruction
   = Instruction (Word32, [Tagged])
 
 
-encode
-  :: ByteString
-  -> [(ByteString, Int, Label)]
-  -> Builder [Instruction]
-  -> ByteString
-encode name exported builder =
+encode :: ByteString -> Builder [Instruction] -> ByteString
+encode name builder =
   let
     (instructions, env) =
       State.runState builder $ Env
@@ -51,6 +48,7 @@ encode name exported builder =
         , labelCount = 0
         , functionCount = 0
         , atomTable = Map.singleton name 1
+        , toExport = []
         }
 
     sections =
@@ -60,7 +58,7 @@ encode name exported builder =
         , "LocT" <> prefixLength (pack32 0)
         , "StrT" <> prefixLength (pack32 0)
         , "ImpT" <> prefixLength (pack32 0)
-        , "ExpT" <> prefixLength (pack32 0)
+        , "ExpT" <> prefixLength (encodeExports env)
         ]
   in
     "FOR1" <> pack32 (BS.length sections) <> "BEAM" <> sections
@@ -101,6 +99,18 @@ encodeCode env instructions =
       pack32 opCode <> BS.pack (concatM (fromTagged env) args)
   in
     prefixLength header <> concatM fromInstruction instructions
+
+
+encodeExports :: Env  -> ByteString
+encodeExports env =
+  let
+    list =
+      toExport env
+
+    fromExport (name, arity, L lid) =
+      pack32 (atomTable env ! name) <> pack32 arity <> pack32 lid
+  in
+    pack32 (length list) <> concatM fromExport list
 
 
 
@@ -165,6 +175,14 @@ data Tagged
 op :: Word32 -> [Tagged] -> Instruction
 op code args =
   Instruction (code, args)
+
+
+export :: ByteString -> Int -> Label -> Builder Instruction
+export name arity location =
+  do  State.modify $
+        \env -> env { toExport = (name, arity, location) : toExport env }
+
+      funcInfo name arity
 
 
 funcInfo :: ByteString -> Int -> Builder Instruction
