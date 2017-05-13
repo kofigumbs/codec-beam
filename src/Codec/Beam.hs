@@ -1,13 +1,13 @@
 module Codec.Beam
   ( Builder, encode
   , Instruction, Atom, Label, Tagged(..), Register(..)
-  , atom, label, export, funcInfo, ret, move
+  , atom, label, export, funcInfo, intCodeEnd, ret, move
   ) where
 
 import qualified Control.Monad.State as State
 
 import Data.Binary.Put (runPut, putWord32be)
-import Data.Bits (shiftL, (.&.))
+import Data.Bits (shiftL, (.|.))
 import Data.ByteString.Lazy (ByteString)
 import Data.Map ((!))
 import Data.Monoid ((<>))
@@ -45,7 +45,7 @@ encode name builder =
     (instructions, env) =
       State.runState builder $ Env
         { moduleName = name
-        , labelCount = 0
+        , labelCount = 1
         , functionCount = 0
         , atomTable = Map.singleton name 1
         , toExport = []
@@ -53,15 +53,15 @@ encode name builder =
 
     sections =
       mconcat
-        [ "Atom" <> prefixLength (encodeAtoms env)
-        , "Code" <> prefixLength (encodeCode env instructions)
-        , "LocT" <> prefixLength (pack32 0)
-        , "StrT" <> prefixLength (pack32 0)
-        , "ImpT" <> prefixLength (pack32 0)
-        , "ExpT" <> prefixLength (encodeExports env)
+        [ "Atom" <> alignSection (encodeAtoms env)
+        , "Code" <> alignSection (encodeCode env instructions)
+        , "LocT" <> alignSection (pack32 0)
+        , "StrT" <> alignSection (pack32 0)
+        , "ImpT" <> alignSection (pack32 0)
+        , "ExpT" <> alignSection (encodeExports env)
         ]
   in
-    "FOR1" <> pack32 (BS.length sections) <> "BEAM" <> sections
+    "FOR1" <> pack32 (BS.length sections + 4) <> "BEAM" <> sections
 
 
 encodeAtoms :: Env -> ByteString
@@ -81,24 +81,26 @@ encodeAtoms env =
 encodeCode :: Env -> [Instruction] -> ByteString
 encodeCode env instructions =
   let
+    headerLength =
+      16
+
     instructionSetId =
       0
 
     maxOpCode =
-      159
-
-    header =
-      mconcat
-        [ pack32 instructionSetId
-        , pack32 maxOpCode
-        , pack32 (labelCount env)
-        , pack32 (functionCount env)
-        ]
+      158
 
     fromInstruction (Instruction (opCode, args)) =
-      pack32 opCode <> BS.pack (concatM (fromTagged env) args)
+      pack8 opCode <> BS.pack (concatM (fromTagged env) args)
   in
-    prefixLength header <> concatM fromInstruction instructions
+    mconcat
+      [ pack32 headerLength
+      , pack32 instructionSetId
+      , pack32 maxOpCode
+      , pack32 (labelCount env)
+      , pack32 (functionCount env)
+      , concatM fromInstruction instructions
+      ]
 
 
 encodeExports :: Env  -> ByteString
@@ -145,15 +147,15 @@ newtype Label
 label :: Builder (Label, Instruction)
 label =
   do  next <-
-        fmap (+ 1) (State.gets labelCount)
+        State.gets labelCount
 
       let id =
             L next
 
       State.modify $
-        \env -> env { labelCount = next }
+        \env -> env { labelCount = next + 1 }
 
-      return ( id, op 1 [ Label id ] )
+      return ( id, op 1 [ Literal (fromIntegral next) ] )
 
 
 
@@ -166,7 +168,8 @@ data Register
 
 
 data Tagged
-  = Integer Int
+  = Literal Int
+  | Integer Int
   | Atom Atom
   | Reg Register
   | Label Label
@@ -193,7 +196,12 @@ funcInfo name a =
       m <- atom =<< State.gets moduleName
       f <- atom name
 
-      return $ op 2 [ Atom m, Atom f, Integer a ]
+      return $ op 2 [ Atom m, Atom f, Literal a ]
+
+
+intCodeEnd :: Instruction
+intCodeEnd =
+  op 3 []
 
 
 ret :: Instruction
@@ -213,6 +221,9 @@ move source destination =
 fromTagged :: Env -> Tagged -> [Word8]
 fromTagged env t =
   case t of
+    Literal value ->
+      compact 0 value
+
     Integer value ->
       compact 1 value
 
@@ -232,15 +243,24 @@ fromTagged env t =
 compact :: Integral n => Word8 -> n -> [Word8]
 compact tag n =
   if n < 16 then
-    [ shiftL (fromIntegral n) 1 .&. tag ]
+    [ shiftL (fromIntegral n) 4 .|. tag ]
 
   else
     error "TODO"
 
 
-prefixLength :: ByteString -> ByteString
-prefixLength bytes =
-  pack32 (BS.length bytes) <> align bytes
+alignSection :: ByteString -> ByteString
+alignSection bytes =
+  pack32 size <> bytes <> padding
+
+  where
+    size =
+      BS.length bytes
+
+    padding =
+      case mod size 4 of
+        0 -> BS.empty
+        r -> BS.replicate (4 - r) 0
 
 
 pack8 :: Integral n => n -> ByteString
@@ -251,11 +271,6 @@ pack8 =
 pack32 :: Integral n => n -> ByteString
 pack32 n =
   runPut (putWord32be (fromIntegral n :: Word32))
-
-
-align :: ByteString -> ByteString
-align bytes =
-  bytes <> BS.replicate (BS.length bytes `mod` 4) 0
 
 
 

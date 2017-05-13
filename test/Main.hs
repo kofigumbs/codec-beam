@@ -86,23 +86,29 @@ main =
         , "  {ok, {empty, [{imports, []},{labeled_exports, []},{labeled_locals, []}]}},"
         , "  beam_lib:chunks(BEAM, [imports, labeled_exports, labeled_locals]))"
         ] $
-        return []
+        return [ Beam.intCodeEnd ]
 
     , test "module_atom"
         [ "?assertMatch("
         , "  {ok, {module_atom, [{atoms, [{1,module_atom}]}]}},"
         , "  beam_lib:chunks(BEAM, [atoms]))"
         ] $
-        return []
+        return [ Beam.intCodeEnd ]
 
     , test "constant_function"
         [ "{module, constant_function} ="
         , "  code:load_binary(constant_function, \"constant_function.beam\", BEAM),"
         , "?assertEqual(hello, constant_function:function())"
         ] $
-        do  (label, jump) <- Beam.label
+        do  (_, beforeF) <- Beam.label
+            (label, afterF) <- Beam.label
             function <- Beam.export "function" 0 label
             hello <- Beam.atom "hello"
 
-            return [ function , jump , Beam.move (Beam.Atom hello) (Beam.X 0) ]
+            return
+              [ beforeF, function, afterF
+              , Beam.move (Beam.Atom hello) (Beam.X 0)
+              , Beam.ret
+              , Beam.intCodeEnd
+              ]
     ]
