@@ -6,6 +6,7 @@ import Data.Text.Lazy.Encoding (encodeUtf8, decodeUtf8)
 import System.FilePath ((</>), (<.>))
 import System.Process (callProcess)
 import qualified Data.ByteString.Lazy as BS
+import qualified Data.ByteString.Builder as B
 
 import Prelude hiding (unlines)
 
@@ -37,16 +38,15 @@ fromString =
   encodeUtf8 . pack
 
 
-test
-  :: BS.ByteString
-  -> [BS.ByteString]
-  -> Beam.Builder [Beam.Instruction]
-  -> IO BS.ByteString
-test name body beam =
+test :: BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> IO BS.ByteString
+test name body ops =
   do  let fixture =
             erlangDir </> toString name <.> "beam"
 
-      BS.writeFile fixture (Beam.encode name beam)
+          (builder, env) =
+            Beam.encode (Beam.new name [("test", 0)]) ops
+
+      BS.writeFile fixture (Beam.summarize env (B.toLazyByteString builder))
 
       return $
         unlines
@@ -85,30 +85,25 @@ main =
         [ "?assertMatch("
         , "  {ok, {empty, [{imports, []},{labeled_exports, []},{labeled_locals, []}]}},"
         , "  beam_lib:chunks(BEAM, [imports, labeled_exports, labeled_locals]))"
-        ] $
-        return [ Beam.intCodeEnd ]
+        ]
+        []
 
     , test "module_atom"
         [ "?assertMatch("
         , "  {ok, {module_atom, [{atoms, [{1,module_atom}]}]}},"
         , "  beam_lib:chunks(BEAM, [atoms]))"
-        ] $
-        return [ Beam.intCodeEnd ]
+        ]
+        []
 
     , test "constant_function"
         [ "{module, constant_function} ="
         , "  code:load_binary(constant_function, \"constant_function.beam\", BEAM),"
-        , "?assertEqual(hello, constant_function:function())"
-        ] $
-        do  (_, beforeF) <- Beam.label
-            (label, afterF) <- Beam.label
-            function <- Beam.export "function" 0 label
-            hello <- Beam.atom "hello"
-
-            return
-              [ beforeF, function, afterF
-              , Beam.move (Beam.Atom hello) (Beam.X 0)
-              , Beam.ret
-              , Beam.intCodeEnd
-              ]
+        , "?assertEqual(hello, constant_function:test())"
+        ]
+        [ Beam.Label 1
+        , Beam.FuncInfo "test" 0
+        , Beam.Label 2
+        , Beam.Move (Beam.Atom "hello") (Beam.X 0)
+        , Beam.Return
+        ]
     ]

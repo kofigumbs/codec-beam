@@ -1,17 +1,15 @@
 module Codec.Beam
-  ( Builder, encode
-  , Instruction, Atom, Label, Tagged(..), Register(..)
-  , atom, label, export, funcInfo, intCodeEnd, ret, move
+  ( Op(..), Term(..), Register(..)
+  , Env, new, encode, summarize
   ) where
-
-import qualified Control.Monad.State as State
 
 import Data.Binary.Put (runPut, putWord32be)
 import Data.Bits (shiftL, (.|.))
-import Data.ByteString.Lazy (ByteString)
-import Data.Map ((!))
+import Data.Maybe (mapMaybe)
 import Data.Monoid ((<>))
 import Data.Word (Word8, Word32)
+import qualified Control.Monad.State as State
+import qualified Data.ByteString.Builder as B
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.List as List
 import qualified Data.Map as Map
@@ -21,115 +19,162 @@ import qualified Data.Map as Map
  -}
 
 
-type Builder a
-  = State.State Env a
+data Op
+  = Label Int
+  | FuncInfo BS.ByteString Int
+  | Return
+  | Move Term Register
 
 
-data Env
-  = Env
-      { moduleName :: ByteString
-      , labelCount :: Word32
-      , functionCount :: Word32
-      , atomTable :: Map.Map ByteString Int
-      , toExport :: [(ByteString, Int, Label)]
-      }
+data Term
+  = Lit Int
+  | Atom BS.ByteString
+  | Reg Register
 
 
-newtype Instruction
-  = Instruction (Word32, [Tagged])
+data Register
+  = X Int
+  | Y Int
 
 
-encode :: ByteString -> Builder [Instruction] -> ByteString
-encode name builder =
+
+-- Incremental encoding
+
+
+data Env =
+  Env
+    { moduleName :: BS.ByteString
+    , labelCount :: Word32
+    , functionCount :: Word32
+    , exportNextLabel :: Maybe (BS.ByteString, Int)
+    , atomTable :: Map.Map BS.ByteString Word32
+    , toExport :: Map.Map (BS.ByteString, Int) (Maybe Int)
+    }
+
+
+new :: BS.ByteString -> [(BS.ByteString, Int)] -> Env
+new name exports =
+  Env
+    { moduleName = name
+    , labelCount = 1
+    , functionCount = 0
+    , exportNextLabel = Nothing
+    , atomTable = Map.singleton name 1
+    , toExport = Map.fromList (zip exports (repeat Nothing))
+    }
+
+
+encode :: Env -> [Op] -> (B.Builder, Env)
+encode env ops =
+  State.runState (mconcat <$> mapM fromOp ops) env
+
+
+summarize :: Env -> BS.ByteString -> BS.ByteString
+summarize env code =
   let
-    (instructions, env) =
-      State.runState builder $ Env
-        { moduleName = name
-        , labelCount = 1
-        , functionCount = 0
-        , atomTable = Map.singleton name 1
-        , toExport = []
-        }
-
     sections =
-      mconcat
-        [ "Atom" <> alignSection (encodeAtoms env)
-        , "Code" <> alignSection (encodeCode env instructions)
-        , "LocT" <> alignSection (pack32 0)
-        , "StrT" <> alignSection (pack32 0)
-        , "ImpT" <> alignSection (pack32 0)
-        , "ExpT" <> alignSection (encodeExports env)
-        ]
+         "Atom" <> alignSection (encodeAtoms env)
+      <> "LocT" <> alignSection (pack32 0)
+      <> "StrT" <> alignSection (pack32 0)
+      <> "ImpT" <> alignSection (pack32 0)
+      <> "ExpT" <> alignSection (encodeExports env)
+      <> "Code" <> alignSection (encodeCode env code)
   in
     "FOR1" <> pack32 (BS.length sections + 4) <> "BEAM" <> sections
 
 
-encodeAtoms :: Env -> ByteString
-encodeAtoms env =
-  pack32 (length list) <> concatM fromName list
+
+-- Build environment and code section
+
+
+fromOp :: Op -> State.State Env B.Builder
+fromOp op =
+  case op of
+    Label uid ->
+      do  State.modify $ \env -> env
+            { labelCount =
+                labelCount env + 1
+
+            , exportNextLabel =
+                Nothing
+
+            , toExport =
+                case exportNextLabel env of
+                  Just function ->
+                    Map.insert function (Just uid) (toExport env)
+
+                  Nothing ->
+                    toExport env
+            }
+
+          instruction 1 [ Lit uid ]
+
+    FuncInfo functionName arity ->
+      do  mod <-
+            State.gets moduleName
+
+          State.modify $ \env -> env
+            { functionCount =
+                functionCount env + 1
+
+            , exportNextLabel =
+                if Map.member (functionName, arity) (toExport env) then
+                  Just (functionName, arity)
+
+                else
+                  Nothing
+            }
+
+          instruction 2 [ Atom mod, Atom functionName, Lit arity ]
+
+    Return ->
+      instruction 19 []
+
+    Move source destination ->
+      instruction 64 [ source, Reg destination ]
 
   where
-    fromName name =
-      pack8 (BS.length name) <> name
-
-    list =
-      map fst
-        $ List.sortOn snd
-        $ Map.toList (atomTable env)
+    instruction opCode args =
+      mconcat . (B.word8 opCode :)
+        <$> map (B.lazyByteString . BS.pack)
+        <$> mapM fromTerm args
 
 
-encodeCode :: Env -> [Instruction] -> ByteString
-encodeCode env instructions =
-  let
-    headerLength =
-      16
+fromTerm :: Term -> State.State Env [Word8]
+fromTerm term =
+  case term of
+    Lit value ->
+      return (compact 0 value)
 
-    instructionSetId =
-      0
+    Atom name ->
+      fmap (compact 2) (getAtom name)
 
-    maxOpCode =
-      158
+    Reg (X id) ->
+      return (compact 3 id)
 
-    fromInstruction (Instruction (opCode, args)) =
-      pack8 opCode <> BS.pack (concatM (fromTagged env) args)
-  in
-    mconcat
-      [ pack32 headerLength
-      , pack32 instructionSetId
-      , pack32 maxOpCode
-      , pack32 (labelCount env)
-      , pack32 (functionCount env)
-      , concatM fromInstruction instructions
-      ]
+    Reg (Y id) ->
+      return (compact 4 id)
 
 
-encodeExports :: Env  -> ByteString
-encodeExports env =
-  let
-    list =
-      toExport env
+getAtom :: BS.ByteString -> State.State Env Word32
+getAtom name =
+  do  atoms <-
+        State.gets atomTable
 
-    fromExport (name, arity, L lid) =
-      pack32 (atomTable env ! name) <> pack32 arity <> pack32 lid
-  in
-    pack32 (length list) <> concatM fromExport list
+      case Map.lookup name atoms of
+        Just id ->
+          return id
 
+        Nothing ->
+          do  let id =
+                    fromIntegral (Map.size atoms + 1)
 
+              State.modify $ \env -> env
+                { atomTable =
+                    Map.insert name id atoms
+                }
 
--- TERMS
-
-
-newtype Atom
-  = A ByteString
-  deriving (Eq, Ord)
-
-
-atom :: ByteString -> Builder Atom
-atom name =
-  do  State.modify $
-        \env -> env { atomTable = check (atomTable env) }
-
-      return (A name)
+              return id
 
   where
     check old =
@@ -140,104 +185,67 @@ atom name =
         Map.insert name (Map.size old + 1) old
 
 
-newtype Label
-  = L Word32
+
+-- Use the environment to create other sections
 
 
-label :: Builder (Label, Instruction)
-label =
-  do  next <-
-        State.gets labelCount
+encodeAtoms :: Env -> BS.ByteString
+encodeAtoms env =
+  pack32 (length list) <> mconcat list
 
-      let id =
-            L next
+  where
+    list =
+      map fromTuple
+        $ List.sortOn snd
+        $ Map.toList (atomTable env)
 
-      State.modify $
-        \env -> env { labelCount = next + 1 }
-
-      return ( id, op 1 [ Literal (fromIntegral next) ] )
-
-
-
--- OPS
+    fromTuple (name, _) =
+      pack8 (BS.length name) <> name
 
 
-data Register
-  = X Int
-  | Y Int
+encodeExports :: Env -> BS.ByteString
+encodeExports env =
+  pack32 (length list) <> mconcat list
+
+  where
+    list =
+      mapMaybe fromTuple $ Map.toList (toExport env)
+
+    fromTuple ((name, arity), maybeLabel) =
+      do  labelId <-
+            maybeLabel
+
+          nameId <-
+            Map.lookup name (atomTable env)
+
+          return $ pack32 nameId <> pack32 arity <> pack32 labelId
 
 
-data Tagged
-  = Literal Int
-  | Integer Int
-  | Atom Atom
-  | Reg Register
-  | Label Label
+encodeCode :: Env -> BS.ByteString -> BS.ByteString
+encodeCode env code =
+  let
+    headerLength =
+      16
 
+    instructionSetId =
+      0
 
-op :: Word32 -> [Tagged] -> Instruction
-op code args =
-  Instruction (code, args)
+    maxOpCode =
+      158
 
-
-export :: ByteString -> Int -> Label -> Builder Instruction
-export name arity location =
-  do  State.modify $
-        \env -> env { toExport = (name, arity, location) : toExport env }
-
-      funcInfo name arity
-
-
-funcInfo :: ByteString -> Int -> Builder Instruction
-funcInfo name a =
-  do  State.modify $
-        \env -> env { functionCount = functionCount env + 1 }
-
-      m <- atom =<< State.gets moduleName
-      f <- atom name
-
-      return $ op 2 [ Atom m, Atom f, Literal a ]
-
-
-intCodeEnd :: Instruction
-intCodeEnd =
-  op 3 []
-
-
-ret :: Instruction
-ret =
-  op 19 []
-
-
-move :: Tagged -> Register -> Instruction
-move source destination =
-  op 64 [ source, Reg destination ]
+    intCodeEnd =
+      pack8 3
+  in
+       pack32 headerLength
+    <> pack32 instructionSetId
+    <> pack32 maxOpCode
+    <> pack32 (labelCount env)
+    <> pack32 (functionCount env)
+    <> code <> intCodeEnd
 
 
 
--- BYTES
-
-
-fromTagged :: Env -> Tagged -> [Word8]
-fromTagged env t =
-  case t of
-    Literal value ->
-      compact 0 value
-
-    Integer value ->
-      compact 1 value
-
-    Atom (A name) ->
-      compact 2 (atomTable env ! name)
-
-    Reg (X id) ->
-      compact 3 id
-
-    Reg (Y id) ->
-      compact 4 id
-
-    Label (L id) ->
-      compact 5 id
+-- Byte stuff
 
 
 compact :: Integral n => Word8 -> n -> [Word8]
@@ -249,7 +257,7 @@ compact tag n =
     error "TODO"
 
 
-alignSection :: ByteString -> ByteString
+alignSection :: BS.ByteString -> BS.ByteString
 alignSection bytes =
   pack32 size <> bytes <> padding
 
@@ -263,20 +271,11 @@ alignSection bytes =
         r -> BS.replicate (4 - r) 0
 
 
-pack8 :: Integral n => n -> ByteString
+pack8 :: Integral n => n -> BS.ByteString
 pack8 =
   BS.singleton . fromIntegral
 
 
-pack32 :: Integral n => n -> ByteString
+pack32 :: Integral n => n -> BS.ByteString
 pack32 n =
   runPut (putWord32be (fromIntegral n :: Word32))
-
-
-
--- HELPERS
-
-
-concatM :: Monoid m => (a -> m) -> [a] -> m
-concatM f =
-  mconcat . map f
