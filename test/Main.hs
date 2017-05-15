@@ -106,4 +106,21 @@ main =
         , Beam.Move (Beam.Atom "hello") (Beam.X 0)
         , Beam.Return
         ]
+
+    , test "identity_function"
+        [ "{module, identity_function} ="
+        , "  code:load_binary(identity_function, \"identity_function.beam\", BEAM),"
+        , "?assertEqual(1023, identity_function:test())"
+        ]
+        [ Beam.Label 1
+        , Beam.FuncInfo "test" 0
+        , Beam.Label 2
+        , Beam.Move (Beam.Int 1023) (Beam.X 0)
+        , Beam.CallOnly 1 4
+        , Beam.Return
+        , Beam.Label 3
+        , Beam.FuncInfo "identity" 1
+        , Beam.Label 4
+        , Beam.Return
+        ]
     ]

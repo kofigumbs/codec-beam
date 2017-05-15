@@ -4,11 +4,12 @@ module Codec.Beam
   ) where
 
 import Data.Binary.Put (runPut, putWord32be)
-import Data.Bits (shiftL, (.|.))
+import Data.Bits ((.|.), (.&.))
 import Data.Maybe (mapMaybe)
 import Data.Monoid ((<>))
 import Data.Word (Word8, Word32)
 import qualified Control.Monad.State as State
+import qualified Data.Bits as Bits
 import qualified Data.ByteString.Builder as B
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.List as List
@@ -22,14 +23,17 @@ import qualified Data.Map as Map
 data Op
   = Label Int
   | FuncInfo BS.ByteString Int
+  | CallOnly Int Int
   | Return
   | Move Term Register
 
 
 data Term
   = Lit Int
+  | Int Int
   | Atom BS.ByteString
   | Reg Register
+  | Lab Int
 
 
 data Register
@@ -127,8 +131,14 @@ fromOp op =
 
           instruction 2 [ Atom mod, Atom functionName, Lit arity ]
 
+    -- CallOnly arity label ->
+    --   instruction 6 [ Lit arity, Lit label ]
+
     Return ->
       instruction 19 []
+
+    CallOnly arity label ->
+      instruction 6 [ Lit arity, Lab label ]
 
     Move source destination ->
       instruction 64 [ source, Reg destination ]
@@ -144,16 +154,22 @@ fromTerm :: Term -> State.State Env [Word8]
 fromTerm term =
   case term of
     Lit value ->
-      return (compact 0 value)
+      return $ compact 0 value
+
+    Int value ->
+      return $ compact 1 value
 
     Atom name ->
-      fmap (compact 2) (getAtom name)
+      compact 2 <$> getAtom name
 
     Reg (X id) ->
-      return (compact 3 id)
+      return $ compact 3 id
 
     Reg (Y id) ->
-      return (compact 4 id)
+      return $ compact 4 id
+
+    Lab id ->
+      return $ compact 5 id
 
 
 getAtom :: BS.ByteString -> State.State Env Word32
@@ -175,14 +191,6 @@ getAtom name =
                 }
 
               return id
-
-  where
-    check old =
-      if Map.member name old then
-        old
-
-      else
-        Map.insert name (Map.size old + 1) old
 
 
 
@@ -248,10 +256,23 @@ encodeCode env code =
 -- Byte stuff
 
 
-compact :: Integral n => Word8 -> n -> [Word8]
+compact :: (Bits.Bits n, Integral n) => Word8 -> n -> [Word8]
 compact tag n =
   if n < 16 then
-    [ shiftL (fromIntegral n) 4 .|. tag ]
+    [ Bits.shiftL (fromIntegral n) 4 .|. tag
+    ]
+
+  else if n < 2048 then
+    let
+      mostSignificant =
+        Bits.shiftR n 3 .&. 0xE0
+
+      continuation =
+        0x8
+    in
+      [ fromIntegral mostSignificant .|. continuation .|. tag
+      , fromIntegral n
+      ]
 
   else
     error "TODO"
