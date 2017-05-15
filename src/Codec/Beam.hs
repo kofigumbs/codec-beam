@@ -131,14 +131,11 @@ fromOp op =
 
           instruction 2 [ Atom mod, Atom functionName, Lit arity ]
 
-    -- CallOnly arity label ->
-    --   instruction 6 [ Lit arity, Lit label ]
+    CallOnly arity label ->
+      instruction 6 [ Lit arity, Lab label ]
 
     Return ->
       instruction 19 []
-
-    CallOnly arity label ->
-      instruction 6 [ Lit arity, Lab label ]
 
     Move source destination ->
       instruction 64 [ source, Reg destination ]
