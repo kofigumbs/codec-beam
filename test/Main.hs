@@ -6,7 +6,6 @@ import Data.Text.Lazy.Encoding (encodeUtf8, decodeUtf8)
 import System.FilePath ((</>), (<.>))
 import System.Process (callProcess)
 import qualified Data.ByteString.Lazy as BS
-import qualified Data.ByteString.Builder as B
 
 import Prelude hiding (unlines)
 
@@ -43,10 +42,7 @@ test name body ops =
   do  let fixture =
             erlangDir </> toString name <.> "beam"
 
-          (builder, env) =
-            Beam.encode (Beam.new name [("test", 0)]) ops
-
-      BS.writeFile fixture (Beam.summarize env (B.toLazyByteString builder))
+      BS.writeFile fixture (Beam.encode name ops)
 
       return $
         unlines
@@ -101,7 +97,7 @@ main =
         , "?assertEqual(hello, constant_function:test())"
         ]
         [ Beam.Label 1
-        , Beam.FuncInfo "test" 0
+        , Beam.FuncInfo True "test" 0
         , Beam.Label 2
         , Beam.Move (Beam.Atom "hello") (Beam.X 0)
         , Beam.Return
@@ -113,13 +109,13 @@ main =
         , "?assertEqual(1023, identity_function:test())"
         ]
         [ Beam.Label 1
-        , Beam.FuncInfo "test" 0
+        , Beam.FuncInfo True "test" 0
         , Beam.Label 2
         , Beam.Move (Beam.Int 1023) (Beam.X 0)
         , Beam.CallOnly 1 4
         , Beam.Return
         , Beam.Label 3
-        , Beam.FuncInfo "identity" 1
+        , Beam.FuncInfo False "identity" 1
         , Beam.Label 4
         , Beam.Return
         ]
