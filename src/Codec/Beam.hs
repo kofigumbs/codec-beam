@@ -10,7 +10,7 @@ import Data.Map ((!))
 import Data.Monoid ((<>))
 import Data.Word (Word8, Word32)
 import qualified Data.Bits as Bits
-import qualified Data.ByteString.Builder as B
+import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.List as List
 import qualified Data.Map as Map
@@ -58,7 +58,7 @@ data Builder =
     , atomTable :: Map.Map BS.ByteString Int
     , exportNextLabel :: Maybe (BS.ByteString, Int)
     , toExport :: [(BS.ByteString, Int, Int)]
-    , code :: B.Builder
+    , code :: Builder.Builder
     }
 
 
@@ -139,8 +139,9 @@ appendOp builder op =
       instruction 64 [ source, Reg destination ] builder
 
   where
-    instruction opCode args b =
-      foldl appendTerm (appendCode b (B.word8 opCode)) args
+    instruction opCode args newBuilder =
+      appendCode newBuilder (Builder.word8 opCode)
+        |> \b -> foldl appendTerm b args
 
 
 appendTerm :: Builder -> Term -> Builder
@@ -166,7 +167,7 @@ appendTerm builder term =
 
   where
     tagged tag =
-      appendCode builder . B.lazyByteString . BS.pack . encodeTagged tag
+      appendCode builder . Builder.lazyByteString . BS.pack . encodeTagged tag
 
     withAtom name toBuilder =
       case Map.lookup name (atomTable builder) of
@@ -184,6 +185,11 @@ appendTerm builder term =
             (toBuilder value)
               { atomTable = Map.insert name value old
               }
+
+
+appendCode :: Builder -> Builder.Builder -> Builder
+appendCode builder bytes =
+  builder { code = code builder <> bytes }
 
 
 
@@ -236,7 +242,7 @@ encodeCode builder =
     <> pack32 maxOpCode
     <> pack32 (labelCount builder)
     <> pack32 (functionCount builder)
-    <> B.toLazyByteString (code builder) <> intCodeEnd
+    <> Builder.toLazyByteString (code builder) <> intCodeEnd
 
 
 
@@ -250,24 +256,19 @@ encodeTagged tag n =
     ]
 
   else if n < 2048 then
-    let
-      mostSignificant =
-        Bits.shiftR n 3 .&. 0xE0
-
-      continuation =
-        0x8
-    in
-      [ fromIntegral mostSignificant .|. continuation .|. tag
-      , fromIntegral n
-      ]
+    [ fromIntegral mostSignificant .|. continuation .|. tag
+    , fromIntegral n
+    ]
 
   else
     error "TODO"
 
+  where
+    mostSignificant =
+      Bits.shiftR n 3 .&. 0xE0
 
-appendCode :: Builder -> B.Builder -> Builder
-appendCode builder bytes =
-  builder { code = code builder <> bytes }
+    continuation =
+        0x8
 
 
 alignSection :: BS.ByteString -> BS.ByteString
@@ -290,8 +291,8 @@ pack8 =
 
 
 pack32 :: Integral n => n -> BS.ByteString
-pack32 n =
-  runPut (putWord32be (fromIntegral n :: Word32))
+pack32 =
+  runPut . putWord32be . fromIntegral
 
 
 (|>) :: a -> (a -> b) -> b
