@@ -52,7 +52,7 @@ encode name =
 
 data Builder =
   Builder
-    { moduleName :: BS.ByteString
+    { moduleName :: Term
     , labelCount :: Word32
     , functionCount :: Word32
     , atomTable :: Map.Map BS.ByteString Int
@@ -65,7 +65,7 @@ data Builder =
 new :: BS.ByteString -> Builder
 new name =
   Builder
-    { moduleName = name
+    { moduleName = Atom name
     , labelCount = 1
     , functionCount = 0
     , atomTable = Map.singleton name 1
@@ -127,11 +127,7 @@ appendOp builder op =
               Nothing
         } |>
 
-      instruction 2
-        [ Atom (moduleName builder)
-        , Atom functionName
-        , Lit arity
-        ]
+      instruction 2 [ moduleName builder , Atom functionName , Lit arity ]
 
     CallOnly arity label ->
       instruction 6 [ Lit arity, Lab label ] builder
