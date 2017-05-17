@@ -37,6 +37,20 @@ fromString =
   encodeUtf8 . pack
 
 
+fixtureName :: BS.ByteString -> FilePath
+fixtureName moduleName =
+  erlangDir </> toString moduleName <.> "beam"
+
+
+testFile :: BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> IO BS.ByteString
+testFile name body =
+  let
+    file =
+      "File = '" <> fromString (erlangDir </> toString name) <> "',"
+  in
+    test name (file : body)
+
+
 test :: BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> IO BS.ByteString
 test name body ops =
   do  let fixture =
@@ -44,12 +58,7 @@ test name body ops =
 
       BS.writeFile fixture (Beam.encode name ops)
 
-      return $
-        unlines
-          [ name <> "_test() ->"
-          , "{ok,BEAM} = file:read_file(\"" <> fromString fixture <> "\"),"
-          , unlines body <> "."
-          ]
+      return $ name <> "_test() ->\n" <> unlines body <> "."
 
 
 run :: [BS.ByteString] -> IO ()
@@ -77,23 +86,22 @@ run functions =
 main :: IO ()
 main =
   run =<< sequence
-    [ test "empty"
+    [ testFile "just_one_atom"
         [ "?assertMatch("
-        , "  {ok, {empty, [{imports, []},{labeled_exports, []},{labeled_locals, []}]}},"
-        , "  beam_lib:chunks(BEAM, [imports, labeled_exports, labeled_locals]))"
-        ]
-        []
-
-    , test "module_atom"
-        [ "?assertMatch("
-        , "  {ok, {module_atom, [{atoms, [{1,module_atom}]}]}},"
-        , "  beam_lib:chunks(BEAM, [atoms]))"
+        , "  { ok, { just_one_atom, ["
+        , "    {imports, []},{labeled_exports, []},{labeled_locals, []},"
+        , "    {atoms, [{1,just_one_atom}]}"
+        , "  ]}},"
+        , "  beam_lib:chunks(File, ["
+        , "    imports,labeled_exports,labeled_locals,"
+        , "    atoms"
+        , "  ])"
+        , ")"
         ]
         []
 
     , test "constant_function"
-        [ "{module, constant_function} ="
-        , "  code:load_binary(constant_function, \"constant_function.beam\", BEAM),"
+        [ "c:l(constant_function),"
         , "?assertEqual(hello, constant_function:test())"
         ]
         [ Beam.Label 1
@@ -104,8 +112,7 @@ main =
         ]
 
     , test "identity_function"
-        [ "{module, identity_function} ="
-        , "  code:load_binary(identity_function, \"identity_function.beam\", BEAM),"
+        [ "c:l(identity_function),"
         , "?assertEqual(1023, identity_function:test())"
         ]
         [ Beam.Label 1
