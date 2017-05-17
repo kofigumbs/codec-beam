@@ -25,12 +25,14 @@ data Op
   | FuncInfo Bool BS.ByteString Int
   | CallOnly Int Int
   | Return
+  | IsNil Int Term
   | Move Term Register
 
 
 data Term
   = Lit Int
   | Int Int
+  | Nil
   | Atom BS.ByteString
   | Reg Register
   | Lab Int
@@ -135,6 +137,9 @@ appendOp builder op =
     Return ->
       instruction 19 [] builder
 
+    IsNil label term ->
+      instruction 55 [ Lab label, term ] builder
+
     Move source destination ->
       instruction 64 [ source, Reg destination ] builder
 
@@ -152,6 +157,9 @@ appendTerm builder term =
 
     Int value ->
       tagged 1 value
+
+    Nil ->
+      tagged 2 0
 
     Atom name ->
       tagged 2 |> withAtom name

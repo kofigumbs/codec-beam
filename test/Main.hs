@@ -126,4 +126,20 @@ main =
         , Beam.Label 4
         , Beam.Return
         ]
+
+    , test "is_nil"
+        [ "c:l(is_nil),"
+        , "?assertEqual(yes, is_nil:test([])),"
+        , "?assertEqual(no, is_nil:test(23))"
+        ]
+        [ Beam.Label 1
+        , Beam.FuncInfo True "test" 1
+        , Beam.Label 2
+        , Beam.IsNil 3 (Beam.Reg (Beam.X 0))
+        , Beam.Move (Beam.Atom "yes") (Beam.X 0)
+        , Beam.Return
+        , Beam.Label 3
+        , Beam.Move (Beam.Atom "no") (Beam.X 0)
+        , Beam.Return
+        ]
     ]
