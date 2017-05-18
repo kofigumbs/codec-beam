@@ -12,6 +12,9 @@ import Prelude hiding (unlines)
 import qualified Codec.Beam as Beam
 
 
+-- Helpers
+
+
 erlangDir :: FilePath
 erlangDir =
   "test"
@@ -42,7 +45,15 @@ fixtureName moduleName =
   erlangDir </> toString moduleName <.> "beam"
 
 
-testFile :: BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> IO BS.ByteString
+
+-- Create and run an Eunit test file
+
+
+type Test =
+  BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> IO BS.ByteString
+
+
+testFile :: Test
 testFile name body =
   let
     file =
@@ -51,7 +62,16 @@ testFile name body =
     test name (file : body)
 
 
-test :: BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> IO BS.ByteString
+testModule :: Test
+testModule name body =
+  let
+    load =
+      "c:l(" <> name <> "),"
+  in
+    test name (load : body)
+
+
+test :: Test
 test name body ops =
   do  let fixture =
             erlangDir </> toString name <.> "beam"
@@ -100,9 +120,8 @@ main =
         ]
         []
 
-    , test "constant_function"
-        [ "c:l(constant_function),"
-        , "?assertEqual(hello, constant_function:test())"
+    , testModule "constant_function"
+        [ "?assertEqual(hello, constant_function:test())"
         ]
         [ Beam.Label 1
         , Beam.FuncInfo True "test" 0
@@ -111,9 +130,8 @@ main =
         , Beam.Return
         ]
 
-    , test "identity_function"
-        [ "c:l(identity_function),"
-        , "?assertEqual(1023, identity_function:test())"
+    , testModule "identity_function"
+        [ "?assertEqual(1023, identity_function:test())"
         ]
         [ Beam.Label 1
         , Beam.FuncInfo True "test" 0
@@ -127,9 +145,8 @@ main =
         , Beam.Return
         ]
 
-    , test "is_nil"
-        [ "c:l(is_nil),"
-        , "?assertEqual(yes, is_nil:test([])),"
+    , testModule "is_nil"
+        [ "?assertEqual(yes, is_nil:test([])),"
         , "?assertEqual(no, is_nil:test(23))"
         ]
         [ Beam.Label 1
