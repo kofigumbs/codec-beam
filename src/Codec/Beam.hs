@@ -5,15 +5,15 @@ module Codec.Beam
   ) where
 
 import Data.Binary.Put (runPut, putWord32be)
-import Data.Bits ((.|.), (.&.))
 import Data.Map ((!))
 import Data.Monoid ((<>))
 import Data.Word (Word8, Word32)
-import qualified Data.Bits as Bits
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.List as List
 import qualified Data.Map as Map
+
+import qualified Codec.Beam.Bytes as Bytes
 
 
 {-| Create structurally correct BEAM code.
@@ -175,7 +175,7 @@ appendTerm builder term =
 
   where
     tagged tag =
-      appendCode builder . Builder.lazyByteString . BS.pack . encodeTagged tag
+      appendCode builder . Builder.lazyByteString . BS.pack . Bytes.encode tag
 
     withAtom name toBuilder =
       case Map.lookup name (atomTable builder) of
@@ -254,29 +254,7 @@ encodeCode builder =
 
 
 
--- Byte helpers
-
-
-encodeTagged :: Word8 -> Int -> [Word8]
-encodeTagged tag n =
-  if n < 16 then
-    [ Bits.shiftL (fromIntegral n) 4 .|. tag
-    ]
-
-  else if n < 2048 then
-    [ fromIntegral mostSignificant .|. continuation .|. tag
-    , fromIntegral n
-    ]
-
-  else
-    error "TODO"
-
-  where
-    mostSignificant =
-      Bits.shiftR n 3 .&. 0xE0
-
-    continuation =
-        0x8
+-- Encoding helpers
 
 
 alignSection :: BS.ByteString -> BS.ByteString

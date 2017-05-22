@@ -28,6 +28,9 @@ Library
     exposed-modules:
         Codec.Beam
 
+    other-modules:
+        Codec.Beam.Bytes
+
     Build-depends:
         base,
         binary,

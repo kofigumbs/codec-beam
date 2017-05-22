@@ -103,6 +103,47 @@ run functions =
         ]
 
 
+
+-- Beam module utilities
+
+
+type Model =
+  (Int, [Beam.Op])
+
+
+begin :: Model
+begin =
+  ( 1, [] )
+
+
+build :: Model -> [Beam.Op]
+build (_, ops) =
+  ops
+
+
+function0 :: Bool -> BS.ByteString -> Beam.Term -> Model -> Model
+function0 exposed name returning (counter, ops) =
+  ( counter + 2, ops ++ body )
+
+  where
+    body =
+      [ Beam.Label counter
+      , Beam.FuncInfo exposed name 0
+      , Beam.Label (counter + 1)
+      , Beam.Move returning (Beam.X 0)
+      , Beam.Return
+      ]
+
+
+(|>) :: a -> (a -> b) -> b
+(|>) =
+  flip ($)
+
+
+
+-- Program
+
+
 main :: IO ()
 main =
   run =<< sequence
@@ -119,6 +160,28 @@ main =
         , ")"
         ]
         []
+
+    , testModule "numbers"
+        -- From beam_asm: https://git.io/vHTBY
+        [ "?assertEqual(5, numbers:five()),"
+        , "?assertEqual(1000, numbers:one_thousand()),"
+        , "?assertEqual(2047, numbers:two_thousand_forty_seven()),"
+        , "?assertEqual(2048, numbers:two_thousand_forty_eight()),"
+        , "?assertEqual(-1, numbers:negative_one()),"
+        , "?assertEqual(-4294967295, numbers:large_negative()),"
+        , "?assertEqual(4294967295, numbers:large_positive()),"
+        , "?assertEqual(429496729501, numbers:very_large_positive())"
+        ] $
+        begin
+        |> function0 True "five" (Beam.Int 5)
+        |> function0 True "one_thousand" (Beam.Int 1000)
+        |> function0 True "two_thousand_forty_seven" (Beam.Int 2047)
+        |> function0 True "two_thousand_forty_eight" (Beam.Int 2048)
+        |> function0 True "negative_one" (Beam.Int (-1))
+        |> function0 True "large_negative" (Beam.Int (-4294967295))
+        |> function0 True "large_positive" (Beam.Int 4294967295)
+        |> function0 True "very_large_positive" (Beam.Int 429496729501)
+        |> build
 
     , testModule "constant_function"
         [ "?assertEqual(hello, constant_function:test())"
