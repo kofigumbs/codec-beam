@@ -10,6 +10,7 @@ import qualified Data.ByteString.Lazy as BS
 import Prelude hiding (unlines)
 
 import qualified Codec.Beam as Beam
+import qualified Codec.Beam.Function as F
 
 
 -- Helpers
@@ -104,43 +105,6 @@ run functions =
 
 
 
--- Beam module utilities
-
-
-type Model =
-  (Int, [Beam.Op])
-
-
-begin :: Model
-begin =
-  ( 1, [] )
-
-
-build :: Model -> [Beam.Op]
-build (_, ops) =
-  ops
-
-
-function0 :: Bool -> BS.ByteString -> Beam.Term -> Model -> Model
-function0 exposed name returning (counter, ops) =
-  ( counter + 2, ops ++ body )
-
-  where
-    body =
-      [ Beam.Label counter
-      , Beam.FuncInfo exposed name 0
-      , Beam.Label (counter + 1)
-      , Beam.Move returning (Beam.X 0)
-      , Beam.Return
-      ]
-
-
-(|>) :: a -> (a -> b) -> b
-(|>) =
-  flip ($)
-
-
-
 -- Program
 
 
@@ -172,16 +136,16 @@ main =
         , "?assertEqual(4294967295, numbers:large_positive()),"
         , "?assertEqual(429496729501, numbers:very_large_positive())"
         ] $
-        begin
-        |> function0 True "five" (Beam.Int 5)
-        |> function0 True "one_thousand" (Beam.Int 1000)
-        |> function0 True "two_thousand_forty_seven" (Beam.Int 2047)
-        |> function0 True "two_thousand_forty_eight" (Beam.Int 2048)
-        |> function0 True "negative_one" (Beam.Int (-1))
-        |> function0 True "large_negative" (Beam.Int (-4294967295))
-        |> function0 True "large_positive" (Beam.Int 4294967295)
-        |> function0 True "very_large_positive" (Beam.Int 429496729501)
-        |> build
+        F.many
+          [ F.public "five" 0 (F.returning (Beam.Int 5))
+          , F.public "one_thousand" 0 (F.returning (Beam.Int 1000))
+          , F.public "two_thousand_forty_seven" 0 (F.returning (Beam.Int 2047))
+          , F.public "two_thousand_forty_eight" 0 (F.returning (Beam.Int 2048))
+          , F.public "negative_one" 0 (F.returning (Beam.Int (-1)))
+          , F.public "large_negative" 0 (F.returning (Beam.Int (-4294967295)))
+          , F.public "large_positive" 0 (F.returning (Beam.Int 4294967295))
+          , F.public "very_large_positive" 0 (F.returning (Beam.Int 429496729501))
+          ]
 
     , testModule "constant_function"
         [ "?assertEqual(hello, constant_function:test())"
