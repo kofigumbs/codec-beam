@@ -63,15 +63,6 @@ testFile name body =
     test name (file : body)
 
 
-testModule :: Test
-testModule name body =
-  let
-    load =
-      "c:l(" <> name <> "),"
-  in
-    test name (load : body)
-
-
 test :: Test
 test name body ops =
   do  let fixture =
@@ -125,7 +116,7 @@ main =
         ]
         []
 
-    , testModule "numbers"
+    , test "numbers"
         -- From beam_asm: https://git.io/vHTBY
         [ "?assertEqual(5, numbers:five()),"
         , "?assertEqual(1000, numbers:one_thousand()),"
@@ -147,17 +138,14 @@ main =
           , F.public "very_large_positive" 0 (F.returning (Beam.Int 429496729501))
           ]
 
-    , testModule "constant_function"
+    , test "constant_function"
         [ "?assertEqual(hello, constant_function:test())"
-        ]
-        [ Beam.Label 1
-        , Beam.FuncInfo True "test" 0
-        , Beam.Label 2
-        , Beam.Move (Beam.Atom "hello") (Beam.X 0)
-        , Beam.Return
-        ]
+        ] $
+        F.many
+          [ F.public "test" 0 (F.returning (Beam.Atom "hello"))
+          ]
 
-    , testModule "identity_function"
+    , test "identity_function"
         [ "?assertEqual(1023, identity_function:test())"
         ]
         [ Beam.Label 1
@@ -172,7 +160,7 @@ main =
         , Beam.Return
         ]
 
-    , testModule "is_nil"
+    , test "is_nil"
         [ "?assertEqual(yes, is_nil:test([])),"
         , "?assertEqual(no, is_nil:test(23))"
         ]
