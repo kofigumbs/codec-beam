@@ -50,11 +50,11 @@ fixtureName moduleName =
 -- Create and run an Eunit test file
 
 
-type Test =
-  BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> IO BS.ByteString
+type Test a =
+  BS.ByteString -> [BS.ByteString] -> [a] -> IO BS.ByteString
 
 
-testFile :: Test
+testFile :: Test Beam.Op
 testFile name body =
   let
     file =
@@ -63,7 +63,12 @@ testFile name body =
     test name (file : body)
 
 
-test :: Test
+testF :: Test (F.State -> F.State)
+testF name body functions =
+  test name body (F.compile functions)
+
+
+test :: Test Beam.Op
 test name body ops =
   do  let fixture =
             erlangDir </> toString name <.> "beam"
@@ -116,7 +121,7 @@ main =
         ]
         []
 
-    , test "numbers"
+    , testF "numbers"
         -- From beam_asm: https://git.io/vHTBY
         [ "?assertEqual(5, numbers:five()),"
         , "?assertEqual(1000, numbers:one_thousand()),"
@@ -126,24 +131,22 @@ main =
         , "?assertEqual(-4294967295, numbers:large_negative()),"
         , "?assertEqual(4294967295, numbers:large_positive()),"
         , "?assertEqual(429496729501, numbers:very_large_positive())"
-        ] $
-        F.many
-          [ F.public "five" 0 (F.returning (Beam.Int 5))
-          , F.public "one_thousand" 0 (F.returning (Beam.Int 1000))
-          , F.public "two_thousand_forty_seven" 0 (F.returning (Beam.Int 2047))
-          , F.public "two_thousand_forty_eight" 0 (F.returning (Beam.Int 2048))
-          , F.public "negative_one" 0 (F.returning (Beam.Int (-1)))
-          , F.public "large_negative" 0 (F.returning (Beam.Int (-4294967295)))
-          , F.public "large_positive" 0 (F.returning (Beam.Int 4294967295))
-          , F.public "very_large_positive" 0 (F.returning (Beam.Int 429496729501))
-          ]
+        ]
+        [ F.public "five" 0 (F.returning (Beam.Int 5))
+        , F.public "one_thousand" 0 (F.returning (Beam.Int 1000))
+        , F.public "two_thousand_forty_seven" 0 (F.returning (Beam.Int 2047))
+        , F.public "two_thousand_forty_eight" 0 (F.returning (Beam.Int 2048))
+        , F.public "negative_one" 0 (F.returning (Beam.Int (-1)))
+        , F.public "large_negative" 0 (F.returning (Beam.Int (-4294967295)))
+        , F.public "large_positive" 0 (F.returning (Beam.Int 4294967295))
+        , F.public "very_large_positive" 0 (F.returning (Beam.Int 429496729501))
+        ]
 
-    , test "constant_function"
+    , testF "constant_function"
         [ "?assertEqual(hello, constant_function:test())"
-        ] $
-        F.many
-          [ F.public "test" 0 (F.returning (Beam.Atom "hello"))
-          ]
+        ]
+        [ F.public "test" 0 (F.returning (Beam.Atom "hello"))
+        ]
 
     , test "identity_function"
         [ "?assertEqual(1023, identity_function:test())"
