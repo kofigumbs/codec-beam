@@ -1,4 +1,4 @@
-module Codec.Beam.Function where
+module Codec.Beam.Module where
 
 import Data.ByteString.Lazy (ByteString)
 
@@ -10,16 +10,16 @@ import qualified Codec.Beam as Beam
 
 
 type Model =
-  ( [Beam.Op], Int )
+  ([Beam.Op], Int)
 
 
 compile :: [Model -> Model] -> [Beam.Op]
 compile =
-  fst . foldr ($) ( [], 1 )
+  fst . foldr ($) ([], 1)
 
 
 function :: ByteString -> Int -> [Beam.Op] -> Model -> Model
-function name arity body ( ops, counter ) =
+function name arity body (ops, counter) =
   ( Beam.Label counter
       : Beam.FuncInfo name arity
       : Beam.Label (counter + 1)

@@ -27,7 +27,7 @@ Library
 
     exposed-modules:
         Codec.Beam
-        Codec.Beam.Function
+        Codec.Beam.Module
 
     other-modules:
         Codec.Beam.Bytes

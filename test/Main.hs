@@ -10,7 +10,7 @@ import qualified Data.ByteString.Lazy as BS
 import Prelude hiding (unlines)
 
 import qualified Codec.Beam as Beam
-import Codec.Beam.Function
+import Codec.Beam.Module
 
 
 -- Helpers
@@ -63,8 +63,8 @@ testFile name body =
     test name (file : body)
 
 
-testF :: Test (Model -> Model)
-testF name body functions =
+testModule :: Test (Model -> Model)
+testModule name body functions =
   test name body (compile functions)
 
 
@@ -121,7 +121,7 @@ main =
         ]
         []
 
-    , testF "numbers"
+    , testModule "numbers"
         -- From beam_asm: https://git.io/vHTBY
         [ "?assertEqual(5, numbers:five()),"
         , "?assertEqual(1000, numbers:one_thousand()),"
@@ -142,12 +142,14 @@ main =
         , function "very_large_positive" 0 (returning (Beam.Int 429496729501))
         ]
 
-    , testF "constant_function"
+    , testModule "constant_function"
         [ "?assertEqual(hello, constant_function:test())"
         ]
         [ function "test" 0 (returning (Beam.Atom "hello"))
         ]
 
+    -- Ideally all tests could be expressed with the Module DSL,
+    -- but I've yet to figure out a nice way to do that.
     , test "identity_function"
         [ "?assertEqual(1023, identity_function:test())"
         ]
