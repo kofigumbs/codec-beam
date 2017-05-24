@@ -1,7 +1,4 @@
-module Codec.Beam.Function
-  ( State, compile
-  , public, returning
-  ) where
+module Codec.Beam.Function where
 
 import Data.ByteString.Lazy (ByteString)
 
@@ -12,24 +9,23 @@ import qualified Codec.Beam as Beam
  -}
 
 
-type State =
+type Model =
   ( [Beam.Op], Int )
 
 
-compile :: [State -> State] -> [Beam.Op]
+compile :: [Model -> Model] -> [Beam.Op]
 compile =
   fst . foldr ($) ( [], 1 )
 
 
-public :: ByteString -> Int -> [Beam.Op] -> State -> State
-public name arity body ( ops, counter ) =
-  concatFst ops
-    ( Beam.Label counter
-        : Beam.FuncInfo True name arity
-        : Beam.Label (counter + 1)
-        : body
-    , counter + 2
-    )
+function :: ByteString -> Int -> [Beam.Op] -> Model -> Model
+function name arity body ( ops, counter ) =
+  ( Beam.Label counter
+      : Beam.FuncInfo name arity
+      : Beam.Label (counter + 1)
+      : body ++ ops
+  , counter + 2
+  )
 
 
 returning :: Beam.Term -> [Beam.Op]
@@ -37,8 +33,3 @@ returning term =
   [ Beam.Move term (Beam.X 0)
   , Beam.Return
   ]
-
-
-concatFst :: [a] -> ([a], b) -> ([a], b)
-concatFst list ( first, second ) =
-  ( first ++ list, second )

@@ -10,7 +10,7 @@ import qualified Data.ByteString.Lazy as BS
 import Prelude hiding (unlines)
 
 import qualified Codec.Beam as Beam
-import qualified Codec.Beam.Function as F
+import Codec.Beam.Function
 
 
 -- Helpers
@@ -63,9 +63,9 @@ testFile name body =
     test name (file : body)
 
 
-testF :: Test (F.State -> F.State)
+testF :: Test (Model -> Model)
 testF name body functions =
-  test name body (F.compile functions)
+  test name body (compile functions)
 
 
 test :: Test Beam.Op
@@ -132,33 +132,33 @@ main =
         , "?assertEqual(4294967295, numbers:large_positive()),"
         , "?assertEqual(429496729501, numbers:very_large_positive())"
         ]
-        [ F.public "five" 0 (F.returning (Beam.Int 5))
-        , F.public "one_thousand" 0 (F.returning (Beam.Int 1000))
-        , F.public "two_thousand_forty_seven" 0 (F.returning (Beam.Int 2047))
-        , F.public "two_thousand_forty_eight" 0 (F.returning (Beam.Int 2048))
-        , F.public "negative_one" 0 (F.returning (Beam.Int (-1)))
-        , F.public "large_negative" 0 (F.returning (Beam.Int (-4294967295)))
-        , F.public "large_positive" 0 (F.returning (Beam.Int 4294967295))
-        , F.public "very_large_positive" 0 (F.returning (Beam.Int 429496729501))
+        [ function "five" 0 (returning (Beam.Int 5))
+        , function "one_thousand" 0 (returning (Beam.Int 1000))
+        , function "two_thousand_forty_seven" 0 (returning (Beam.Int 2047))
+        , function "two_thousand_forty_eight" 0 (returning (Beam.Int 2048))
+        , function "negative_one" 0 (returning (Beam.Int (-1)))
+        , function "large_negative" 0 (returning (Beam.Int (-4294967295)))
+        , function "large_positive" 0 (returning (Beam.Int 4294967295))
+        , function "very_large_positive" 0 (returning (Beam.Int 429496729501))
         ]
 
     , testF "constant_function"
         [ "?assertEqual(hello, constant_function:test())"
         ]
-        [ F.public "test" 0 (F.returning (Beam.Atom "hello"))
+        [ function "test" 0 (returning (Beam.Atom "hello"))
         ]
 
     , test "identity_function"
         [ "?assertEqual(1023, identity_function:test())"
         ]
         [ Beam.Label 1
-        , Beam.FuncInfo True "test" 0
+        , Beam.FuncInfo "test" 0
         , Beam.Label 2
         , Beam.Move (Beam.Int 1023) (Beam.X 0)
         , Beam.CallOnly 1 4
         , Beam.Return
         , Beam.Label 3
-        , Beam.FuncInfo False "identity" 1
+        , Beam.FuncInfo "identity" 1
         , Beam.Label 4
         , Beam.Return
         ]
@@ -168,7 +168,7 @@ main =
         , "?assertEqual(no, is_nil:test(23))"
         ]
         [ Beam.Label 1
-        , Beam.FuncInfo True "test" 1
+        , Beam.FuncInfo "test" 1
         , Beam.Label 2
         , Beam.IsNil 3 (Beam.Reg (Beam.X 0))
         , Beam.Move (Beam.Atom "yes") (Beam.X 0)

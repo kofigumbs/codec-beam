@@ -22,7 +22,7 @@ import qualified Codec.Beam.Bytes as Bytes
 
 data Op
   = Label Int
-  | FuncInfo Bool BS.ByteString Int
+  | FuncInfo BS.ByteString Int
   | CallOnly Int Int
   | Return
   | IsNil Int Term
@@ -45,7 +45,7 @@ data Register
 
 encode :: BS.ByteString -> [Op] -> BS.ByteString
 encode name =
-  toLazyByteString . append (new name)
+  toLazyByteString . append True (new name)
 
 
 
@@ -91,13 +91,13 @@ toLazyByteString builder =
     "FOR1" <> pack32 (BS.length sections + 4) <> "BEAM" <> sections
 
 
-append :: Builder -> [Op] -> Builder
-append =
-  foldl appendOp
+append :: Bool -> Builder -> [Op] -> Builder
+append shouldExport =
+  foldl (appendOp shouldExport)
 
 
-appendOp :: Builder -> Op -> Builder
-appendOp builder op =
+appendOp :: Bool -> Builder -> Op -> Builder
+appendOp shouldExport builder op =
   case op of
     Label uid ->
       builder
@@ -117,7 +117,7 @@ appendOp builder op =
 
       instruction 1 [ Lit uid ]
 
-    FuncInfo shouldExport functionName arity ->
+    FuncInfo functionName arity ->
       builder
         { functionCount =
             functionCount builder + 1
