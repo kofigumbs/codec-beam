@@ -142,16 +142,22 @@ main =
         , function "very_large_positive" 0 (returning (Beam.Int 429496729501))
         ]
 
-    , testModule "constant_function"
-        [ "?assertEqual(hello, constant_function:test())"
+    , testModule "constant_atom"
+        [ "?assertEqual(hello, constant_atom:test())"
         ]
         [ function "test" 0 (returning (Beam.Atom "hello"))
         ]
 
+    , testModule "constant_nil"
+        [ "?assertEqual([], constant_nil:test())"
+        ]
+        [ function "test" 0 (returning Beam.Nil)
+        ]
+
     -- Ideally all tests could be expressed with the Module DSL,
     -- but I've yet to figure out a nice way to do that.
-    , test "identity_function"
-        [ "?assertEqual(1023, identity_function:test())"
+    , test "call_into_identity"
+        [ "?assertEqual(1023, call_into_identity:test())"
         ]
         [ Beam.Label 1
         , Beam.FuncInfo "test" 0
