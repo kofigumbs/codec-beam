@@ -185,4 +185,32 @@ main =
         , Beam.Move (Beam.Atom "no") (Beam.X 0)
         , Beam.Return
         ]
+
+    , test "allocate_for_call_fun"
+        -- Based on https://happi.github.io/theBeamBook/#x_and_y_regs_in_memory
+        [ "_add = fun 'erlang':'+'/2,"
+        , "?assertEqual(4, allocate_for_call_fun:apply2(2, 2, _add))"
+        ]
+        [ Beam.Label 1
+        , Beam.FuncInfo "apply2" 3
+        , Beam.Label 2
+        , Beam.Allocate 2 3
+        , Beam.Move (Beam.Reg (Beam.X 2)) (Beam.Y 1)
+        , Beam.Move (Beam.Reg (Beam.X 1)) (Beam.Y 0)
+        , Beam.Call 1 4
+        , Beam.Move (Beam.Reg (Beam.X 0)) (Beam.X 1)
+        , Beam.Move (Beam.Reg (Beam.Y 0)) (Beam.X 0)
+        , Beam.Move (Beam.Reg (Beam.X 1)) (Beam.Y 0)
+        , Beam.Call 1 4
+        , Beam.Move (Beam.Reg (Beam.Y 1)) (Beam.X 2)
+        , Beam.Move (Beam.Reg (Beam.X 0)) (Beam.X 1)
+        , Beam.Move (Beam.Reg (Beam.Y 0)) (Beam.X 0)
+        , Beam.CallFun 2
+        , Beam.Deallocate 2
+        , Beam.Return
+        , Beam.Label 3
+        , Beam.FuncInfo "identity" 1
+        , Beam.Label 4
+        , Beam.Return
+        ]
     ]

@@ -23,10 +23,14 @@ import qualified Codec.Beam.Bytes as Bytes
 data Op
   = Label Int
   | FuncInfo BS.ByteString Int
+  | Call Int Int
   | CallOnly Int Int
+  | Allocate Int Int
+  | Deallocate Int
   | Return
   | IsNil Int Term
   | Move Term Register
+  | CallFun Int
 
 
 data Term
@@ -109,8 +113,8 @@ appendOp shouldExport builder op =
 
         , toExport =
             case exportNextLabel builder of
-              Just ( f, a ) ->
-                ( f, a, uid ) : toExport builder
+              Just (f, a) ->
+                (f, a, uid) : toExport builder
               Nothing ->
                 toExport builder
         } |>
@@ -124,15 +128,24 @@ appendOp shouldExport builder op =
 
         , exportNextLabel =
             if shouldExport then
-              Just ( functionName, arity )
+              Just (functionName, arity)
             else
               Nothing
         } |>
 
-      instruction 2 [ moduleName builder , Atom functionName , Lit arity ]
+      instruction 2 [ moduleName builder, Atom functionName , Lit arity ]
+
+    Call arity label ->
+      instruction 4 [ Lit arity, Lab label ] builder
 
     CallOnly arity label ->
       instruction 6 [ Lit arity, Lab label ] builder
+
+    Allocate stackNeed live ->
+      instruction 12 [ Lit stackNeed, Lit live ] builder
+
+    Deallocate n ->
+      instruction 18 [ Lit n ] builder
 
     Return ->
       instruction 19 [] builder
@@ -142,6 +155,9 @@ appendOp shouldExport builder op =
 
     Move source destination ->
       instruction 64 [ source, Reg destination ] builder
+
+    CallFun arity ->
+      instruction 75 [ Lit arity ] builder
 
   where
     instruction opCode args newBuilder =
