@@ -1,0 +1,16 @@
+module BShow where
+
+import Data.ByteString.Lazy (ByteString)
+import Data.Text.Lazy (pack)
+import Data.Text.Lazy.Encoding (encodeUtf8)
+
+class BShow a where
+  bshow :: a -> ByteString
+
+
+instance BShow ByteString where
+  bshow = id
+
+
+instance BShow Int where
+  bshow = encodeUtf8 . pack . show

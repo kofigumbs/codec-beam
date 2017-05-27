@@ -8,9 +8,9 @@ import System.Process (callProcess)
 import qualified Data.ByteString.Lazy as BS
 
 import Prelude hiding (unlines)
+import BShow
 
 import qualified Codec.Beam as Beam
-import Codec.Beam.Module
 
 
 -- Helpers
@@ -50,11 +50,11 @@ fixtureName moduleName =
 -- Create and run an Eunit test file
 
 
-type Test a =
-  BS.ByteString -> [BS.ByteString] -> [a] -> IO BS.ByteString
+type Test =
+  IO BS.ByteString
 
 
-testFile :: Test Beam.Op
+testFile :: BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> Test
 testFile name body =
   let
     file =
@@ -63,12 +63,20 @@ testFile name body =
     test name (file : body)
 
 
-testModule :: Test (Model -> Model)
-testModule name body functions =
-  test name body (compile functions)
+testConstant :: BShow a => BS.ByteString -> (a -> Beam.Term) -> a -> Test
+testConstant name toTerm value =
+  test name
+    [ "?assertEqual(" <> bshow value <> ", " <> name <> ":test())"
+    ]
+    [ Beam.Label 1
+    , Beam.FuncInfo "test" 0
+    , Beam.Label 2
+    , Beam.Move (toTerm value) (Beam.X 0)
+    , Beam.Return
+    ]
 
 
-test :: Test Beam.Op
+test :: BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> Test
 test name body ops =
   do  let fixture =
             erlangDir </> toString name <.> "beam"
@@ -121,41 +129,21 @@ main =
         ]
         []
 
-    , testModule "numbers"
-        -- From beam_asm: https://git.io/vHTBY
-        [ "?assertEqual(5, numbers:five()),"
-        , "?assertEqual(1000, numbers:one_thousand()),"
-        , "?assertEqual(2047, numbers:two_thousand_forty_seven()),"
-        , "?assertEqual(2048, numbers:two_thousand_forty_eight()),"
-        , "?assertEqual(-1, numbers:negative_one()),"
-        , "?assertEqual(-4294967295, numbers:large_negative()),"
-        , "?assertEqual(4294967295, numbers:large_positive()),"
-        , "?assertEqual(429496729501, numbers:very_large_positive())"
-        ]
-        [ function "five" 0 (returning (Beam.Int 5))
-        , function "one_thousand" 0 (returning (Beam.Int 1000))
-        , function "two_thousand_forty_seven" 0 (returning (Beam.Int 2047))
-        , function "two_thousand_forty_eight" 0 (returning (Beam.Int 2048))
-        , function "negative_one" 0 (returning (Beam.Int (-1)))
-        , function "large_negative" 0 (returning (Beam.Int (-4294967295)))
-        , function "large_positive" 0 (returning (Beam.Int 4294967295))
-        , function "very_large_positive" 0 (returning (Beam.Int 429496729501))
-        ]
+    -- From beam_asm: https://git.io/vHTBY
+    , testConstant "number_five" Beam.Int 5
+    , testConstant "number_one_thousand" Beam.Int 5
+    , testConstant "number_two_thousand_forty_seven" Beam.Int 2047
+    , testConstant "number_two_thousand_forty_eight" Beam.Int 2048
+    , testConstant "number_negative_one" Beam.Int (-1)
+    , testConstant "number_large_negative" Beam.Int (-4294967295)
+    , testConstant "number_large_positive" Beam.Int 4294967295
+    , testConstant "number_very_large_positive" Beam.Int 429496729501
 
-    , testModule "constant_atom"
-        [ "?assertEqual(hello, constant_atom:test())"
-        ]
-        [ function "test" 0 (returning (Beam.Atom "hello"))
-        ]
+    -- Atom table encodings
+    , testConstant "constant_nil" (const Beam.Nil) ("[]" :: BS.ByteString)
+    , testConstant "arbitrary_atom" Beam.Atom "hello"
+    , testConstant "module_name_atom" Beam.Atom "module_name_atom"
 
-    , testModule "constant_nil"
-        [ "?assertEqual([], constant_nil:test())"
-        ]
-        [ function "test" 0 (returning Beam.Nil)
-        ]
-
-    -- Ideally all tests could be expressed with the Module DSL,
-    -- but I've yet to figure out a nice way to do that.
     , test "call_into_identity"
         [ "?assertEqual(1023, call_into_identity:test())"
         ]

@@ -27,7 +27,6 @@ Library
 
     exposed-modules:
         Codec.Beam
-        Codec.Beam.Module
 
     other-modules:
         Codec.Beam.Bytes
@@ -57,6 +56,9 @@ Test-Suite codec-beam-tests
 
     Main-is:
         Main.hs
+
+    other-modules:
+        BShow
 
     Build-depends:
         codec-beam,
