@@ -1,8 +1,8 @@
 module Main where
 
 import Data.Monoid ((<>))
-import Data.Text.Lazy (pack, unpack)
-import Data.Text.Lazy.Encoding (encodeUtf8, decodeUtf8)
+import Data.Text.Lazy (unpack)
+import Data.Text.Lazy.Encoding (decodeUtf8)
 import System.FilePath ((</>), (<.>))
 import System.Process (callProcess)
 import qualified Data.ByteString.Lazy as BS
@@ -18,7 +18,7 @@ import qualified Codec.Beam as Beam
 
 erlangDir :: FilePath
 erlangDir =
-  "test"
+  "test" </> "eunit"
 
 
 erlangModuleName :: String
@@ -34,11 +34,6 @@ unlines =
 toString :: BS.ByteString -> String
 toString =
   unpack . decodeUtf8
-
-
-fromString :: String -> BS.ByteString
-fromString =
-  encodeUtf8 . pack
 
 
 fixtureName :: BS.ByteString -> FilePath
@@ -58,7 +53,7 @@ testFile :: BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> Test
 testFile name body =
   let
     file =
-      "File = '" <> fromString (erlangDir </> toString name) <> "',"
+      "File = '" <> bshow (erlangDir </> toString name) <> "',"
   in
     test name (file : body)
 
@@ -90,7 +85,7 @@ run :: [BS.ByteString] -> IO ()
 run functions =
   do  let fileContents =
             unlines $
-              "-module(" <> fromString erlangModuleName <> ")."
+              "-module(" <> bshow erlangModuleName <> ")."
                 : "-include_lib(\"eunit/include/eunit.hrl\")."
                 : functions
 
@@ -174,8 +169,8 @@ main =
         , Beam.Return
         ]
 
+    -- Based on https://happi.github.io/theBeamBook/#x_and_y_regs_in_memory
     , test "allocate_for_call_fun"
-        -- Based on https://happi.github.io/theBeamBook/#x_and_y_regs_in_memory
         [ "_add = fun 'erlang':'+'/2,"
         , "?assertEqual(4, allocate_for_call_fun:apply2(2, 2, _add))"
         ]
