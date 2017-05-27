@@ -1,6 +1,6 @@
 module Codec.Beam
   ( encode
-  , Op(..), Term(..), Register(..)
+  , Op(..), Operand(..), Register(..), Literal(..)
   , Builder, new, append, toLazyByteString
   ) where
 
@@ -12,6 +12,7 @@ import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.List as List
 import qualified Data.Map as Map
+import qualified Codec.Compression.Zlib as Zlib
 
 import qualified Codec.Beam.Bytes as Bytes
 
@@ -28,28 +29,30 @@ data Op
   | Allocate Int Int
   | Deallocate Int
   | Return
-  | IsEq Int Term Term
-  | IsNe Int Term Term
-  | IsEqExact Int Term Term
-  | IsNeExact Int Term Term
-  | IsNil Int Term
-  | Move Term Register
+  | IsEq Int Operand Operand
+  | IsNe Int Operand Operand
+  | IsEqExact Int Operand Operand
+  | IsNeExact Int Operand Operand
+  | IsNil Int Operand
+  | Move Operand Register
   | GetTupleElement Register Int Register
-  | SetTupleElement Term Register Int
-  | PutList Term Term Register
+  | SetTupleElement Operand Register Int
+  | PutList Operand Operand Register
   | PutTuple Int Register
-  | Put Term
+  | Put Operand
   | CallFun Int
 
-
-data Term
+data Operand
   = Lit Int
   | Int Int
   | Nil
   | Atom BS.ByteString
   | Reg Register
   | Lab Int
+  | ExtLiteral Literal
 
+data Literal
+  = Tuple [Literal]
 
 data Register
   = X Int
@@ -67,10 +70,11 @@ encode name =
 
 data Builder =
   Builder
-    { moduleName :: Term
+    { moduleName :: Operand
     , labelCount :: Word32
     , functionCount :: Word32
     , atomTable :: Map.Map BS.ByteString Int
+    , litTable :: [Literal]
     , exportNextLabel :: Maybe (BS.ByteString, Int)
     , toExport :: [(BS.ByteString, Int, Int)]
     , code :: Builder.Builder
@@ -84,6 +88,7 @@ new name =
     , labelCount = 1
     , functionCount = 0
     , atomTable = Map.singleton name 1
+    , litTable = []
     , exportNextLabel = Nothing
     , toExport = []
     , code = mempty
@@ -97,6 +102,7 @@ toLazyByteString builder =
          "Atom" <> alignSection (encodeAtoms builder)
       <> "LocT" <> alignSection (pack32 0)
       <> "StrT" <> alignSection (pack32 0)
+      <> "LitT" <> alignSection (encodeLiterals builder)
       <> "ImpT" <> alignSection (pack32 0)
       <> "ExpT" <> alignSection (encodeExports builder)
       <> "Code" <> alignSection (encodeCode builder)
@@ -198,12 +204,12 @@ appendOp shouldExport builder op =
   where
     instruction opCode args newBuilder =
       appendCode newBuilder (Builder.word8 opCode)
-        |> \b -> foldl appendTerm b args
+        |> \b -> foldl appendOperand b args
 
 
-appendTerm :: Builder -> Term -> Builder
-appendTerm builder term =
-  case term of
+appendOperand :: Builder -> Operand -> Builder
+appendOperand builder operand =
+  case operand of
     Lit value ->
       tagged 0 value
 
@@ -225,6 +231,10 @@ appendTerm builder term =
     Lab value ->
       tagged 5 value
 
+    ExtLiteral literal ->
+     tagged 12 |> withLiteral literal
+
+
   where
     tagged tag =
       appendCode builder . Builder.lazyByteString . BS.pack . Bytes.encode tag
@@ -245,6 +255,15 @@ appendTerm builder term =
             (toBuilder value)
               { atomTable = Map.insert name value old
               }
+
+    withLiteral literal toBuilder =
+      let
+        new = litTable builder ++ [literal]
+        index = length new
+      in
+        (toBuilder index)
+          { litTable = new
+          }
 
 
 appendCode :: Builder -> Builder.Builder -> Builder
@@ -280,6 +299,39 @@ encodeExports builder =
 
     fromTuple (name, arity, labelId) =
       pack32 (atomTable builder ! name) <> pack32 arity <> pack32 labelId
+
+
+encodeLiterals :: Builder -> BS.ByteString
+encodeLiterals builder =
+  uncompressedSize <> compressed
+
+    where
+      compressed =
+        Zlib.compress (count <> encodedLiterals)
+
+      count =
+        pack32 $ length (litTable builder)
+
+      encodedLiterals =
+        BS.concat $ map encodeLiteral (litTable builder)
+
+      uncompressedSize =
+        pack32 $ BS.length (count <> encodedLiterals)
+
+
+
+encodeLiteral :: Literal -> BS.ByteString
+encodeLiteral literal =
+  case literal of
+    Tuple contents ->
+      let
+        magicTag = pack8 131
+        smTupleTag = pack8 104
+        arity = pack8 (length contents)
+        lit = magicTag <> smTupleTag <> arity
+        size = pack32 (BS.length lit)
+      in
+        size <> lit
 
 
 encodeCode :: Builder -> BS.ByteString
