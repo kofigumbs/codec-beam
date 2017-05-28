@@ -196,6 +196,7 @@ main =
         , Beam.Label 4
         , Beam.Return
         ]
+
     , test "get_tuple_element"
         [ "?assertEqual(2, get_tuple_element:first({2})),"
         , "?assertEqual(hi, get_tuple_element:second({oh, hi, there}))"
@@ -209,6 +210,16 @@ main =
         , Beam.FuncInfo "second" 1
         , Beam.Label 4
         , Beam.GetTupleElement (Beam.X 0) 1 (Beam.X 0)
+        , Beam.Return
+        ]
+
+    , test "set_tuple_element"
+        [ "?assertEqual({dream, work}, set_tuple_element:make({team, work}))"
+        ]
+        [ Beam.Label 1
+        , Beam.FuncInfo "make" 1
+        , Beam.Label 2
+        , Beam.SetTupleElement (Beam.Atom "dream") (Beam.X 0) 0
         , Beam.Return
         ]
     ]
