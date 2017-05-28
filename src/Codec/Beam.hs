@@ -30,6 +30,7 @@ data Op
   | Return
   | IsNil Int Term
   | Move Term Register
+  | GetTupleElement Register Int Register
   | CallFun Int
 
 
@@ -155,6 +156,9 @@ appendOp shouldExport builder op =
 
     Move source destination ->
       instruction 64 [ source, Reg destination ] builder
+
+    GetTupleElement source element destination ->
+      instruction 66 [ Reg source, Lit element, Reg destination ] builder
 
     CallFun arity ->
       instruction 75 [ Lit arity ] builder

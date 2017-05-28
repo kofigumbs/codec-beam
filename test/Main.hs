@@ -196,4 +196,19 @@ main =
         , Beam.Label 4
         , Beam.Return
         ]
+    , test "get_tuple_element"
+        [ "?assertEqual(2, get_tuple_element:first({2})),"
+        , "?assertEqual(hi, get_tuple_element:second({oh, hi, there}))"
+        ]
+        [ Beam.Label 1
+        , Beam.FuncInfo "first" 1
+        , Beam.Label 2
+        , Beam.GetTupleElement (Beam.X 0) 0 (Beam.X 0)
+        , Beam.Return
+        , Beam.Label 3
+        , Beam.FuncInfo "second" 1
+        , Beam.Label 4
+        , Beam.GetTupleElement (Beam.X 0) 1 (Beam.X 0)
+        , Beam.Return
+        ]
     ]
