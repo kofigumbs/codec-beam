@@ -222,4 +222,15 @@ main =
         , Beam.SetTupleElement (Beam.Atom "dream") (Beam.X 0) 0
         , Beam.Return
         ]
+
+    , test "put_list"
+        [ "?assertEqual([one, 2], put_list:test())"
+        ]
+        [ Beam.Label 1
+        , Beam.FuncInfo "test" 0
+        , Beam.Label 2
+        , Beam.PutList (Beam.Int 2) Beam.Nil (Beam.X 0)
+        , Beam.PutList (Beam.Atom "one") (Beam.Reg (Beam.X 0)) (Beam.X 0)
+        , Beam.Return
+        ]
     ]
