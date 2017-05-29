@@ -233,4 +233,16 @@ main =
         , Beam.PutList (Beam.Atom "one") (Beam.Reg (Beam.X 0)) (Beam.X 0)
         , Beam.Return
         ]
+
+    , test "make_a_tuple"
+        [ "?assertEqual({one, 2}, make_a_tuple:test())"
+        ]
+        [ Beam.Label 1
+        , Beam.FuncInfo "test" 0
+        , Beam.Label 2
+        , Beam.PutTuple 2 (Beam.X 0)
+        , Beam.Put (Beam.Atom "one")
+        , Beam.Put (Beam.Int 2)
+        , Beam.Return
+        ]
     ]
