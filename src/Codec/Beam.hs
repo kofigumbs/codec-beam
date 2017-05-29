@@ -28,6 +28,10 @@ data Op
   | Allocate Int Int
   | Deallocate Int
   | Return
+  | IsEq Int Term Term
+  | IsNe Int Term Term
+  | IsEqExact Int Term Term
+  | IsNeExact Int Term Term
   | IsNil Int Term
   | Move Term Register
   | GetTupleElement Register Int Register
@@ -154,6 +158,18 @@ appendOp shouldExport builder op =
 
     Return ->
       instruction 19 [] builder
+
+    IsEq label term1 term2 ->
+      instruction 41 [ Lab label, term1, term2 ] builder
+
+    IsNe label term1 term2 ->
+      instruction 42 [ Lab label, term1, term2 ] builder
+
+    IsEqExact label term1 term2 ->
+      instruction 43 [ Lab label, term1, term2 ] builder
+
+    IsNeExact label term1 term2 ->
+      instruction 44 [ Lab label, term1, term2 ] builder
 
     IsNil label term ->
       instruction 55 [ Lab label, term ] builder

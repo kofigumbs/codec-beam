@@ -20,3 +20,8 @@ instance BShow String where
 
 instance BShow Int where
   bshow = encodeUtf8 . pack . show
+
+
+instance BShow Bool where
+  bshow True = "yes"
+  bshow False = "nah"

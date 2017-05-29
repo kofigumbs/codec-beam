@@ -71,6 +71,30 @@ testConstant name toTerm value =
     ]
 
 
+testEq
+  :: BS.ByteString
+  -> (Int -> Beam.Term -> Beam.Term -> Beam.Op)
+  -> (Bool, Bool, Bool, Bool)
+  -> Test
+testEq name toOp (first, second, third, fourth) =
+  test name
+    [ "?assertEqual(" <> bshow first <> ", " <> name <> ":check(2, 3)),"
+    , "?assertEqual(" <> bshow second <> ", " <> name <> ":check(2.0, 3)),"
+    , "?assertEqual(" <> bshow third <> ", " <> name <> ":check(2.0, 2)),"
+    , "?assertEqual(" <> bshow fourth <> ", " <> name <> ":check(2.0, 2.0))"
+    ]
+    [ Beam.Label 1
+    , Beam.FuncInfo "check" 2
+    , Beam.Label 2
+    , toOp 3 (Beam.Reg (Beam.X 0)) (Beam.Reg (Beam.X 1))
+    , Beam.Move (Beam.Atom (bshow True)) (Beam.X 0)
+    , Beam.Return
+    , Beam.Label 3
+    , Beam.Move (Beam.Atom (bshow False)) (Beam.X 0)
+    , Beam.Return
+    ]
+
+
 test :: BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> Test
 test name body ops =
   do  let fixture =
@@ -138,6 +162,12 @@ main =
     , testConstant "constant_nil" (const Beam.Nil) ("[]" :: BS.ByteString)
     , testConstant "arbitrary_atom" Beam.Atom "hello"
     , testConstant "module_name_atom" Beam.Atom "module_name_atom"
+
+    -- Number equality
+    , testEq "is_equal" Beam.IsEq (False, False, True, True)
+    , testEq "is_not_equal" Beam.IsNe (True, True, False, False)
+    , testEq "is_exactly_equal" Beam.IsEqExact (False, False, False, True)
+    , testEq "is_not_exactly_equal" Beam.IsNeExact (True, True, True, False)
 
     , test "call_into_identity"
         [ "?assertEqual(1023, call_into_identity:test())"
