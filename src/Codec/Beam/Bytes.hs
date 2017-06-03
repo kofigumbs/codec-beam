@@ -8,15 +8,15 @@ import qualified Data.Bits as Bits
 
 encode :: Word8 -> Int -> [Word8]
 encode tag n
-  |tag >= 7 = extBytes tag n
-  |n < 0 = manyBytes tag (negative n [])
-  |n < 0x10 = oneByte tag n
-  |n < 0x800 = twoBytes tag n
-  |otherwise = manyBytes tag (positive n [])
+  | tag >= 7 = extBytes tag n
+  | n < 0 = manyBytes tag (negative n [])
+  | n < 0x10 = oneByte tag n
+  | n < 0x800 = twoBytes tag n
+  | otherwise = manyBytes tag (positive n [])
 
 extBytes :: Word8 -> Int -> [Word8]
 extBytes tag n =
-  [ top4 `Bits.xor` convertedTag, 0 ]
+  [ Bits.xor top4 convertedTag, 0 ]
 
   where
     convertedTag =

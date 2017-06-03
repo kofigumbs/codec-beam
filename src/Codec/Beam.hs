@@ -74,7 +74,7 @@ data Builder =
     , labelCount :: Word32
     , functionCount :: Word32
     , atomTable :: Map.Map BS.ByteString Int
-    , litTable :: [Literal]
+    , literalTable :: [Literal]
     , exportNextLabel :: Maybe (BS.ByteString, Int)
     , toExport :: [(BS.ByteString, Int, Int)]
     , code :: Builder.Builder
@@ -88,7 +88,7 @@ new name =
     , labelCount = 1
     , functionCount = 0
     , atomTable = Map.singleton name 1
-    , litTable = []
+    , literalTable = []
     , exportNextLabel = Nothing
     , toExport = []
     , code = mempty
@@ -232,7 +232,7 @@ appendOperand builder operand =
       tagged 5 value
 
     ExtLiteral literal ->
-     tagged 12 |> withLiteral literal
+      tagged 12 |> withLiteral literal
 
 
   where
@@ -258,11 +258,13 @@ appendOperand builder operand =
 
     withLiteral literal toBuilder =
       let
-        new = litTable builder ++ [literal]
-        index = length new
+        new =
+          literal:literalTable builder
+        index =
+          length new
       in
         (toBuilder index)
-          { litTable = new
+          { literalTable = new
           }
 
 
@@ -305,23 +307,25 @@ encodeLiterals :: Builder -> BS.ByteString
 encodeLiterals builder =
   uncompressedSize <> compressed
 
-    where
-      compressed =
-        Zlib.compress (count <> encodedLiterals)
+  where
+    compressed =
+      Zlib.compress uncompressed
 
-      count =
-        pack32 $ length (litTable builder)
+    uncompressed =
+      count <> table
 
-      encodedLiterals =
-        BS.concat $ map encodeLiteral (litTable builder)
+    count =
+      pack32 $ length (literalTable builder)
 
-      uncompressedSize =
-        pack32 $ BS.length (count <> encodedLiterals)
+    table =
+      BS.concat $ map appendLiteral (reverse $ literalTable builder)
+
+    uncompressedSize =
+      pack32 $ BS.length uncompressed
 
 
-
-encodeLiteral :: Literal -> BS.ByteString
-encodeLiteral literal =
+appendLiteral :: Literal -> BS.ByteString
+appendLiteral literal =
   case literal of
     Tuple contents ->
       let

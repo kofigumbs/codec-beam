@@ -179,9 +179,9 @@ main =
     , testEq "is_exactly_equal" Beam.IsEqExact (False, False, False, True)
     , testEq "is_not_exactly_equal" Beam.IsNeExact (True, True, True, False)
 
-    , testConstant_ "empty_tuple" (Beam.ExtLiteral (Beam.Tuple []) "{}"
+    , testConstant_ "empty_tuple" (Beam.ExtLiteral (Beam.Tuple [])) "{}"
 
-   , test "call_into_identity"
+    , test "call_into_identity"
         [ "?assertEqual(1023, call_into_identity:test())"
         ]
         [ Beam.Label 1
