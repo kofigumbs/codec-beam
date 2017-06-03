@@ -1,8 +1,8 @@
 module Main where
 
 import Data.Monoid ((<>))
-import Data.Text.Lazy (unpack)
-import Data.Text.Lazy.Encoding (decodeUtf8)
+import Data.Text.Lazy (pack, unpack)
+import Data.Text.Lazy.Encoding (decodeUtf8, encodeUtf8)
 import System.FilePath ((</>), (<.>))
 import System.Process (callProcess)
 import qualified Data.ByteString.Lazy as BS
@@ -36,6 +36,11 @@ toString =
   unpack . decodeUtf8
 
 
+fromString :: String -> BS.ByteString
+fromString =
+  encodeUtf8 . pack
+
+
 fixtureName :: BS.ByteString -> FilePath
 fixtureName moduleName =
   erlangDir </> toString moduleName <.> "beam"
@@ -53,9 +58,14 @@ testFile :: BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> Test
 testFile name body =
   let
     file =
-      "File = '" <> bshow (erlangDir </> toString name) <> "',"
+      "File = '" <> fromString (erlangDir </> toString name) <> "',"
   in
     test name (file : body)
+
+
+testConstant_ :: BS.ByteString -> Beam.Term -> BS.ByteString -> Test
+testConstant_ name term =
+  testConstant name (const term)
 
 
 testConstant :: BShow a => BS.ByteString -> (a -> Beam.Term) -> a -> Test
@@ -109,7 +119,7 @@ run :: [BS.ByteString] -> IO ()
 run functions =
   do  let fileContents =
             unlines $
-              "-module(" <> bshow erlangModuleName <> ")."
+              "-module(" <> fromString erlangModuleName <> ")."
                 : "-include_lib(\"eunit/include/eunit.hrl\")."
                 : functions
 
@@ -159,9 +169,9 @@ main =
     , testConstant "number_very_large_positive" Beam.Int 429496729501
 
     -- Atom table encodings
-    , testConstant "constant_nil" (const Beam.Nil) ("[]" :: BS.ByteString)
     , testConstant "arbitrary_atom" Beam.Atom "hello"
     , testConstant "module_name_atom" Beam.Atom "module_name_atom"
+    , testConstant_ "constant_nil" Beam.Nil "[]"
 
     -- Number equality
     , testEq "is_equal" Beam.IsEq (False, False, True, True)

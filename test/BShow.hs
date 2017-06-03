@@ -14,10 +14,6 @@ instance BShow ByteString where
   bshow = id
 
 
-instance BShow String where
-  bshow = encodeUtf8 . pack
-
-
 instance BShow Int where
   bshow = encodeUtf8 . pack . show
 
