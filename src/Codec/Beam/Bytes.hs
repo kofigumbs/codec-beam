@@ -7,18 +7,23 @@ import qualified Data.Bits as Bits
 
 
 encode :: Word8 -> Int -> [Word8]
-encode tag n =
-  if n < 0 then
-    manyBytes tag (negative n [])
+encode tag n
+  | tag >= 7 = extBytes tag n
+  | n < 0 = manyBytes tag (negative n [])
+  | n < 0x10 = oneByte tag n
+  | n < 0x800 = twoBytes tag n
+  | otherwise = manyBytes tag (positive n [])
 
-  else if n < 0x10 then
-    oneByte tag n
+extBytes :: Word8 -> Int -> [Word8]
+extBytes tag n =
+  [ Bits.xor top4 convertedTag, 0 ]
 
-  else if n < 0x800 then
-    twoBytes tag n
+  where
+    convertedTag =
+     Bits.shiftL (tag - 7) 4 .|. 7
 
-  else
-    manyBytes tag (positive n [])
+    top4 =
+      Bits.shiftL (fromIntegral n) 4
 
 
 oneByte :: Word8 -> Int -> [Word8]

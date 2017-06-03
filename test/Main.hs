@@ -63,27 +63,27 @@ testFile name body =
     test name (file : body)
 
 
-testConstant_ :: BS.ByteString -> Beam.Term -> BS.ByteString -> Test
+testConstant_ :: BS.ByteString -> Beam.Operand -> BS.ByteString -> Test
 testConstant_ name term =
   testConstant name (const term)
 
 
-testConstant :: BShow a => BS.ByteString -> (a -> Beam.Term) -> a -> Test
-testConstant name toTerm value =
+testConstant :: BShow a => BS.ByteString -> (a -> Beam.Operand) -> a -> Test
+testConstant name toOperand value =
   test name
     [ "?assertEqual(" <> bshow value <> ", " <> name <> ":test())"
     ]
     [ Beam.Label 1
     , Beam.FuncInfo "test" 0
     , Beam.Label 2
-    , Beam.Move (toTerm value) (Beam.X 0)
+    , Beam.Move (toOperand value) (Beam.X 0)
     , Beam.Return
     ]
 
 
 testEq
   :: BS.ByteString
-  -> (Int -> Beam.Term -> Beam.Term -> Beam.Op)
+  -> (Int -> Beam.Operand -> Beam.Operand -> Beam.Op)
   -> (Bool, Bool, Bool, Bool)
   -> Test
 testEq name toOp (first, second, third, fourth) =
@@ -178,6 +178,8 @@ main =
     , testEq "is_not_equal" Beam.IsNe (True, True, False, False)
     , testEq "is_exactly_equal" Beam.IsEqExact (False, False, False, True)
     , testEq "is_not_exactly_equal" Beam.IsNeExact (True, True, True, False)
+
+    , testConstant_ "empty_tuple" (Beam.ExtLiteral (Beam.Tuple [])) "{}"
 
     , test "call_into_identity"
         [ "?assertEqual(1023, call_into_identity:test())"
