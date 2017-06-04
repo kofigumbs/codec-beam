@@ -35,6 +35,7 @@ data Op
   | IsNeExact Int Operand Operand
   | IsNil Int Operand
   | Move Operand Register
+  | GetList Operand Register Register
   | GetTupleElement Register Int Register
   | SetTupleElement Operand Register Int
   | PutList Operand Operand Register
@@ -185,6 +186,9 @@ appendOp shouldExport builder op =
 
     Move source destination ->
       instruction 64 [ source, Reg destination ] builder
+
+    GetList source first rest ->
+      instruction 65 [ source, Reg first, Reg rest ] builder
 
     GetTupleElement source element destination ->
       instruction 66 [ Reg source, Lit element, Reg destination ] builder

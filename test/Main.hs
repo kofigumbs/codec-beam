@@ -179,6 +179,7 @@ main =
     , testEq "is_exactly_equal" Beam.IsEqExact (False, False, False, True)
     , testEq "is_not_exactly_equal" Beam.IsNeExact (True, True, True, False)
 
+    -- Literal table encodings
     , testConstant_ "empty_tuple" (Beam.ExtLiteral (Beam.Tuple [])) "{}"
 
     , test "call_into_identity"
@@ -285,6 +286,17 @@ main =
         , Beam.PutTuple 2 (Beam.X 0)
         , Beam.Put (Beam.Atom "one")
         , Beam.Put (Beam.Int 2)
+        , Beam.Return
+        ]
+
+    , test "get_da_list"
+        [ "?assertEqual(2, get_da_list:second([1,2,3]))"
+        ]
+        [ Beam.Label 1
+        , Beam.FuncInfo "second" 1
+        , Beam.Label 2
+        , Beam.GetList (Beam.Reg (Beam.X 0)) (Beam.X 1) (Beam.X 0)
+        , Beam.GetList (Beam.Reg (Beam.X 0)) (Beam.X 0) (Beam.X 1)
         , Beam.Return
         ]
     ]
