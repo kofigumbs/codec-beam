@@ -42,6 +42,7 @@ data Op
   | Put Operand
   | CallFun Int
 
+
 data Operand
   = Lit Int
   | Int Int
@@ -51,8 +52,10 @@ data Operand
   | Lab Int
   | ExtLiteral Literal
 
+
 data Literal
   = Tuple [Literal]
+
 
 data Register
   = X Int
@@ -305,7 +308,7 @@ encodeExports builder =
 
 encodeLiterals :: Builder -> BS.ByteString
 encodeLiterals builder =
-  uncompressedSize <> compressed
+  pack32 (BS.length uncompressed) <> compressed
 
   where
     compressed =
@@ -320,22 +323,25 @@ encodeLiterals builder =
     table =
       BS.concat $ map appendLiteral (reverse $ literalTable builder)
 
-    uncompressedSize =
-      pack32 $ BS.length uncompressed
-
 
 appendLiteral :: Literal -> BS.ByteString
 appendLiteral literal =
   case literal of
     Tuple contents ->
       let
-        magicTag = pack8 131
-        smTupleTag = pack8 104
-        arity = pack8 (length contents)
-        lit = magicTag <> smTupleTag <> arity
-        size = pack32 (BS.length lit)
+        magicTag =
+          pack8 131
+
+        smTupleTag =
+          pack8 104
+
+        arity =
+          pack8 (length contents)
+
+        encoded =
+          magicTag <> smTupleTag <> arity
       in
-        size <> lit
+        pack32 (BS.length encoded) <> encoded
 
 
 encodeCode :: Builder -> BS.ByteString

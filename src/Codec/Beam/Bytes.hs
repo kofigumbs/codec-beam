@@ -14,6 +14,7 @@ encode tag n
   | n < 0x800 = twoBytes tag n
   | otherwise = manyBytes tag (positive n [])
 
+
 extBytes :: Word8 -> Int -> [Word8]
 extBytes tag n =
   [ Bits.xor top4 convertedTag, 0 ]
