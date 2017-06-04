@@ -35,12 +35,14 @@ data Op
   | IsNeExact Int Operand Operand
   | IsNil Int Operand
   | Move Operand Register
+  | GetList Operand Register Register
   | GetTupleElement Register Int Register
   | SetTupleElement Operand Register Int
   | PutList Operand Operand Register
   | PutTuple Int Register
   | Put Operand
   | CallFun Int
+
 
 data Operand
   = Lit Int
@@ -51,8 +53,10 @@ data Operand
   | Lab Int
   | ExtLiteral Literal
 
+
 data Literal
   = Tuple [Literal]
+
 
 data Register
   = X Int
@@ -183,6 +187,9 @@ appendOp shouldExport builder op =
     Move source destination ->
       instruction 64 [ source, Reg destination ] builder
 
+    GetList source first rest ->
+      instruction 65 [ source, Reg first, Reg rest ] builder
+
     GetTupleElement source element destination ->
       instruction 66 [ Reg source, Lit element, Reg destination ] builder
 
@@ -211,33 +218,33 @@ appendOperand :: Builder -> Operand -> Builder
 appendOperand builder operand =
   case operand of
     Lit value ->
-      tagged 0 value
+      tag Bytes.internal 0 value
 
     Int value ->
-      tagged 1 value
+      tag Bytes.internal 1 value
 
     Nil ->
-      tagged 2 0
+      tag Bytes.internal 2 0
 
     Atom name ->
-      tagged 2 |> withAtom name
+      tag Bytes.internal 2 |> withAtom name
 
     Reg (X value) ->
-      tagged 3 value
+      tag Bytes.internal 3 value
 
     Reg (Y value) ->
-      tagged 4 value
+      tag Bytes.internal 4 value
 
     Lab value ->
-      tagged 5 value
+      tag Bytes.internal 5 value
 
     ExtLiteral literal ->
-      tagged 12 |> withLiteral literal
+      tag Bytes.external 12 |> withLiteral literal
 
 
   where
-    tagged tag =
-      appendCode builder . Builder.lazyByteString . BS.pack . Bytes.encode tag
+    tag encoder value =
+      appendCode builder . Builder.lazyByteString . BS.pack . encoder value
 
     withAtom name toBuilder =
       case Map.lookup name (atomTable builder) of
@@ -259,11 +266,12 @@ appendOperand builder operand =
     withLiteral literal toBuilder =
       let
         new =
-          literal:literalTable builder
-        index =
+          literal : literalTable builder
+
+        value =
           length new
       in
-        (toBuilder index)
+        (toBuilder value)
           { literalTable = new
           }
 
@@ -305,23 +313,17 @@ encodeExports builder =
 
 encodeLiterals :: Builder -> BS.ByteString
 encodeLiterals builder =
-  uncompressedSize <> compressed
+  pack32 (BS.length encoded) <> Zlib.compress encoded
 
   where
-    compressed =
-      Zlib.compress uncompressed
+    encoded =
+      pack32 (length literals) <> values
 
-    uncompressed =
-      count <> table
+    values =
+      foldr (BS.append . appendLiteral) "" literals
 
-    count =
-      pack32 $ length (literalTable builder)
-
-    table =
-      BS.concat $ map appendLiteral (reverse $ literalTable builder)
-
-    uncompressedSize =
-      pack32 $ BS.length uncompressed
+    literals =
+      literalTable builder
 
 
 appendLiteral :: Literal -> BS.ByteString
@@ -329,13 +331,19 @@ appendLiteral literal =
   case literal of
     Tuple contents ->
       let
-        magicTag = pack8 131
-        smTupleTag = pack8 104
-        arity = pack8 (length contents)
-        lit = magicTag <> smTupleTag <> arity
-        size = pack32 (BS.length lit)
+        magicTag =
+          pack8 131
+
+        smTupleTag =
+          pack8 104
+
+        arity =
+          pack8 (length contents)
+
+        encoded =
+          magicTag <> smTupleTag <> arity
       in
-        size <> lit
+        pack32 (BS.length encoded) <> encoded
 
 
 encodeCode :: Builder -> BS.ByteString
