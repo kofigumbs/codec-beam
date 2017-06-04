@@ -214,33 +214,33 @@ appendOperand :: Builder -> Operand -> Builder
 appendOperand builder operand =
   case operand of
     Lit value ->
-      tagged 0 value
+      tag Bytes.internal 0 value
 
     Int value ->
-      tagged 1 value
+      tag Bytes.internal 1 value
 
     Nil ->
-      tagged 2 0
+      tag Bytes.internal 2 0
 
     Atom name ->
-      tagged 2 |> withAtom name
+      tag Bytes.internal 2 |> withAtom name
 
     Reg (X value) ->
-      tagged 3 value
+      tag Bytes.internal 3 value
 
     Reg (Y value) ->
-      tagged 4 value
+      tag Bytes.internal 4 value
 
     Lab value ->
-      tagged 5 value
+      tag Bytes.internal 5 value
 
     ExtLiteral literal ->
-      tagged 12 |> withLiteral literal
+      tag Bytes.external 12 |> withLiteral literal
 
 
   where
-    tagged tag =
-      appendCode builder . Builder.lazyByteString . BS.pack . Bytes.encode tag
+    tag encoder value =
+      appendCode builder . Builder.lazyByteString . BS.pack . encoder value
 
     withAtom name toBuilder =
       case Map.lookup name (atomTable builder) of
@@ -262,11 +262,12 @@ appendOperand builder operand =
     withLiteral literal toBuilder =
       let
         new =
-          literal:literalTable builder
-        index =
+          literal : literalTable builder
+
+        value =
           length new
       in
-        (toBuilder index)
+        (toBuilder value)
           { literalTable = new
           }
 
@@ -308,20 +309,17 @@ encodeExports builder =
 
 encodeLiterals :: Builder -> BS.ByteString
 encodeLiterals builder =
-  pack32 (BS.length uncompressed) <> compressed
+  pack32 (BS.length encoded) <> Zlib.compress encoded
 
   where
-    compressed =
-      Zlib.compress uncompressed
+    encoded =
+      pack32 (length literals) <> values
 
-    uncompressed =
-      count <> table
+    values =
+      foldr (BS.append . appendLiteral) "" literals
 
-    count =
-      pack32 $ length (literalTable builder)
-
-    table =
-      BS.concat $ map appendLiteral (reverse $ literalTable builder)
+    literals =
+      literalTable builder
 
 
 appendLiteral :: Literal -> BS.ByteString

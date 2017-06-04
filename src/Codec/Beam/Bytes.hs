@@ -1,4 +1,4 @@
-module Codec.Beam.Bytes (encode) where
+module Codec.Beam.Bytes (internal, external) where
 
 
 import Data.Bits ((.|.), (.&.))
@@ -6,17 +6,16 @@ import Data.Word (Word8)
 import qualified Data.Bits as Bits
 
 
-encode :: Word8 -> Int -> [Word8]
-encode tag n
-  | tag >= 7 = extBytes tag n
+internal :: Word8 -> Int -> [Word8]
+internal tag n
   | n < 0 = manyBytes tag (negative n [])
   | n < 0x10 = oneByte tag n
   | n < 0x800 = twoBytes tag n
   | otherwise = manyBytes tag (positive n [])
 
 
-extBytes :: Word8 -> Int -> [Word8]
-extBytes tag n =
+external :: Word8 -> Int -> [Word8]
+external tag n =
   [ Bits.xor top4 convertedTag, 0 ]
 
   where
@@ -57,7 +56,7 @@ manyBytes tag bytes =
     (packedCount .|. continuation .|. tag) : bytes
 
   else
-    (nested .|. tag) : encode 0 (count - 9) ++ bytes
+    (nested .|. tag) : internal 0 (count - 9) ++ bytes
 
   where
     count =
