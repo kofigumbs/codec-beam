@@ -67,5 +67,4 @@ Test-Suite codec-beam-tests
         bytestring,
         filepath,
         process,
-        zlib,
         text
