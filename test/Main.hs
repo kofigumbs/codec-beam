@@ -181,6 +181,7 @@ main =
 
     -- Literal table encodings
     , testConstant_ "empty_tuple" (Beam.ExtLiteral (Beam.Tuple [])) "{}"
+    , testConstant_ "small_tuple" (Beam.ExtLiteral (Beam.Tuple [Beam.SmInt 1])) "{1}"
 
     , test "call_into_identity"
         [ "?assertEqual(1023, call_into_identity:test())"
