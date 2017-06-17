@@ -56,6 +56,7 @@ data Operand
 
 data Literal
   = Tuple [Literal]
+  | SmInt Int
 
 
 data Register
@@ -340,10 +341,23 @@ appendLiteral literal =
         arity =
           pack8 (length contents)
 
+        elements =
+          foldr (BS.append . appendLiteral) "" contents
+
         encoded =
-          magicTag <> smTupleTag <> arity
+          magicTag <> smTupleTag <> arity <> elements
       in
         pack32 (BS.length encoded) <> encoded
+    SmInt value ->
+      let
+        smIntTag =
+          pack8 97
+
+        encoded =
+          smIntTag <> pack8 value
+      in
+        encoded
+
 
 
 encodeCode :: Builder -> BS.ByteString
