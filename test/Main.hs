@@ -5,12 +5,9 @@ import qualified Codec.Beam as Beam
 import qualified Eunit
 
 
--- Program
-
-
 main :: IO ()
 main =
-  Eunit.run =<< sequence
+  Eunit.run
     [ Eunit.testFile "just_one_atom"
         [ "?assertMatch("
         , "  { ok, { just_one_atom, ["

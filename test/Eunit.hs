@@ -135,12 +135,15 @@ test_ name body code =
 
       BS.writeFile fixture code
 
-      return $ name <> "_test() ->\n" <> unlines body <> "."
+      return (name <> "_test() ->\n" <> unlines body <> ".")
 
 
-run :: [BS.ByteString] -> IO ()
-run functions =
-  do  let fileContents =
+run :: [Test] -> IO ()
+run tests =
+  do  functions <-
+        sequence tests
+
+      let fileContents =
             unlines $
               "-module(" <> fromString erlangModuleName <> ")."
                 : "-include_lib(\"eunit/include/eunit.hrl\")."
