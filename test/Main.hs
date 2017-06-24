@@ -1,150 +1,14 @@
 module Main where
 
-import Data.Monoid ((<>))
-import Data.Text.Lazy (pack, unpack)
-import Data.Text.Lazy.Encoding (decodeUtf8, encodeUtf8)
-import System.FilePath ((</>), (<.>))
-import System.Process (callProcess)
-import qualified Data.ByteString.Lazy as BS
-
-import Prelude hiding (unlines)
-import BShow
 
 import qualified Codec.Beam as Beam
-
-
--- Helpers
-
-
-erlangDir :: FilePath
-erlangDir =
-  "test" </> "eunit"
-
-
-erlangModuleName :: String
-erlangModuleName =
-  "codec_tests"
-
-
-unlines :: [BS.ByteString] -> BS.ByteString
-unlines =
-  BS.intercalate "\n"
-
-
-toString :: BS.ByteString -> String
-toString =
-  unpack . decodeUtf8
-
-
-fromString :: String -> BS.ByteString
-fromString =
-  encodeUtf8 . pack
-
-
-fixtureName :: BS.ByteString -> FilePath
-fixtureName moduleName =
-  erlangDir </> toString moduleName <.> "beam"
-
-
-
--- Create and run an Eunit test file
-
-
-type Test =
-  IO BS.ByteString
-
-
-testFile :: BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> Test
-testFile name body =
-  let
-    file =
-      "File = '" <> fromString (erlangDir </> toString name) <> "',"
-  in
-    test name (file : body)
-
-
-testConstant_ :: BS.ByteString -> Beam.Operand -> BS.ByteString -> Test
-testConstant_ name term =
-  testConstant name (const term)
-
-
-testConstant :: BShow a => BS.ByteString -> (a -> Beam.Operand) -> a -> Test
-testConstant name toOperand value =
-  test name
-    [ "?assertEqual(" <> bshow value <> ", " <> name <> ":test())"
-    ]
-    [ Beam.Label 1
-    , Beam.FuncInfo "test" 0
-    , Beam.Label 2
-    , Beam.Move (toOperand value) (Beam.X 0)
-    , Beam.Return
-    ]
-
-
-testEq
-  :: BS.ByteString
-  -> (Int -> Beam.Operand -> Beam.Operand -> Beam.Op)
-  -> (Bool, Bool, Bool, Bool)
-  -> Test
-testEq name toOp (first, second, third, fourth) =
-  test name
-    [ "?assertEqual(" <> bshow first <> ", " <> name <> ":check(2, 3)),"
-    , "?assertEqual(" <> bshow second <> ", " <> name <> ":check(2.0, 3)),"
-    , "?assertEqual(" <> bshow third <> ", " <> name <> ":check(2.0, 2)),"
-    , "?assertEqual(" <> bshow fourth <> ", " <> name <> ":check(2.0, 2.0))"
-    ]
-    [ Beam.Label 1
-    , Beam.FuncInfo "check" 2
-    , Beam.Label 2
-    , toOp 3 (Beam.Reg (Beam.X 0)) (Beam.Reg (Beam.X 1))
-    , Beam.Move (Beam.Atom (bshow True)) (Beam.X 0)
-    , Beam.Return
-    , Beam.Label 3
-    , Beam.Move (Beam.Atom (bshow False)) (Beam.X 0)
-    , Beam.Return
-    ]
-
-
-test :: BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> Test
-test name body ops =
-  do  let fixture =
-            erlangDir </> toString name <.> "beam"
-
-      BS.writeFile fixture (Beam.encode name ops)
-
-      return $ name <> "_test() ->\n" <> unlines body <> "."
-
-
-run :: [BS.ByteString] -> IO ()
-run functions =
-  do  let fileContents =
-            unlines $
-              "-module(" <> fromString erlangModuleName <> ")."
-                : "-include_lib(\"eunit/include/eunit.hrl\")."
-                : functions
-
-          fileName =
-            erlangDir </> erlangModuleName <.> "erl"
-
-      BS.writeFile fileName fileContents
-
-      callProcess "erlc" [fileName]
-
-      callProcess "erl"
-        [ "-noshell", "-pa", erlangDir
-        , "-eval", "eunit:test(" ++ erlangModuleName ++ ", [verbose])"
-        , "-run", "init", "stop"
-        ]
-
-
-
--- Program
+import qualified Eunit
 
 
 main :: IO ()
 main =
-  run =<< sequence
-    [ testFile "just_one_atom"
+  Eunit.run
+    [ Eunit.testFile "just_one_atom"
         [ "?assertMatch("
         , "  { ok, { just_one_atom, ["
         , "    {imports, []},{labeled_exports, []},{labeled_locals, []},"
@@ -158,32 +22,49 @@ main =
         ]
         []
 
+    -- Builder.append API
+    , Eunit.testPrivate "api"
+        [ "code:load_file(api),"
+        , "?assert(erlang:function_exported(api, public, 0)),"
+        , "?assert(not erlang:function_exported(api, private, 0))"
+        ]
+        [ Beam.Label 1
+        , Beam.FuncInfo "private" 0
+        , Beam.Label 2
+        , Beam.Return
+        ]
+        [ Beam.Label 1
+        , Beam.FuncInfo "public" 0
+        , Beam.Label 2
+        , Beam.Return
+        ]
+
     -- From beam_asm: https://git.io/vHTBY
-    , testConstant "number_five" Beam.Int 5
-    , testConstant "number_one_thousand" Beam.Int 5
-    , testConstant "number_two_thousand_forty_seven" Beam.Int 2047
-    , testConstant "number_two_thousand_forty_eight" Beam.Int 2048
-    , testConstant "number_negative_one" Beam.Int (-1)
-    , testConstant "number_large_negative" Beam.Int (-4294967295)
-    , testConstant "number_large_positive" Beam.Int 4294967295
-    , testConstant "number_very_large_positive" Beam.Int 429496729501
+    , Eunit.testConstant "number_five" Beam.Int 5
+    , Eunit.testConstant "number_one_thousand" Beam.Int 5
+    , Eunit.testConstant "number_two_thousand_forty_seven" Beam.Int 2047
+    , Eunit.testConstant "number_two_thousand_forty_eight" Beam.Int 2048
+    , Eunit.testConstant "number_negative_one" Beam.Int (-1)
+    , Eunit.testConstant "number_large_negative" Beam.Int (-4294967295)
+    , Eunit.testConstant "number_large_positive" Beam.Int 4294967295
+    , Eunit.testConstant "number_very_large_positive" Beam.Int 429496729501
 
     -- Atom table encodings
-    , testConstant "arbitrary_atom" Beam.Atom "hello"
-    , testConstant "module_name_atom" Beam.Atom "module_name_atom"
-    , testConstant_ "constant_nil" Beam.Nil "[]"
+    , Eunit.testConstant "arbitrary_atom" Beam.Atom "hello"
+    , Eunit.testConstant "module_name_atom" Beam.Atom "module_name_atom"
+    , Eunit.testConstant_ "constant_nil" Beam.Nil "[]"
 
     -- Number equality
-    , testEq "is_equal" Beam.IsEq (False, False, True, True)
-    , testEq "is_not_equal" Beam.IsNe (True, True, False, False)
-    , testEq "is_exactly_equal" Beam.IsEqExact (False, False, False, True)
-    , testEq "is_not_exactly_equal" Beam.IsNeExact (True, True, True, False)
+    , Eunit.testEq "is_equal" Beam.IsEq (False, False, True, True)
+    , Eunit.testEq "is_not_equal" Beam.IsNe (True, True, False, False)
+    , Eunit.testEq "is_exactly_equal" Beam.IsEqExact (False, False, False, True)
+    , Eunit.testEq "is_not_exactly_equal" Beam.IsNeExact (True, True, True, False)
 
     -- Literal table encodings
-    , testConstant_ "empty_tuple" (Beam.ExtLiteral (Beam.Tuple [])) "{}"
-    , testConstant_ "small_tuple" (Beam.ExtLiteral (Beam.Tuple [Beam.SmInt 1])) "{1}"
+    , Eunit.testConstant_ "empty_tuple" (Beam.ExtLiteral (Beam.Tuple [])) "{}"
+    , Eunit.testConstant_ "small_tuple" (Beam.ExtLiteral (Beam.Tuple [Beam.SmInt 1])) "{1}"
 
-    , test "call_into_identity"
+    , Eunit.test "call_into_identity"
         [ "?assertEqual(1023, call_into_identity:test())"
         ]
         [ Beam.Label 1
@@ -198,7 +79,7 @@ main =
         , Beam.Return
         ]
 
-    , test "is_nil"
+    , Eunit.test "is_nil"
         [ "?assertEqual(yes, is_nil:test([])),"
         , "?assertEqual(no, is_nil:test(23))"
         ]
@@ -214,7 +95,7 @@ main =
         ]
 
     -- Based on https://happi.github.io/theBeamBook/#x_and_y_regs_in_memory
-    , test "allocate_for_call_fun"
+    , Eunit.test "allocate_for_call_fun"
         [ "_add = fun 'erlang':'+'/2,"
         , "?assertEqual(4, allocate_for_call_fun:apply2(2, 2, _add))"
         ]
@@ -241,7 +122,7 @@ main =
         , Beam.Return
         ]
 
-    , test "get_tuple_element"
+    , Eunit.test "get_tuple_element"
         [ "?assertEqual(2, get_tuple_element:first({2})),"
         , "?assertEqual(hi, get_tuple_element:second({oh, hi, there}))"
         ]
@@ -257,7 +138,7 @@ main =
         , Beam.Return
         ]
 
-    , test "set_tuple_element"
+    , Eunit.test "set_tuple_element"
         [ "?assertEqual({dream, work}, set_tuple_element:make({team, work}))"
         ]
         [ Beam.Label 1
@@ -267,7 +148,7 @@ main =
         , Beam.Return
         ]
 
-    , test "put_list"
+    , Eunit.test "put_list"
         [ "?assertEqual([one, 2], put_list:test())"
         ]
         [ Beam.Label 1
@@ -278,7 +159,7 @@ main =
         , Beam.Return
         ]
 
-    , test "make_a_tuple"
+    , Eunit.test "make_a_tuple"
         [ "?assertEqual({one, 2}, make_a_tuple:test())"
         ]
         [ Beam.Label 1
@@ -290,7 +171,7 @@ main =
         , Beam.Return
         ]
 
-    , test "get_da_list"
+    , Eunit.test "get_da_list"
         [ "?assertEqual(2, get_da_list:second([1,2,3]))"
         ]
         [ Beam.Label 1

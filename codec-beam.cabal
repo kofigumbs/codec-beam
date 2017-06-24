@@ -30,6 +30,7 @@ Library
 
     other-modules:
         Codec.Beam.Bytes
+        Codec.Beam.Encoding
 
     Build-depends:
         base,
@@ -60,6 +61,7 @@ Test-Suite codec-beam-tests
 
     other-modules:
         BShow
+        Eunit
 
     Build-depends:
         codec-beam,
