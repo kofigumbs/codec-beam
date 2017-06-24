@@ -105,12 +105,31 @@ testEq name toOp (first, second, third, fourth) =
     ]
 
 
+testPrivate
+  :: BS.ByteString
+  -> [BS.ByteString]
+  -> [Beam.Op]
+  -> [Beam.Op]
+  -> Test
+testPrivate name body privates publics =
+  test_ name body
+    $ Beam.toLazyByteString
+    $ Beam.append True publics
+    $ Beam.append False privates
+    $ Beam.new name
+
+
 test :: BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> Test
 test name body ops =
+  test_ name body (Beam.encode name ops)
+
+
+test_ :: BS.ByteString -> [BS.ByteString] -> BS.ByteString -> Test
+test_ name body code =
   do  let fixture =
             erlangDir </> toString name <.> "beam"
 
-      BS.writeFile fixture (Beam.encode name ops)
+      BS.writeFile fixture code
 
       return $ name <> "_test() ->\n" <> unlines body <> "."
 
@@ -157,6 +176,23 @@ main =
         , ")"
         ]
         []
+
+    -- Builder.append API
+    , testPrivate "api"
+        [ "code:load_file(api),"
+        , "?assert(erlang:function_exported(api, public, 0)),"
+        , "?assert(not erlang:function_exported(api, private, 0))"
+        ]
+        [ Beam.Label 1
+        , Beam.FuncInfo "private" 0
+        , Beam.Label 2
+        , Beam.Return
+        ]
+        [ Beam.Label 1
+        , Beam.FuncInfo "public" 0
+        , Beam.Label 2
+        , Beam.Return
+        ]
 
     -- From beam_asm: https://git.io/vHTBY
     , testConstant "number_five" Beam.Int 5
