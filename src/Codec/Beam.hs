@@ -1,20 +1,18 @@
 module Codec.Beam
   ( encode
-  , Op(..), Operand(..), Register(..), Literal(..)
+  , Op(..), Operand(..), Register(..)
+  , Encoding.Literal(..)
   , Builder, new, append, toLazyByteString
   ) where
 
-import Data.Binary.Put (runPut, putWord32be)
-import Data.Map ((!))
 import Data.Monoid ((<>))
 import Data.Word (Word8, Word32)
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as BS
-import qualified Data.List as List
 import qualified Data.Map as Map
-import qualified Codec.Compression.Zlib as Zlib
 
 import qualified Codec.Beam.Bytes as Bytes
+import qualified Codec.Beam.Encoding as Encoding
 
 
 {-| Create structurally correct BEAM code.
@@ -51,12 +49,7 @@ data Operand
   | Atom BS.ByteString
   | Reg Register
   | Lab Int
-  | ExtLiteral Literal
-
-
-data Literal
-  = Tuple [Literal]
-  | SmInt Int
+  | ExtLiteral Encoding.Literal
 
 
 data Register
@@ -84,7 +77,7 @@ data Builder =
     , currentLabelCount :: Int
     , functionCount :: Word32
     , atomTable :: Map.Map BS.ByteString Int
-    , literalTable :: [Literal]
+    , literalTable :: [Encoding.Literal]
     , exportNextLabel :: Maybe (BS.ByteString, Int)
     , toExport :: [(BS.ByteString, Int, Int)]
     , code :: Builder.Builder
@@ -107,18 +100,17 @@ new name =
 
 
 toLazyByteString :: Builder -> BS.ByteString
-toLazyByteString builder =
-  let
-    sections =
-         "Atom" <> alignSection (encodeAtoms builder)
-      <> "LocT" <> alignSection (pack32 0)
-      <> "StrT" <> alignSection (pack32 0)
-      <> "LitT" <> alignSection (encodeLiterals builder)
-      <> "ImpT" <> alignSection (pack32 0)
-      <> "ExpT" <> alignSection (encodeExports builder)
-      <> "Code" <> alignSection (encodeCode builder)
-  in
-    "FOR1" <> pack32 (BS.length sections + 4) <> "BEAM" <> sections
+toLazyByteString
+  Builder
+    { currentLabelCount = current
+    , overallLabelCount = overall
+    , functionCount = functions
+    , atomTable = atoms
+    , literalTable = literals
+    , toExport = exports
+    , code = code
+    } =
+  Encoding.for (overall + current + 1) functions atoms literals exports code
 
 
 append :: Bool -> [Op] -> Builder -> Builder
@@ -295,139 +287,6 @@ appendOperand builder operand =
 appendCode :: Builder -> Builder.Builder -> Builder
 appendCode builder bytes =
   builder { code = code builder <> bytes }
-
-
-
--- Use the environment to create other sections
-
-
-encodeAtoms :: Builder -> BS.ByteString
-encodeAtoms builder =
-  pack32 (length list) <> mconcat list
-
-  where
-    list =
-      map fromTuple
-        $ List.sortOn snd
-        $ Map.toList (atomTable builder)
-
-    fromTuple (name, _) =
-      pack8 (BS.length name) <> name
-
-
-encodeExports :: Builder -> BS.ByteString
-encodeExports builder =
-  pack32 (length list) <> mconcat list
-
-  where
-    list =
-      map fromTuple (toExport builder)
-
-    fromTuple (name, arity, labelId) =
-      pack32 (atomTable builder ! name) <> pack32 arity <> pack32 labelId
-
-
-encodeLiterals :: Builder -> BS.ByteString
-encodeLiterals builder =
-  pack32 (BS.length encoded) <> Zlib.compress encoded
-
-  where
-    encoded =
-      pack32 (length literals) <> values
-
-    values =
-      foldr (BS.append . appendLiteral) "" literals
-
-    literals =
-      literalTable builder
-
-
-appendLiteral :: Literal -> BS.ByteString
-appendLiteral literal =
-  case literal of
-    Tuple contents ->
-      let
-        magicTag =
-          pack8 131
-
-        smTupleTag =
-          pack8 104
-
-        arity =
-          pack8 (length contents)
-
-        elements =
-          foldr (BS.append . appendLiteral) "" contents
-
-        encoded =
-          magicTag <> smTupleTag <> arity <> elements
-      in
-        pack32 (BS.length encoded) <> encoded
-
-    SmInt value ->
-      let
-        smIntTag =
-          pack8 97
-
-        encoded =
-          smIntTag <> pack8 value
-      in
-        encoded
-
-
-
-encodeCode :: Builder -> BS.ByteString
-encodeCode builder =
-  let
-    headerLength =
-      16
-
-    instructionSetId =
-      0
-
-    maxOpCode =
-      158
-
-    intCodeEnd =
-      pack8 3
-
-    labelCount =
-      overallLabelCount builder + currentLabelCount builder + 1
-  in
-       pack32 headerLength
-    <> pack32 instructionSetId
-    <> pack32 maxOpCode
-    <> pack32 (fromIntegral labelCount)
-    <> pack32 (functionCount builder)
-    <> Builder.toLazyByteString (code builder) <> intCodeEnd
-
-
-
--- Encoding helpers
-
-
-alignSection :: BS.ByteString -> BS.ByteString
-alignSection bytes =
-  pack32 size <> bytes <> padding
-
-  where
-    size =
-      BS.length bytes
-
-    padding =
-      case mod size 4 of
-        0 -> BS.empty
-        r -> BS.replicate (4 - r) 0
-
-
-pack8 :: Integral n => n -> BS.ByteString
-pack8 =
-  BS.singleton . fromIntegral
-
-
-pack32 :: Integral n => n -> BS.ByteString
-pack32 =
-  runPut . putWord32be . fromIntegral
 
 
 (|>) :: a -> (a -> b) -> b
