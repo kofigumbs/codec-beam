@@ -61,6 +61,7 @@ Test-Suite codec-beam-tests
 
     other-modules:
         BShow
+        Eunit
 
     Build-depends:
         codec-beam,
