@@ -119,17 +119,13 @@ toLazyByteString
 
 
 append :: Builder -> [Op] -> Builder
-append old ops =
-  foldl appendOp builder ops
-
-  where
-    builder =
-      old
-        { currentLabelCount =
-            0
-        , overallLabelCount =
-            overallLabelCount old + currentLabelCount old
-        }
+append builder =
+  foldl appendOp $ builder
+    { currentLabelCount =
+        0
+    , overallLabelCount =
+        overallLabelCount builder + currentLabelCount builder
+    }
 
 
 appendOp :: Builder -> Op -> Builder
