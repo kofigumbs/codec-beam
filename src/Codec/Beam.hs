@@ -32,6 +32,7 @@ data Op
   | IsEqExact Label Operand Operand
   | IsNeExact Label Operand Operand
   | IsNil Label Operand
+  | Jump Label
   | Move Operand Register
   | GetList Operand Register Register
   | GetTupleElement Register Int Register
@@ -191,6 +192,9 @@ appendOp shouldExport builder op =
 
     IsNil label term ->
       instruction 55 [ Lab label, term ] builder
+
+    Jump label ->
+      instruction 61 [ Lab label ] builder
 
     Move source destination ->
       instruction 64 [ source, Reg destination ] builder

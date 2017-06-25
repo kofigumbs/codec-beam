@@ -172,4 +172,18 @@ main =
         , Beam.GetList (Beam.Reg (Beam.X 0)) (Beam.X 0) (Beam.X 1)
         , Beam.Return
         ]
+
+    , Eunit.test "jumping_around"
+        [ "?assertEqual(yay, jumping_around:test())"
+        ]
+        [ Beam.Label 1
+        , Beam.FuncInfo "test" 0
+        , Beam.Label 2
+        , Beam.Jump 4
+        , Beam.Label 3
+        , Beam.Move (Beam.Atom "yay") (Beam.X 0)
+        , Beam.Return
+        , Beam.Label 4
+        , Beam.Jump 3
+        ]
     ]
