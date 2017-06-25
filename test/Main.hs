@@ -187,4 +187,19 @@ main =
         , Beam.Label 4
         , Beam.Jump 3
         ]
+
+    , Eunit.test "simple_lambda"
+        [ "?assertEqual(123, (simple_lambda:test())())"
+        ]
+        [ Beam.Label 1
+        , Beam.FuncInfo True "test" 0
+        , Beam.Label 2
+        , Beam.MakeFun "lambda_function" 0 4 0
+        , Beam.Return
+        , Beam.Label 3
+        , Beam.FuncInfo False "lambda_function" 0
+        , Beam.Label 4
+        , Beam.Move (Beam.Int 123) (Beam.X 0)
+        , Beam.Return
+        ]
     ]

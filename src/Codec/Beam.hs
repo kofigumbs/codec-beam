@@ -41,6 +41,7 @@ data Op
   | PutTuple Int Register
   | Put Operand
   | CallFun Int
+  | MakeFun BS.ByteString Int Label Int
 
 
 data Operand
@@ -55,8 +56,7 @@ data Operand
 
 data Register
   = X Int
-  | Y Int
-
+  | Y Int 
 
 type Label
   = Int
@@ -79,7 +79,7 @@ data Builder =
     , functionCount :: Word32
     , atomTable :: Map.Map BS.ByteString Int
     , literalTable :: [Encoding.Literal]
-    , lambdaTable :: [(BS.ByteString, Int, Label, Int)]
+    , lambdaTable :: [Encoding.Lambda]
     , exportNextLabel :: Maybe (BS.ByteString, Int)
     , toExport :: [(BS.ByteString, Int, Int)]
     , code :: Builder.Builder
@@ -110,10 +110,11 @@ toLazyByteString
     , functionCount = functions
     , atomTable = atoms
     , literalTable = literals
+    , lambdaTable = lambdas
     , toExport = exports
     , code = code
     } =
-  Encoding.for (overall + current + 1) functions atoms literals exports code
+  Encoding.for (overall + current + 1) functions atoms literals lambdas exports code
 
 
 append :: Builder -> [Op] -> Builder
@@ -221,6 +222,15 @@ appendOp builder op =
 
     CallFun arity ->
       instruction 75 [ Lit arity ] builder
+
+    MakeFun name arity label free ->
+      builder
+        { lambdaTable =
+            Encoding.Lambda name arity label (length (lambdaTable builder)) free
+              : lambdaTable builder
+        } |>
+
+      instruction 103 [ Lit (length (lambdaTable builder)) ]
 
   where
     instruction opCode args newBuilder =
