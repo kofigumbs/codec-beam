@@ -56,7 +56,8 @@ data Operand
 
 data Register
   = X Int
-  | Y Int 
+  | Y Int
+
 
 type Label
   = Int
