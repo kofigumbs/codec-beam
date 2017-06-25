@@ -8,17 +8,8 @@ import qualified Eunit
 main :: IO ()
 main =
   Eunit.run
-    [ Eunit.testFile "just_one_atom"
-        [ "?assertMatch("
-        , "  { ok, { just_one_atom, ["
-        , "    {imports, []},{labeled_exports, []},{labeled_locals, []},"
-        , "    {atoms, [{1,just_one_atom}]}"
-        , "  ]}},"
-        , "  beam_lib:chunks(File, ["
-        , "    imports,labeled_exports,labeled_locals,"
-        , "    atoms"
-        , "  ])"
-        , ")"
+    [ Eunit.test "loads_empty"
+        [ "?assertMatch({module, loads_empty}, code:load_file(loads_empty))"
         ]
         []
 

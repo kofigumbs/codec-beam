@@ -2,7 +2,6 @@ module Eunit
   ( run
   , test
   , testPrivate
-  , testFile
   , testConstant
   , testConstant_
   , testEq
@@ -56,15 +55,6 @@ fromString =
 
 type Test =
   IO BS.ByteString
-
-
-testFile :: BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> Test
-testFile name body =
-  let
-    file =
-      "File = '" <> fromString (erlangDir </> toString name) <> "',"
-  in
-    test name (file : body)
 
 
 testConstant_ :: BS.ByteString -> Beam.Operand -> BS.ByteString -> Test
