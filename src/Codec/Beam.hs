@@ -21,7 +21,7 @@ import qualified Codec.Beam.Encoding as Encoding
 
 data Op
   = Label Label
-  | FuncInfo BS.ByteString Label
+  | FuncInfo Bool BS.ByteString Int
   | Call Int Label
   | CallOnly Int Label
   | Allocate Int Int
@@ -63,8 +63,8 @@ type Label
 
 
 encode :: BS.ByteString -> [Op] -> BS.ByteString
-encode name ops =
-  toLazyByteString $ append True ops (new name)
+encode name =
+  toLazyByteString . append (new name)
 
 
 
@@ -79,6 +79,7 @@ data Builder =
     , functionCount :: Word32
     , atomTable :: Map.Map BS.ByteString Int
     , literalTable :: [Encoding.Literal]
+    , lambdaTable :: [(BS.ByteString, Int, Label, Int)]
     , exportNextLabel :: Maybe (BS.ByteString, Int)
     , toExport :: [(BS.ByteString, Int, Int)]
     , code :: Builder.Builder
@@ -94,6 +95,7 @@ new name =
     , functionCount = 0
     , atomTable = Map.singleton name 1
     , literalTable = []
+    , lambdaTable = []
     , exportNextLabel = Nothing
     , toExport = []
     , code = mempty
@@ -114,9 +116,9 @@ toLazyByteString
   Encoding.for (overall + current + 1) functions atoms literals exports code
 
 
-append :: Bool -> [Op] -> Builder -> Builder
-append shouldExport ops old =
-  foldl (appendOp shouldExport) builder ops
+append :: Builder -> [Op] -> Builder
+append old ops =
+  foldl appendOp builder ops
 
   where
     builder =
@@ -128,8 +130,8 @@ append shouldExport ops old =
         }
 
 
-appendOp :: Bool -> Builder -> Op -> Builder
-appendOp shouldExport builder op =
+appendOp :: Builder -> Op -> Builder
+appendOp builder op =
   case op of
     Label uid ->
       builder
@@ -149,13 +151,13 @@ appendOp shouldExport builder op =
 
       instruction 1 [ Lit (uid + overallLabelCount builder) ]
 
-    FuncInfo functionName arity ->
+    FuncInfo exposed functionName arity ->
       builder
         { functionCount =
             functionCount builder + 1
 
         , exportNextLabel =
-            if shouldExport then
+            if exposed then
               Just (functionName, arity)
             else
               Nothing

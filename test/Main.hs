@@ -14,20 +14,21 @@ main =
         []
 
     -- Builder.append API
-    , Eunit.testPrivate "api"
+    , Eunit.testMany "api"
         [ "code:load_file(api),"
         , "?assert(erlang:function_exported(api, public, 0)),"
         , "?assert(not erlang:function_exported(api, private, 0))"
         ]
-        [ Beam.Label 1
-        , Beam.FuncInfo "private" 0
-        , Beam.Label 2
-        , Beam.Return
-        ]
-        [ Beam.Label 1
-        , Beam.FuncInfo "public" 0
-        , Beam.Label 2
-        , Beam.Return
+        [ [ Beam.Label 1
+          , Beam.FuncInfo False "private" 0
+          , Beam.Label 2
+          , Beam.Return
+          ]
+        , [ Beam.Label 1
+          , Beam.FuncInfo True "public" 0
+          , Beam.Label 2
+          , Beam.Return
+          ]
         ]
 
     -- From beam_asm: https://git.io/vHTBY
@@ -59,13 +60,13 @@ main =
         [ "?assertEqual(1023, call_into_identity:test())"
         ]
         [ Beam.Label 1
-        , Beam.FuncInfo "test" 0
+        , Beam.FuncInfo True "test" 0
         , Beam.Label 2
         , Beam.Move (Beam.Int 1023) (Beam.X 0)
         , Beam.CallOnly 1 4
         , Beam.Return
         , Beam.Label 3
-        , Beam.FuncInfo "identity" 1
+        , Beam.FuncInfo False "identity" 1
         , Beam.Label 4
         , Beam.Return
         ]
@@ -75,7 +76,7 @@ main =
         , "?assertEqual(no, is_nil:test(23))"
         ]
         [ Beam.Label 1
-        , Beam.FuncInfo "test" 1
+        , Beam.FuncInfo True "test" 1
         , Beam.Label 2
         , Beam.IsNil 3 (Beam.Reg (Beam.X 0))
         , Beam.Move (Beam.Atom "yes") (Beam.X 0)
@@ -91,7 +92,7 @@ main =
         , "?assertEqual(4, allocate_for_call_fun:apply2(2, 2, _add))"
         ]
         [ Beam.Label 1
-        , Beam.FuncInfo "apply2" 3
+        , Beam.FuncInfo True "apply2" 3
         , Beam.Label 2
         , Beam.Allocate 2 3
         , Beam.Move (Beam.Reg (Beam.X 2)) (Beam.Y 1)
@@ -108,7 +109,7 @@ main =
         , Beam.Deallocate 2
         , Beam.Return
         , Beam.Label 3
-        , Beam.FuncInfo "identity" 1
+        , Beam.FuncInfo False "identity" 1
         , Beam.Label 4
         , Beam.Return
         ]
@@ -118,12 +119,12 @@ main =
         , "?assertEqual(hi, get_tuple_element:second({oh, hi, there}))"
         ]
         [ Beam.Label 1
-        , Beam.FuncInfo "first" 1
+        , Beam.FuncInfo True "first" 1
         , Beam.Label 2
         , Beam.GetTupleElement (Beam.X 0) 0 (Beam.X 0)
         , Beam.Return
         , Beam.Label 3
-        , Beam.FuncInfo "second" 1
+        , Beam.FuncInfo True "second" 1
         , Beam.Label 4
         , Beam.GetTupleElement (Beam.X 0) 1 (Beam.X 0)
         , Beam.Return
@@ -133,7 +134,7 @@ main =
         [ "?assertEqual({dream, work}, set_tuple_element:make({team, work}))"
         ]
         [ Beam.Label 1
-        , Beam.FuncInfo "make" 1
+        , Beam.FuncInfo True "make" 1
         , Beam.Label 2
         , Beam.SetTupleElement (Beam.Atom "dream") (Beam.X 0) 0
         , Beam.Return
@@ -143,7 +144,7 @@ main =
         [ "?assertEqual([one, 2], put_list:test())"
         ]
         [ Beam.Label 1
-        , Beam.FuncInfo "test" 0
+        , Beam.FuncInfo True "test" 0
         , Beam.Label 2
         , Beam.PutList (Beam.Int 2) Beam.Nil (Beam.X 0)
         , Beam.PutList (Beam.Atom "one") (Beam.Reg (Beam.X 0)) (Beam.X 0)
@@ -154,7 +155,7 @@ main =
         [ "?assertEqual({one, 2}, make_a_tuple:test())"
         ]
         [ Beam.Label 1
-        , Beam.FuncInfo "test" 0
+        , Beam.FuncInfo True "test" 0
         , Beam.Label 2
         , Beam.PutTuple 2 (Beam.X 0)
         , Beam.Put (Beam.Atom "one")
@@ -166,7 +167,7 @@ main =
         [ "?assertEqual(2, get_da_list:second([1,2,3]))"
         ]
         [ Beam.Label 1
-        , Beam.FuncInfo "second" 1
+        , Beam.FuncInfo True "second" 1
         , Beam.Label 2
         , Beam.GetList (Beam.Reg (Beam.X 0)) (Beam.X 1) (Beam.X 0)
         , Beam.GetList (Beam.Reg (Beam.X 0)) (Beam.X 0) (Beam.X 1)
@@ -177,7 +178,7 @@ main =
         [ "?assertEqual(yay, jumping_around:test())"
         ]
         [ Beam.Label 1
-        , Beam.FuncInfo "test" 0
+        , Beam.FuncInfo True "test" 0
         , Beam.Label 2
         , Beam.Jump 4
         , Beam.Label 3
