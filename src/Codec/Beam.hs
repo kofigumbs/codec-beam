@@ -21,7 +21,7 @@ import qualified Codec.Beam.Encoding as Encoding
 
 data Op
   = Label Label
-  | FuncInfo BS.ByteString Label
+  | FuncInfo Bool BS.ByteString Int
   | Call Int Label
   | CallOnly Int Label
   | Allocate Int Int
@@ -32,6 +32,7 @@ data Op
   | IsEqExact Label Operand Operand
   | IsNeExact Label Operand Operand
   | IsNil Label Operand
+  | Jump Label
   | Move Operand Register
   | GetList Operand Register Register
   | GetTupleElement Register Int Register
@@ -40,6 +41,7 @@ data Op
   | PutTuple Int Register
   | Put Operand
   | CallFun Int
+  | MakeFun BS.ByteString Int Label Int
 
 
 data Operand
@@ -62,8 +64,8 @@ type Label
 
 
 encode :: BS.ByteString -> [Op] -> BS.ByteString
-encode name ops =
-  toLazyByteString $ append True ops (new name)
+encode name =
+  toLazyByteString . append (new name)
 
 
 
@@ -78,6 +80,7 @@ data Builder =
     , functionCount :: Word32
     , atomTable :: Map.Map BS.ByteString Int
     , literalTable :: [Encoding.Literal]
+    , lambdaTable :: [Encoding.Lambda]
     , exportNextLabel :: Maybe (BS.ByteString, Int)
     , toExport :: [(BS.ByteString, Int, Int)]
     , code :: Builder.Builder
@@ -93,6 +96,7 @@ new name =
     , functionCount = 0
     , atomTable = Map.singleton name 1
     , literalTable = []
+    , lambdaTable = []
     , exportNextLabel = Nothing
     , toExport = []
     , code = mempty
@@ -107,28 +111,25 @@ toLazyByteString
     , functionCount = functions
     , atomTable = atoms
     , literalTable = literals
+    , lambdaTable = lambdas
     , toExport = exports
     , code = code
     } =
-  Encoding.for (overall + current + 1) functions atoms literals exports code
+  Encoding.for (overall + current + 1) functions atoms literals lambdas exports code
 
 
-append :: Bool -> [Op] -> Builder -> Builder
-append shouldExport ops old =
-  foldl (appendOp shouldExport) builder ops
-
-  where
-    builder =
-      old
-        { currentLabelCount =
-            0
-        , overallLabelCount =
-            overallLabelCount old + currentLabelCount old
-        }
+append :: Builder -> [Op] -> Builder
+append builder =
+  foldl appendOp $ builder
+    { currentLabelCount =
+        0
+    , overallLabelCount =
+        overallLabelCount builder + currentLabelCount builder
+    }
 
 
-appendOp :: Bool -> Builder -> Op -> Builder
-appendOp shouldExport builder op =
+appendOp :: Builder -> Op -> Builder
+appendOp builder op =
   case op of
     Label uid ->
       builder
@@ -148,13 +149,13 @@ appendOp shouldExport builder op =
 
       instruction 1 [ Lit (uid + overallLabelCount builder) ]
 
-    FuncInfo functionName arity ->
+    FuncInfo exposed functionName arity ->
       builder
         { functionCount =
             functionCount builder + 1
 
         , exportNextLabel =
-            if shouldExport then
+            if exposed then
               Just (functionName, arity)
             else
               Nothing
@@ -192,6 +193,9 @@ appendOp shouldExport builder op =
     IsNil label term ->
       instruction 55 [ Lab label, term ] builder
 
+    Jump label ->
+      instruction 61 [ Lab label ] builder
+
     Move source destination ->
       instruction 64 [ source, Reg destination ] builder
 
@@ -215,6 +219,15 @@ appendOp shouldExport builder op =
 
     CallFun arity ->
       instruction 75 [ Lit arity ] builder
+
+    MakeFun name arity label free ->
+      builder
+        { lambdaTable =
+            Encoding.Lambda name arity label (length (lambdaTable builder)) free
+              : lambdaTable builder
+        } |>
+
+      instruction 103 [ Lit (length (lambdaTable builder)) ]
 
   where
     instruction opCode args newBuilder =

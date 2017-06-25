@@ -1,4 +1,4 @@
-module Codec.Beam.Encoding (for, Literal(..)) where
+module Codec.Beam.Encoding (for, Literal(..), Lambda(..)) where
 
 
 import Data.Binary.Put (runPut, putWord32be)
@@ -17,15 +17,30 @@ data Literal
   | SmInt Int
 
 
+data Lambda
+  = Lambda
+      { _name :: BS.ByteString
+      , _arity :: Int
+      , _label :: Int
+      , _index :: Int
+      , _free :: Int
+      }
+
+
+type Export
+  = (BS.ByteString, Int, Int)
+
+
 for
   :: Int
   -> Word32
   -> Map.Map BS.ByteString Int
   -> [Literal]
-  -> [(BS.ByteString, Int, Int)]
+  -> [Lambda]
+  -> [Export]
   -> Builder.Builder
   -> BS.ByteString
-for labelCount functionCount atomTable literalTable exportTable builder =
+for labelCount functionCount atomTable literalTable lambdaTable exportTable builder =
   let
     sections =
          "Atom" <> alignSection (atoms atomTable)
@@ -33,6 +48,7 @@ for labelCount functionCount atomTable literalTable exportTable builder =
       <> "StrT" <> alignSection (pack32 0)
       <> "LitT" <> alignSection (literals literalTable)
       <> "ImpT" <> alignSection (pack32 0)
+      <> "FunT" <> alignSection (lambdas lambdaTable atomTable)
       <> "ExpT" <> alignSection (exports exportTable atomTable)
       <> "Code" <> alignSection (code builder labelCount functionCount)
   in
@@ -74,13 +90,29 @@ code builder labelCount functionCount =
     <> Builder.toLazyByteString builder <> intCodeEnd
 
 
-exports :: [(BS.ByteString, Int, Int)] -> Map.Map BS.ByteString Int -> BS.ByteString
+lambdas :: [Lambda] -> Map.Map BS.ByteString Int -> BS.ByteString
+lambdas lambdaTable atomTable =
+  pack32 (length lambdaTable) <> mconcat (map fromLambda lambdaTable)
+
+  where
+    fromLambda (Lambda name arity label index free) =
+      mconcat
+        [ pack32 (atomTable ! name)
+        , pack32 arity
+        , pack32 label
+        , pack32 index
+        , pack32 free
+        , pack32 0 -- old unique
+        ]
+
+
+exports :: [Export] -> Map.Map BS.ByteString Int -> BS.ByteString
 exports exportTable atomTable =
   pack32 (length exportTable) <> mconcat (map fromTuple exportTable)
 
   where
-    fromTuple (name, arity, labelId) =
-      pack32 (atomTable ! name) <> pack32 arity <> pack32 labelId
+    fromTuple (name, arity, label) =
+      pack32 (atomTable ! name) <> pack32 arity <> pack32 label
 
 
 literals :: [Literal] -> BS.ByteString
