@@ -125,37 +125,38 @@ literals table =
 
   where
     encoded =
-      pack32 (length table) <> foldr (BS.append . singleton) "" table
+      pack32 (length table) <> packLiterals table
 
 
 singleton :: Literal -> BS.ByteString
 singleton lit =
   case lit of
-    Tuple contents | length contents < 256 ->
-      let
-        elements =
-          foldr (BS.append . singleton) "" contents
+    Tuple elements | length elements < 256 ->
+      withLength $ mconcat
+        [ pack8 131
+        , pack8 104
+        , pack8 (length elements)
+        , packLiterals elements
+        ]
 
-        encoded =
-          pack8 131 <> pack8 104 <> pack8 (length contents) <> elements
-      in
-        pack32 (BS.length encoded) <> encoded
-
-    Tuple contents ->
-      let
-        elements =
-          foldr (BS.append . singleton) "" contents
-
-        encoded =
-          pack8 131 <> pack8 105 <> pack32 (length contents) <> elements
-      in
-        pack32 (BS.length encoded) <> encoded
+    Tuple elements ->
+      withLength $ mconcat
+        [ pack8 131
+        , pack8 105
+        , pack32 (length elements)
+        , packLiterals elements
+        ]
 
     Integer value | value < 256 ->
       pack8 97 <> pack8 value
 
     Integer value ->
       pack8 98 <> pack32 value
+
+
+packLiterals :: [Literal] -> BS.ByteString
+packLiterals =
+  foldr (BS.append . singleton) ""
 
 
 alignSection :: BS.ByteString -> BS.ByteString
@@ -170,6 +171,11 @@ alignSection bytes =
       case mod size 4 of
         0 -> BS.empty
         r -> BS.replicate (4 - r) 0
+
+
+withLength :: BS.ByteString -> BS.ByteString
+withLength bytes =
+  pack32 (BS.length bytes) <> bytes
 
 
 pack8 :: Integral n => n -> BS.ByteString
