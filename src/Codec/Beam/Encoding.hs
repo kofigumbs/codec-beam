@@ -1,4 +1,8 @@
-module Codec.Beam.Encoding (for, Literal(..), Lambda(..)) where
+module Codec.Beam.Encoding
+  ( for
+  , Literal(..)
+  , Lambda(..)
+  ) where
 
 
 import Data.Binary.Put (runPut, putWord32be)
@@ -13,8 +17,8 @@ import qualified Codec.Compression.Zlib as Zlib
 
 
 data Literal
-  = Tuple [Literal]
-  | SmInt Int
+  = Integer Int
+  | Tuple [Literal]
 
 
 data Lambda
@@ -121,39 +125,38 @@ literals table =
 
   where
     encoded =
-      pack32 (length table) <> foldr (BS.append . singleton) "" table
+      pack32 (length table) <> packLiterals table
 
 
 singleton :: Literal -> BS.ByteString
-singleton (Tuple contents) = tuple contents
-singleton (SmInt value) = smallInt value
+singleton lit =
+  case lit of
+    Integer value | value < 256 ->
+      pack8 97 <> pack8 value
+
+    Integer value ->
+      pack8 98 <> pack32 value
+
+    Tuple elements | length elements < 256 ->
+      withLength $ mconcat
+        [ pack8 131
+        , pack8 104
+        , pack8 (length elements)
+        , packLiterals elements
+        ]
+
+    Tuple elements ->
+      withLength $ mconcat
+        [ pack8 131
+        , pack8 105
+        , pack32 (length elements)
+        , packLiterals elements
+        ]
 
 
-tuple :: [Literal] -> BS.ByteString
-tuple contents =
-  let
-    magicTag =
-      pack8 131
-
-    smTupleTag =
-      pack8 104
-
-    elements =
-      foldr (BS.append . singleton) "" contents
-
-    encoded =
-      magicTag <> smTupleTag <> pack8 (length contents) <> elements
-  in
-    pack32 (BS.length encoded) <> encoded
-
-
-smallInt :: Int -> BS.ByteString
-smallInt value =
-  let
-    tag =
-      pack8 97
-  in
-    tag <> pack8 value
+packLiterals :: [Literal] -> BS.ByteString
+packLiterals =
+  foldr (BS.append . singleton) ""
 
 
 alignSection :: BS.ByteString -> BS.ByteString
@@ -168,6 +171,11 @@ alignSection bytes =
       case mod size 4 of
         0 -> BS.empty
         r -> BS.replicate (4 - r) 0
+
+
+withLength :: BS.ByteString -> BS.ByteString
+withLength bytes =
+  pack32 (BS.length bytes) <> bytes
 
 
 pack8 :: Integral n => n -> BS.ByteString

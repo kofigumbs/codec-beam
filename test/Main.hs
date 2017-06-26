@@ -53,8 +53,19 @@ main =
     , Eunit.testEq "is_not_exactly_equal" Beam.IsNeExact (True, True, True, False)
 
     -- Literal table encodings
-    , Eunit.testConstant_ "empty_tuple" (Beam.ExtLiteral (Beam.Tuple [])) "{}"
-    , Eunit.testConstant_ "small_tuple" (Beam.ExtLiteral (Beam.Tuple [Beam.SmInt 1])) "{1}"
+    , Eunit.testConstant_ "empty_tuple" (Beam.Ext (Beam.Tuple [])) "{}"
+    , Eunit.testConstant_ "small_tuple" (Beam.Ext (Beam.Tuple [Beam.Integer 1])) "{1}"
+
+    , Eunit.test "large_tuple"
+        [ "?assertEqual(300, tuple_size(large_tuple:test())),"
+        , "?assertEqual(300, element(300, large_tuple:test()))"
+        ]
+        [ Beam.Label 1
+        , Beam.FuncInfo True "test" 0
+        , Beam.Label 2
+        , Beam.Move (Beam.Ext (Beam.Tuple (map Beam.Integer [1..300]))) (Beam.X 0)
+        , Beam.Return
+        ]
 
     , Eunit.test "call_into_identity"
         [ "?assertEqual(1023, call_into_identity:test())"

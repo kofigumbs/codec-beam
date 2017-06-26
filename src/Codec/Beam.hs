@@ -51,7 +51,7 @@ data Operand
   | Atom BS.ByteString
   | Reg Register
   | Lab Int
-  | ExtLiteral Encoding.Literal
+  | Ext Encoding.Literal
 
 
 data Register
@@ -259,7 +259,7 @@ appendOperand builder operand =
     Lab value ->
       tag Bytes.internal 5 (value + overallLabelCount builder)
 
-    ExtLiteral literal ->
+    Ext literal ->
       tag Bytes.external 12 |> withLiteral literal
 
 
