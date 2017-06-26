@@ -1,4 +1,8 @@
-module Codec.Beam.Encoding (for, Literal(..), Lambda(..)) where
+module Codec.Beam.Encoding
+  ( for
+  , Literal(..), Size(..)
+  , Lambda(..)
+  ) where
 
 
 import Data.Binary.Put (runPut, putWord32be)
@@ -13,8 +17,13 @@ import qualified Codec.Compression.Zlib as Zlib
 
 
 data Literal
-  = Tuple [Literal]
-  | SmInt Int
+  = Integer Size Int
+  | Tuple [Literal]
+
+
+data Size
+  = Small
+  | Large
 
 
 data Lambda
@@ -125,8 +134,13 @@ literals table =
 
 
 singleton :: Literal -> BS.ByteString
-singleton (Tuple contents) = tuple contents
-singleton (SmInt value) = smallInt value
+singleton lit =
+  case lit of
+    Tuple contents ->
+      tuple contents
+
+    Integer Small value ->
+      pack8 97 <> pack8 value
 
 
 tuple :: [Literal] -> BS.ByteString
@@ -145,15 +159,6 @@ tuple contents =
       magicTag <> smTupleTag <> pack8 (length contents) <> elements
   in
     pack32 (BS.length encoded) <> encoded
-
-
-smallInt :: Int -> BS.ByteString
-smallInt value =
-  let
-    tag =
-      pack8 97
-  in
-    tag <> pack8 value
 
 
 alignSection :: BS.ByteString -> BS.ByteString
