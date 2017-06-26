@@ -131,6 +131,12 @@ literals table =
 singleton :: Literal -> BS.ByteString
 singleton lit =
   case lit of
+    Integer value | value < 256 ->
+      pack8 97 <> pack8 value
+
+    Integer value ->
+      pack8 98 <> pack32 value
+
     Tuple elements | length elements < 256 ->
       withLength $ mconcat
         [ pack8 131
@@ -146,12 +152,6 @@ singleton lit =
         , pack32 (length elements)
         , packLiterals elements
         ]
-
-    Integer value | value < 256 ->
-      pack8 97 <> pack8 value
-
-    Integer value ->
-      pack8 98 <> pack32 value
 
 
 packLiterals :: [Literal] -> BS.ByteString
