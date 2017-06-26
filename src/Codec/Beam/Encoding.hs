@@ -1,6 +1,6 @@
 module Codec.Beam.Encoding
   ( for
-  , Literal(..), Size(..)
+  , Literal(..)
   , Lambda(..)
   ) where
 
@@ -17,13 +17,8 @@ import qualified Codec.Compression.Zlib as Zlib
 
 
 data Literal
-  = Integer Size Int
+  = Integer Int
   | Tuple [Literal]
-
-
-data Size
-  = Small
-  | Large
 
 
 data Lambda
@@ -136,29 +131,31 @@ literals table =
 singleton :: Literal -> BS.ByteString
 singleton lit =
   case lit of
-    Tuple contents ->
-      tuple contents
+    Tuple contents | length contents < 256 ->
+      let
+        elements =
+          foldr (BS.append . singleton) "" contents
 
-    Integer Small value ->
+        encoded =
+          pack8 131 <> pack8 104 <> pack8 (length contents) <> elements
+      in
+        pack32 (BS.length encoded) <> encoded
+
+    Tuple contents ->
+      let
+        elements =
+          foldr (BS.append . singleton) "" contents
+
+        encoded =
+          pack8 131 <> pack8 105 <> pack32 (length contents) <> elements
+      in
+        pack32 (BS.length encoded) <> encoded
+
+    Integer value | value < 256 ->
       pack8 97 <> pack8 value
 
-
-tuple :: [Literal] -> BS.ByteString
-tuple contents =
-  let
-    magicTag =
-      pack8 131
-
-    smTupleTag =
-      pack8 104
-
-    elements =
-      foldr (BS.append . singleton) "" contents
-
-    encoded =
-      magicTag <> smTupleTag <> pack8 (length contents) <> elements
-  in
-    pack32 (BS.length encoded) <> encoded
+    Integer value ->
+      pack8 98 <> pack32 value
 
 
 alignSection :: BS.ByteString -> BS.ByteString

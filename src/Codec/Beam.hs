@@ -1,7 +1,7 @@
 module Codec.Beam
   ( encode
   , Op(..), Operand(..), Register(..)
-  , Encoding.Literal(..), Encoding.Size(..)
+  , Encoding.Literal(..)
   , Builder, new, append, toLazyByteString
   ) where
 
