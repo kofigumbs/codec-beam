@@ -68,7 +68,7 @@ testConstant name toOperand value =
     [ "?assertEqual(" <> bshow value <> ", " <> name <> ":test())"
     ]
     [ Beam.Label 1
-    , Beam.FuncInfo True "test" 0
+    , Beam.FuncInfo Beam.Public "test" 0
     , Beam.Label 2
     , Beam.Move (toOperand value) (Beam.X 0)
     , Beam.Return
@@ -88,7 +88,7 @@ testEq name toOp (first, second, third, fourth) =
     , "?assertEqual(" <> bshow fourth <> ", " <> name <> ":check(2.0, 2.0))"
     ]
     [ Beam.Label 1
-    , Beam.FuncInfo True "check" 2
+    , Beam.FuncInfo Beam.Public "check" 2
     , Beam.Label 2
     , toOp 3 (Beam.Reg (Beam.X 0)) (Beam.Reg (Beam.X 1))
     , Beam.Move (Beam.Atom (bshow True)) (Beam.X 0)

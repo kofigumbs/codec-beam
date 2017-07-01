@@ -73,7 +73,17 @@ atoms table =
 
 code :: Builder.Builder -> Int -> Word32 -> BS.ByteString
 code builder labelCount functionCount =
-  let
+  mconcat
+    [ pack32 headerLength
+    , pack32 instructionSetId
+    , pack32 maxOpCode
+    , pack32 (fromIntegral labelCount)
+    , pack32 functionCount
+    , Builder.toLazyByteString builder
+    , pack8 intCodeEnd
+    ]
+
+  where
     headerLength =
       16
 
@@ -84,14 +94,7 @@ code builder labelCount functionCount =
       158
 
     intCodeEnd =
-      pack8 3
-  in
-       pack32 headerLength
-    <> pack32 instructionSetId
-    <> pack32 maxOpCode
-    <> pack32 (fromIntegral labelCount)
-    <> pack32 functionCount
-    <> Builder.toLazyByteString builder <> intCodeEnd
+      3
 
 
 lambdas :: [Lambda] -> Map.Map BS.ByteString Int -> BS.ByteString
@@ -106,8 +109,11 @@ lambdas lambdaTable atomTable =
         , pack32 label
         , pack32 index
         , pack32 free
-        , pack32 0 -- old unique
+        , pack32 oldUnique
         ]
+
+    oldUnique =
+      0
 
 
 exports :: [Export] -> Map.Map BS.ByteString Int -> BS.ByteString

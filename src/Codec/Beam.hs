@@ -1,6 +1,6 @@
 module Codec.Beam
   ( encode
-  , Op(..), Operand(..), Register(..)
+  , Op(..), Operand(..), Register(..), Access(..)
   , Encoding.Literal(..)
   , Builder, new, append, toLazyByteString
   ) where
@@ -21,7 +21,7 @@ import qualified Codec.Beam.Encoding as Encoding
 
 data Op
   = Label Label
-  | FuncInfo Bool BS.ByteString Int
+  | FuncInfo Access BS.ByteString Int
   | Call Int Label
   | CallOnly Int Label
   | Allocate Int Int
@@ -57,6 +57,11 @@ data Operand
 data Register
   = X Int
   | Y Int
+
+
+data Access
+  = Public
+  | Private
 
 
 type Label
@@ -149,16 +154,21 @@ appendOp builder op =
 
       instruction 1 [ Lit (uid + overallLabelCount builder) ]
 
-    FuncInfo exposed functionName arity ->
+    FuncInfo Private functionName arity ->
+      builder
+        { functionCount =
+            functionCount builder + 1
+        } |>
+
+      instruction 2 [ moduleName builder, Atom functionName, Lit arity ]
+
+    FuncInfo Public functionName arity ->
       builder
         { functionCount =
             functionCount builder + 1
 
         , exportNextLabel =
-            if exposed then
-              Just (functionName, arity)
-            else
-              Nothing
+            Just (functionName, arity)
         } |>
 
       instruction 2 [ moduleName builder, Atom functionName, Lit arity ]
