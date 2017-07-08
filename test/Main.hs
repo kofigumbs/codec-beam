@@ -46,11 +46,31 @@ main =
     , Eunit.testConstant "module_name_atom" Beam.Atom "module_name_atom"
     , Eunit.testConstant_ "constant_nil" Beam.Nil "[]"
 
-    -- Number equality
-    , Eunit.testEq "is_equal" Beam.IsEq (False, False, True, True)
-    , Eunit.testEq "is_not_equal" Beam.IsNe (True, True, False, False)
-    , Eunit.testEq "is_exactly_equal" Beam.IsEqExact (False, False, False, True)
-    , Eunit.testEq "is_not_exactly_equal" Beam.IsNeExact (True, True, True, False)
+    -- Number comparisons
+    , Eunit.testNum "is_equal" Beam.IsEq
+        [ ("2",   "3",   False)
+        , ("2.0", "3",   False)
+        , ("2.0", "2",   True)
+        , ("2.0", "2.0", True)
+        ]
+    , Eunit.testNum "is_not_equal" Beam.IsNe
+        [ ("2",   "3",   True)
+        , ("2.0", "3",   True)
+        , ("2.0", "2",   False)
+        , ("2.0", "2.0", False)
+        ]
+    , Eunit.testNum "is_exactly_equal" Beam.IsEqExact
+        [ ("2",   "3",   False)
+        , ("2.0", "3",   False)
+        , ("2.0", "2",   False)
+        , ("2.0", "2.0", True)
+        ]
+    , Eunit.testNum "is_not_exactly_equal" Beam.IsNeExact
+        [ ("2",   "3",   True)
+        , ("2.0", "3",   True)
+        , ("2.0", "2",   True)
+        , ("2.0", "2.0", False)
+        ]
 
     -- Literal table encodings
     , Eunit.testConstant_ "empty_tuple" (Beam.Ext (Beam.Tuple [])) "{}"
