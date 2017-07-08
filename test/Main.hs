@@ -71,6 +71,18 @@ main =
         , ("2.0", "2",   True)
         , ("2.0", "2.0", False)
         ]
+    , Eunit.testNum "is_less_than" Beam.IsLt
+        [ ("5",   "6",   True)
+        , ("6",   "5",   False)
+        , ("5.0", "5",   False)
+        , ("6.0", "5.0", False)
+        ]
+    , Eunit.testNum "is_greater_than_or_equal" Beam.IsGe
+        [ ("5",   "6",   False)
+        , ("6",   "5",   True)
+        , ("5.0", "5",   True)
+        , ("5.0", "5.0", True)
+        ]
 
     -- Literal table encodings
     , Eunit.testConstant_ "empty_tuple" (Beam.Ext (Beam.Tuple [])) "{}"

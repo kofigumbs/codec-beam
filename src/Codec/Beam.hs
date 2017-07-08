@@ -27,6 +27,8 @@ data Op
   | Allocate Int Int
   | Deallocate Int
   | Return
+  | IsLt Label Operand Operand
+  | IsGe Label Operand Operand
   | IsEq Label Operand Operand
   | IsNe Label Operand Operand
   | IsEqExact Label Operand Operand
@@ -187,6 +189,12 @@ appendOp builder op =
 
     Return ->
       instruction 19 [] builder
+
+    IsLt label term1 term2 ->
+      instruction 39 [ Lab label, term1, term2 ] builder
+
+    IsGe label term1 term2 ->
+      instruction 40 [ Lab label, term1, term2 ] builder
 
     IsEq label term1 term2 ->
       instruction 41 [ Lab label, term1, term2 ] builder
