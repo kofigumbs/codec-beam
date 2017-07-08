@@ -19,6 +19,7 @@ import qualified Codec.Compression.Zlib as Zlib
 data Literal
   = Integer Int
   | Tuple [Literal]
+  | List [Literal]
 
 
 data Lambda
@@ -73,7 +74,17 @@ atoms table =
 
 code :: Builder.Builder -> Int -> Word32 -> BS.ByteString
 code builder labelCount functionCount =
-  let
+  mconcat
+    [ pack32 headerLength
+    , pack32 instructionSetId
+    , pack32 maxOpCode
+    , pack32 (fromIntegral labelCount)
+    , pack32 functionCount
+    , Builder.toLazyByteString builder
+    , pack8 intCodeEnd
+    ]
+
+  where
     headerLength =
       16
 
@@ -84,14 +95,7 @@ code builder labelCount functionCount =
       158
 
     intCodeEnd =
-      pack8 3
-  in
-       pack32 headerLength
-    <> pack32 instructionSetId
-    <> pack32 maxOpCode
-    <> pack32 (fromIntegral labelCount)
-    <> pack32 functionCount
-    <> Builder.toLazyByteString builder <> intCodeEnd
+      3
 
 
 lambdas :: [Lambda] -> Map.Map BS.ByteString Int -> BS.ByteString
@@ -106,8 +110,11 @@ lambdas lambdaTable atomTable =
         , pack32 label
         , pack32 index
         , pack32 free
-        , pack32 0 -- old unique
+        , pack32 oldUnique
         ]
+
+    oldUnique =
+      0
 
 
 exports :: [Export] -> Map.Map BS.ByteString Int -> BS.ByteString
@@ -125,7 +132,18 @@ literals table =
 
   where
     encoded =
-      pack32 (length table) <> packLiterals table
+      pack32 (length table) <> pack32 (BS.length packed) <> packed
+
+    packed =
+      formatMarker <> packLiterals table
+
+    formatMarker =
+      pack8 131
+
+
+packLiterals :: [Literal] -> BS.ByteString
+packLiterals =
+  foldr (BS.append . singleton) mempty
 
 
 singleton :: Literal -> BS.ByteString
@@ -138,25 +156,26 @@ singleton lit =
       pack8 98 <> pack32 value
 
     Tuple elements | length elements < 256 ->
-      withLength $ mconcat
-        [ pack8 131
-        , pack8 104
+      mconcat
+        [ pack8 104
         , pack8 (length elements)
         , packLiterals elements
         ]
 
     Tuple elements ->
-      withLength $ mconcat
-        [ pack8 131
-        , pack8 105
+      mconcat
+        [ pack8 105
         , pack32 (length elements)
         , packLiterals elements
         ]
 
-
-packLiterals :: [Literal] -> BS.ByteString
-packLiterals =
-  foldr (BS.append . singleton) ""
+    List elements ->
+      mconcat
+        [ pack8 108
+        , pack32 (length elements)
+        , packLiterals elements
+        , pack8 106
+        ]
 
 
 alignSection :: BS.ByteString -> BS.ByteString
@@ -171,11 +190,6 @@ alignSection bytes =
       case mod size 4 of
         0 -> BS.empty
         r -> BS.replicate (4 - r) 0
-
-
-withLength :: BS.ByteString -> BS.ByteString
-withLength bytes =
-  pack32 (BS.length bytes) <> bytes
 
 
 pack8 :: Integral n => n -> BS.ByteString

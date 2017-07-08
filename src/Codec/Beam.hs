@@ -1,6 +1,6 @@
 module Codec.Beam
   ( encode
-  , Op(..), Operand(..), Register(..)
+  , Op(..), Operand(..), Register(..), Access(..)
   , Encoding.Literal(..)
   , Builder, new, append, toLazyByteString
   ) where
@@ -21,12 +21,14 @@ import qualified Codec.Beam.Encoding as Encoding
 
 data Op
   = Label Label
-  | FuncInfo Bool BS.ByteString Int
+  | FuncInfo Access BS.ByteString Int
   | Call Int Label
   | CallOnly Int Label
   | Allocate Int Int
   | Deallocate Int
   | Return
+  | IsLt Label Operand Operand
+  | IsGe Label Operand Operand
   | IsEq Label Operand Operand
   | IsNe Label Operand Operand
   | IsEqExact Label Operand Operand
@@ -57,6 +59,11 @@ data Operand
 data Register
   = X Int
   | Y Int
+
+
+data Access
+  = Public
+  | Private
 
 
 type Label
@@ -149,16 +156,21 @@ appendOp builder op =
 
       instruction 1 [ Lit (uid + overallLabelCount builder) ]
 
-    FuncInfo exposed functionName arity ->
+    FuncInfo Private functionName arity ->
+      builder
+        { functionCount =
+            functionCount builder + 1
+        } |>
+
+      instruction 2 [ moduleName builder, Atom functionName, Lit arity ]
+
+    FuncInfo Public functionName arity ->
       builder
         { functionCount =
             functionCount builder + 1
 
         , exportNextLabel =
-            if exposed then
-              Just (functionName, arity)
-            else
-              Nothing
+            Just (functionName, arity)
         } |>
 
       instruction 2 [ moduleName builder, Atom functionName, Lit arity ]
@@ -177,6 +189,12 @@ appendOp builder op =
 
     Return ->
       instruction 19 [] builder
+
+    IsLt label term1 term2 ->
+      instruction 39 [ Lab label, term1, term2 ] builder
+
+    IsGe label term1 term2 ->
+      instruction 40 [ Lab label, term1, term2 ] builder
 
     IsEq label term1 term2 ->
       instruction 41 [ Lab label, term1, term2 ] builder

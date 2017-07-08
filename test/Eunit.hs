@@ -4,7 +4,7 @@ module Eunit
   , testMany
   , testConstant
   , testConstant_
-  , testEq
+  , testCmp
   ) where
 
 
@@ -65,30 +65,25 @@ testConstant_ name term =
 testConstant :: BShow a => BS.ByteString -> (a -> Beam.Operand) -> a -> Test
 testConstant name toOperand value =
   test name
-    [ "?assertEqual(" <> bshow value <> ", " <> name <> ":test())"
+    [ "?assertEqual(" <> bshow value <> ", " <> name <> ":check())"
     ]
     [ Beam.Label 1
-    , Beam.FuncInfo True "test" 0
+    , Beam.FuncInfo Beam.Public "check" 0
     , Beam.Label 2
     , Beam.Move (toOperand value) (Beam.X 0)
     , Beam.Return
     ]
 
 
-testEq
+testCmp
   :: BS.ByteString
   -> (Int -> Beam.Operand -> Beam.Operand -> Beam.Op)
-  -> (Bool, Bool, Bool, Bool)
+  -> [(BS.ByteString, BS.ByteString, Bool)]
   -> Test
-testEq name toOp (first, second, third, fourth) =
-  test name
-    [ "?assertEqual(" <> bshow first <> ", " <> name <> ":check(2, 3)),"
-    , "?assertEqual(" <> bshow second <> ", " <> name <> ":check(2.0, 3)),"
-    , "?assertEqual(" <> bshow third <> ", " <> name <> ":check(2.0, 2)),"
-    , "?assertEqual(" <> bshow fourth <> ", " <> name <> ":check(2.0, 2.0))"
-    ]
+testCmp name toOp info =
+  test name [body]
     [ Beam.Label 1
-    , Beam.FuncInfo True "check" 2
+    , Beam.FuncInfo Beam.Public "check" 2
     , Beam.Label 2
     , toOp 3 (Beam.Reg (Beam.X 0)) (Beam.Reg (Beam.X 1))
     , Beam.Move (Beam.Atom (bshow True)) (Beam.X 0)
@@ -97,6 +92,14 @@ testEq name toOp (first, second, third, fourth) =
     , Beam.Move (Beam.Atom (bshow False)) (Beam.X 0)
     , Beam.Return
     ]
+
+  where
+    body =
+      BS.intercalate ",\n" $ map line info
+
+    line (first, second, pass) =
+      "?assertEqual(" <> bshow pass <> ", "
+      <> name <> ":check(" <> first <> ", " <> second <> "))"
 
 
 testMany
