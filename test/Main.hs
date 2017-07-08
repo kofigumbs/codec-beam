@@ -46,38 +46,38 @@ main =
     , Eunit.testConstant "module_name_atom" Beam.Atom "module_name_atom"
     , Eunit.testConstant_ "constant_nil" Beam.Nil "[]"
 
-    -- Number comparisons
-    , Eunit.testNum "is_equal" Beam.IsEq
+    -- Comparisons
+    , Eunit.testCmp "is_equal" Beam.IsEq
         [ ("2",   "3",   False)
         , ("2.0", "3",   False)
         , ("2.0", "2",   True)
         , ("2.0", "2.0", True)
         ]
-    , Eunit.testNum "is_not_equal" Beam.IsNe
+    , Eunit.testCmp "is_not_equal" Beam.IsNe
         [ ("2",   "3",   True)
         , ("2.0", "3",   True)
         , ("2.0", "2",   False)
         , ("2.0", "2.0", False)
         ]
-    , Eunit.testNum "is_exactly_equal" Beam.IsEqExact
+    , Eunit.testCmp "is_exactly_equal" Beam.IsEqExact
         [ ("2",   "3",   False)
         , ("2.0", "3",   False)
         , ("2.0", "2",   False)
         , ("2.0", "2.0", True)
         ]
-    , Eunit.testNum "is_not_exactly_equal" Beam.IsNeExact
+    , Eunit.testCmp "is_not_exactly_equal" Beam.IsNeExact
         [ ("2",   "3",   True)
         , ("2.0", "3",   True)
         , ("2.0", "2",   True)
         , ("2.0", "2.0", False)
         ]
-    , Eunit.testNum "is_less_than" Beam.IsLt
+    , Eunit.testCmp "is_less_than" Beam.IsLt
         [ ("5",   "6",   True)
         , ("6",   "5",   False)
         , ("5.0", "5",   False)
         , ("6.0", "5.0", False)
         ]
-    , Eunit.testNum "is_greater_than_or_equal" Beam.IsGe
+    , Eunit.testCmp "is_greater_than_or_equal" Beam.IsGe
         [ ("5",   "6",   False)
         , ("6",   "5",   True)
         , ("5.0", "5",   True)
@@ -87,6 +87,8 @@ main =
     -- Literal table encodings
     , Eunit.testConstant_ "empty_tuple" (Beam.Ext (Beam.Tuple [])) "{}"
     , Eunit.testConstant_ "small_tuple" (Beam.Ext (Beam.Tuple [Beam.Integer 1])) "{1}"
+    , Eunit.testConstant_ "empty_list" (Beam.Ext (Beam.List [])) "[]"
+    , Eunit.testConstant_ "small_list" (Beam.Ext (Beam.List [Beam.Integer 4, Beam.Integer 5])) "[4, 5]"
 
     , Eunit.test "large_tuple"
         [ "?assertEqual(300, tuple_size(large_tuple:test())),"

@@ -4,7 +4,7 @@ module Eunit
   , testMany
   , testConstant
   , testConstant_
-  , testNum
+  , testCmp
   ) where
 
 
@@ -75,13 +75,13 @@ testConstant name toOperand value =
     ]
 
 
-testNum
+testCmp
   :: BS.ByteString
   -> (Int -> Beam.Operand -> Beam.Operand -> Beam.Op)
   -> [(BS.ByteString, BS.ByteString, Bool)]
   -> Test
-testNum name toOp info =
-  test name [body] $
+testCmp name toOp info =
+  test name [body]
     [ Beam.Label 1
     , Beam.FuncInfo Beam.Public "check" 2
     , Beam.Label 2

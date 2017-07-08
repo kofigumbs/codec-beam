@@ -19,6 +19,7 @@ import qualified Codec.Compression.Zlib as Zlib
 data Literal
   = Integer Int
   | Tuple [Literal]
+  | List [Literal]
 
 
 data Lambda
@@ -131,7 +132,18 @@ literals table =
 
   where
     encoded =
-      pack32 (length table) <> packLiterals table
+      pack32 (length table) <> pack32 (BS.length packed) <> packed
+
+    packed =
+      formatMarker <> packLiterals table
+
+    formatMarker =
+      pack8 131
+
+
+packLiterals :: [Literal] -> BS.ByteString
+packLiterals =
+  foldr (BS.append . singleton) mempty
 
 
 singleton :: Literal -> BS.ByteString
@@ -144,25 +156,26 @@ singleton lit =
       pack8 98 <> pack32 value
 
     Tuple elements | length elements < 256 ->
-      withLength $ mconcat
-        [ pack8 131
-        , pack8 104
+      mconcat
+        [ pack8 104
         , pack8 (length elements)
         , packLiterals elements
         ]
 
     Tuple elements ->
-      withLength $ mconcat
-        [ pack8 131
-        , pack8 105
+      mconcat
+        [ pack8 105
         , pack32 (length elements)
         , packLiterals elements
         ]
 
-
-packLiterals :: [Literal] -> BS.ByteString
-packLiterals =
-  foldr (BS.append . singleton) ""
+    List elements ->
+      mconcat
+        [ pack8 108
+        , pack32 (length elements)
+        , packLiterals elements
+        , pack8 106
+        ]
 
 
 alignSection :: BS.ByteString -> BS.ByteString
@@ -177,11 +190,6 @@ alignSection bytes =
       case mod size 4 of
         0 -> BS.empty
         r -> BS.replicate (4 - r) 0
-
-
-withLength :: BS.ByteString -> BS.ByteString
-withLength bytes =
-  pack32 (BS.length bytes) <> bytes
 
 
 pack8 :: Integral n => n -> BS.ByteString
