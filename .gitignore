@@ -2,3 +2,4 @@
 *.erl
 *.beam
 *.dump
+elm-stuff/
