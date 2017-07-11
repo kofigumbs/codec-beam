@@ -1,7 +1,7 @@
 port module Main exposing (..)
 
+import Bytes
 import Codec.Beam as Beam
-import Dict
 import Json.Decode
 
 
@@ -10,12 +10,12 @@ model =
     ()
 
 
-port done : Beam.ByteArray -> Cmd msg
+port done : List Int -> Cmd msg
 
 
 send : String -> Cmd a
 send moduleName =
-    done <| Beam.for <| Dict.singleton moduleName 1
+    done <| Bytes.toList <| Beam.encode moduleName []
 
 
 main : Program String () a
