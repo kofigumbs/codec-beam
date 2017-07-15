@@ -1,6 +1,5 @@
 module Main where
 
-
 import qualified Codec.Beam as Beam
 import qualified Eunit
 
@@ -85,10 +84,11 @@ main =
         ]
 
     -- Literal table encodings
-    , Eunit.testConstant_ "empty_tuple" (Beam.Ext (Beam.Tuple [])) "{}"
-    , Eunit.testConstant_ "small_tuple" (Beam.Ext (Beam.Tuple [Beam.Integer 1])) "{1}"
-    , Eunit.testConstant_ "empty_list" (Beam.Ext (Beam.List [])) "[]"
-    , Eunit.testConstant_ "small_list" (Beam.Ext (Beam.List [Beam.Integer 4, Beam.Integer 5])) "[4, 5]"
+    , Eunit.testConstant_ "empty_tuple" (Beam.Ext (Beam.ETuple [])) "{}"
+    , Eunit.testConstant_ "small_tuple" (Beam.Ext (Beam.ETuple [Beam.EInt 1])) "{1}"
+    , Eunit.testConstant_ "empty_list" (Beam.Ext (Beam.EList [])) "[]"
+    , Eunit.testConstant_ "small_list" (Beam.Ext (Beam.EList [Beam.EInt 4, Beam.EInt 5])) "[4, 5]"
+    , Eunit.testConstant_ "small_atom" (Beam.Ext (Beam.EAtom "hiya")) "hiya"
 
     , Eunit.test "large_tuple"
         [ "?assertEqual(300, tuple_size(large_tuple:test())),"
@@ -97,7 +97,7 @@ main =
         [ Beam.Label 1
         , Beam.FuncInfo Beam.Public "test" 0
         , Beam.Label 2
-        , Beam.Move (Beam.Ext (Beam.Tuple (map Beam.Integer [1..300]))) (Beam.X 0)
+        , Beam.Move (Beam.Ext (Beam.ETuple (map Beam.EInt [1..300]))) (Beam.X 0)
         , Beam.Return
         ]
 
