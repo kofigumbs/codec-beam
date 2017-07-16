@@ -5,7 +5,6 @@ module Codec.Beam.Encoding
   ) where
 
 
-import Data.Binary.Put (runPut, putWord32be)
 import Data.Map (Map, (!))
 import Data.Monoid ((<>))
 import Data.Word (Word8, Word32)
@@ -208,7 +207,7 @@ pack8 =
 
 pack32 :: Integral n => n -> BS.ByteString
 pack32 =
-  runPut . putWord32be . fromIntegral
+  Builder.toLazyByteString . Builder.word32BE . fromIntegral
 
 
 packDouble :: Double -> BS.ByteString
