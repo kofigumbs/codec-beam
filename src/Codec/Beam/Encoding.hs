@@ -5,7 +5,7 @@ module Codec.Beam.Encoding
   ) where
 
 
-import Data.Binary.Put (runPut, putWord32be, putDoublebe)
+import Data.Binary.Put (runPut, putWord32be)
 import Data.Map (Map, (!))
 import Data.Monoid ((<>))
 import Data.Word (Word8, Word32)
@@ -213,4 +213,4 @@ pack32 =
 
 packDouble :: Double -> BS.ByteString
 packDouble =
-  runPut . putDoublebe
+  Builder.toLazyByteString . Builder.doubleBE
