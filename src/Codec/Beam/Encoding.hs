@@ -5,7 +5,7 @@ module Codec.Beam.Encoding
   ) where
 
 
-import Data.Binary.Put (runPut, putWord16be, putWord32be)
+import Data.Binary.Put (runPut, putWord32be, putDoublebe)
 import Data.Map (Map, (!))
 import Data.Monoid ((<>))
 import Data.Word (Word8, Word32)
@@ -18,7 +18,9 @@ import qualified Codec.Compression.Zlib as Zlib
 
 data Literal
   = EInt Int
+  | EFloat Double
   | EAtom BS.ByteString
+  | EBinary BS.ByteString
   | ETuple [Literal]
   | EList [Literal]
 
@@ -143,9 +145,7 @@ literals table =
 
 
 packLiterals :: [Literal] -> BS.ByteString
-packLiterals =
-  foldr (BS.append . singleton) mempty
-
+packLiterals = foldr (BS.append . singleton) mempty
   where
     singleton lit =
       case lit of
@@ -155,8 +155,14 @@ packLiterals =
         EInt value ->
           pack8 98 <> pack32 value
 
+        EFloat value ->
+          pack8 70 <> packDouble value
+
         EAtom value ->
           pack8 119 <> pack8 (BS.length value) <> value
+
+        EBinary value ->
+          pack8 109 <> pack32 (BS.length value) <> value
 
         ETuple elements | length elements < 256 ->
           mconcat
@@ -200,11 +206,11 @@ pack8 =
   BS.singleton . fromIntegral
 
 
-pack16 :: Integral n => n -> BS.ByteString
-pack16 =
-  runPut . putWord16be . fromIntegral
-
-
 pack32 :: Integral n => n -> BS.ByteString
 pack32 =
   runPut . putWord32be . fromIntegral
+
+
+packDouble :: Double -> BS.ByteString
+packDouble =
+  runPut . putDoublebe

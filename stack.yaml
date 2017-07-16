@@ -1,6 +1,7 @@
-resolver: lts-6.30
 flags: {}
 extra-package-dbs: []
-
 packages:
 - location: '.'
+extra-deps:
+- binary-0.8.5.1
+resolver: lts-8.23

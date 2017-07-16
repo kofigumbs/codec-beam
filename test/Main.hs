@@ -84,11 +84,13 @@ main =
         ]
 
     -- Literal table encodings
+    , Eunit.testConstant_ "atom" (Beam.Ext (Beam.EAtom "hiya")) "hiya"
+    , Eunit.testConstant_ "float" (Beam.Ext (Beam.EFloat 3.1415)) "3.1415"
+    , Eunit.testConstant_ "bitstring" (Beam.Ext (Beam.EBinary "teapot")) "<<\"teapot\">>"
     , Eunit.testConstant_ "empty_tuple" (Beam.Ext (Beam.ETuple [])) "{}"
     , Eunit.testConstant_ "small_tuple" (Beam.Ext (Beam.ETuple [Beam.EInt 1])) "{1}"
     , Eunit.testConstant_ "empty_list" (Beam.Ext (Beam.EList [])) "[]"
     , Eunit.testConstant_ "small_list" (Beam.Ext (Beam.EList [Beam.EInt 4, Beam.EInt 5])) "[4, 5]"
-    , Eunit.testConstant_ "small_atom" (Beam.Ext (Beam.EAtom "hiya")) "hiya"
 
     , Eunit.test "large_tuple"
         [ "?assertEqual(300, tuple_size(large_tuple:test())),"
