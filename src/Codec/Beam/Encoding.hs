@@ -5,8 +5,7 @@ module Codec.Beam.Encoding
   ) where
 
 
-import Data.Binary.Put (runPut, putWord32be)
-import Data.Map ((!))
+import Data.Map (Map, (!))
 import Data.Monoid ((<>))
 import Data.Word (Word8, Word32)
 import qualified Data.ByteString.Builder as Builder
@@ -17,9 +16,12 @@ import qualified Codec.Compression.Zlib as Zlib
 
 
 data Literal
-  = Integer Int
-  | Tuple [Literal]
-  | List [Literal]
+  = EInt Int
+  | EFloat Double
+  | EAtom BS.ByteString
+  | EBinary BS.ByteString
+  | ETuple [Literal]
+  | EList [Literal]
 
 
 data Lambda
@@ -39,7 +41,7 @@ type Export
 for
   :: Int
   -> Word32
-  -> Map.Map BS.ByteString Int
+  -> Map BS.ByteString Int
   -> [Literal]
   -> [Lambda]
   -> [Export]
@@ -60,7 +62,7 @@ for labelCount functionCount atomTable literalTable lambdaTable exportTable buil
     "FOR1" <> pack32 (BS.length sections + 4) <> "BEAM" <> sections
 
 
-atoms :: Map.Map BS.ByteString Int -> BS.ByteString
+atoms :: Map BS.ByteString Int -> BS.ByteString
 atoms table =
   pack32 (length list) <> mconcat (map encode list)
 
@@ -98,7 +100,7 @@ code builder labelCount functionCount =
       3
 
 
-lambdas :: [Lambda] -> Map.Map BS.ByteString Int -> BS.ByteString
+lambdas :: [Lambda] -> Map BS.ByteString Int -> BS.ByteString
 lambdas lambdaTable atomTable =
   pack32 (length lambdaTable) <> mconcat (map fromLambda lambdaTable)
 
@@ -117,7 +119,7 @@ lambdas lambdaTable atomTable =
       0
 
 
-exports :: [Export] -> Map.Map BS.ByteString Int -> BS.ByteString
+exports :: [Export] -> Map BS.ByteString Int -> BS.ByteString
 exports exportTable atomTable =
   pack32 (length exportTable) <> mconcat (map fromTuple exportTable)
 
@@ -142,40 +144,46 @@ literals table =
 
 
 packLiterals :: [Literal] -> BS.ByteString
-packLiterals =
-  foldr (BS.append . singleton) mempty
+packLiterals = foldr (BS.append . singleton) mempty
+  where
+    singleton lit =
+      case lit of
+        EInt value | value < 256 ->
+          pack8 97 <> pack8 value
 
+        EInt value ->
+          pack8 98 <> pack32 value
 
-singleton :: Literal -> BS.ByteString
-singleton lit =
-  case lit of
-    Integer value | value < 256 ->
-      pack8 97 <> pack8 value
+        EFloat value ->
+          pack8 70 <> packDouble value
 
-    Integer value ->
-      pack8 98 <> pack32 value
+        EAtom value ->
+          pack8 119 <> pack8 (BS.length value) <> value
 
-    Tuple elements | length elements < 256 ->
-      mconcat
-        [ pack8 104
-        , pack8 (length elements)
-        , packLiterals elements
-        ]
+        EBinary value ->
+          pack8 109 <> pack32 (BS.length value) <> value
 
-    Tuple elements ->
-      mconcat
-        [ pack8 105
-        , pack32 (length elements)
-        , packLiterals elements
-        ]
+        ETuple elements | length elements < 256 ->
+          mconcat
+            [ pack8 104
+            , pack8 (length elements)
+            , packLiterals elements
+            ]
 
-    List elements ->
-      mconcat
-        [ pack8 108
-        , pack32 (length elements)
-        , packLiterals elements
-        , pack8 106
-        ]
+        ETuple elements ->
+          mconcat
+            [ pack8 105
+            , pack32 (length elements)
+            , packLiterals elements
+            ]
+
+        EList elements ->
+          mconcat
+            [ pack8 108
+            , pack32 (length elements)
+            , packLiterals elements
+            , pack8 106
+            ]
 
 
 alignSection :: BS.ByteString -> BS.ByteString
@@ -199,4 +207,9 @@ pack8 =
 
 pack32 :: Integral n => n -> BS.ByteString
 pack32 =
-  runPut . putWord32be . fromIntegral
+  Builder.toLazyByteString . Builder.word32BE . fromIntegral
+
+
+packDouble :: Double -> BS.ByteString
+packDouble =
+  Builder.toLazyByteString . Builder.doubleBE

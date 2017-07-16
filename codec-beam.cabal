@@ -34,7 +34,6 @@ Library
 
     Build-depends:
         base,
-        binary,
         bytestring,
         containers,
         mtl,
