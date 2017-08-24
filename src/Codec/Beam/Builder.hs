@@ -1,18 +1,33 @@
-module Codec.Beam.Encoding
-  ( for
-  , Literal(..)
-  , Lambda(..)
-  ) where
+module Codec.Beam.Builder where
 
-
-import Data.Map (Map, (!))
 import Data.Monoid ((<>))
+import Data.Map (Map, (!))
 import Data.Word (Word8, Word32)
+import qualified Codec.Compression.Zlib as Zlib
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.List as List
 import qualified Data.Map as Map
-import qualified Codec.Compression.Zlib as Zlib
+
+import qualified Codec.Beam.Bytes as Bytes
+
+
+{-| Create structurally correct BEAM code.
+ -}
+
+
+data Op
+  = Op Word8 (Builder -> ([Operand], Builder))
+
+
+data Operand
+  = Lit Int
+  | Int Int
+  | Nil
+  | Atom BS.ByteString
+  | Reg Register
+  | Lab Int
+  | Ext Literal
 
 
 data Literal
@@ -34,21 +49,168 @@ data Lambda
       }
 
 
+data Register
+  = X Int
+  | Y Int
+
+
+type Label
+  = Int
+
+
 type Export
   = (BS.ByteString, Int, Int)
 
 
-for
-  :: Int
-  -> Word32
-  -> Map BS.ByteString Int
-  -> [Literal]
-  -> [Lambda]
-  -> [Export]
-  -> Builder.Builder
-  -> BS.ByteString
-for labelCount functionCount atomTable literalTable lambdaTable exportTable builder =
-  let
+data Access
+  = Public
+  | Private
+
+
+encode :: BS.ByteString -> [Op] -> BS.ByteString
+encode name =
+  toLazyByteString . append (new name)
+
+
+
+-- Incremental encoding
+
+
+data Builder =
+  Builder
+    { _moduleName :: Operand
+    , _overallLabelCount :: Int
+    , _currentLabelCount :: Int
+    , _functionCount :: Word32
+    , _atomTable :: Map.Map BS.ByteString Int
+    , _literalTable :: [Literal]
+    , _lambdaTable :: [Lambda]
+    , _exportNextLabel :: Maybe (BS.ByteString, Int)
+    , _toExport :: [Export]
+    , _code :: Builder.Builder
+    }
+
+
+new :: BS.ByteString -> Builder
+new name =
+  Builder
+    { _moduleName = Atom name
+    , _currentLabelCount = 0
+    , _overallLabelCount = 0
+    , _functionCount = 0
+    , _atomTable = Map.singleton name 1
+    , _literalTable = []
+    , _lambdaTable = []
+    , _exportNextLabel = Nothing
+    , _toExport = []
+    , _code = mempty
+    }
+
+
+append :: Builder -> [Op] -> Builder
+append builder =
+  foldl collectOp $ builder
+    { _currentLabelCount =
+        0
+    , _overallLabelCount =
+        _overallLabelCount builder + _currentLabelCount builder
+    }
+
+  where
+    collectOp acc (Op opCode f) =
+      let (args, newBuilder) = f acc in
+      appendCode newBuilder (Builder.word8 opCode)
+        |> \b -> foldl appendOperand b args
+
+
+appendOperand :: Builder -> Operand -> Builder
+appendOperand builder operand =
+  case operand of
+    Lit value ->
+      tag Bytes.internal 0 value
+
+    Int value ->
+      tag Bytes.internal 1 value
+
+    Nil ->
+      tag Bytes.internal 2 0
+
+    Atom name ->
+      tag Bytes.internal 2 |> withAtom name
+
+    Reg (X value) ->
+      tag Bytes.internal 3 value
+
+    Reg (Y value) ->
+      tag Bytes.internal 4 value
+
+    Lab value ->
+      tag Bytes.internal 5 (value + _overallLabelCount builder)
+
+    Ext literal ->
+      tag Bytes.external 12 |> withLiteral literal
+
+
+  where
+    tag encoder value =
+      appendCode builder . Builder.lazyByteString . BS.pack . encoder value
+
+    withAtom name toBuilder =
+      case Map.lookup name (_atomTable builder) of
+        Just value ->
+          toBuilder value
+
+        Nothing ->
+          let
+            old =
+              _atomTable builder
+
+            value =
+              Map.size old + 1
+          in
+            (toBuilder value)
+              { _atomTable = Map.insert name value old
+              }
+
+    withLiteral literal toBuilder =
+      let
+        new =
+          literal : _literalTable builder
+
+        value =
+          length new
+      in
+        (toBuilder value)
+          { _literalTable = new
+          }
+
+
+appendCode :: Builder -> Builder.Builder -> Builder
+appendCode builder bytes =
+  builder { _code = _code builder <> bytes }
+
+
+
+-- Encoding
+
+
+toLazyByteString :: Builder -> BS.ByteString
+toLazyByteString
+  ( Builder
+      _
+      current
+      overall
+      functions
+      atomTable
+      literalTable
+      lambdaTable
+      _
+      exportTable
+      bytes
+  ) =
+  "FOR1" <> pack32 (BS.length sections + 4) <> "BEAM" <> sections
+
+  where
     sections =
          "Atom" <> alignSection (atoms atomTable)
       <> "LocT" <> alignSection (pack32 0)
@@ -57,9 +219,7 @@ for labelCount functionCount atomTable literalTable lambdaTable exportTable buil
       <> "ImpT" <> alignSection (pack32 0)
       <> "FunT" <> alignSection (lambdas lambdaTable atomTable)
       <> "ExpT" <> alignSection (exports exportTable atomTable)
-      <> "Code" <> alignSection (code builder labelCount functionCount)
-  in
-    "FOR1" <> pack32 (BS.length sections + 4) <> "BEAM" <> sections
+      <> "Code" <> alignSection (code bytes (overall + current + 1) functions)
 
 
 atoms :: Map BS.ByteString Int -> BS.ByteString
@@ -213,3 +373,8 @@ pack32 =
 packDouble :: Double -> BS.ByteString
 packDouble =
   Builder.toLazyByteString . Builder.doubleBE
+
+
+(|>) :: a -> (a -> b) -> b
+(|>) =
+  flip ($)
