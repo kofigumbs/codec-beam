@@ -1,7 +1,7 @@
 module Codec.Beam.Builder where
 
-import Data.Monoid ((<>))
 import Data.Map (Map, (!))
+import Data.Monoid ((<>))
 import Data.Word (Word8, Word32)
 import qualified Codec.Compression.Zlib as Zlib
 import qualified Data.ByteString.Builder as Builder
