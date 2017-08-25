@@ -9,7 +9,7 @@ const beam = {
 const app = Elm.Main.worker(beam.name);
 app.ports.done.subscribe(bytes => {
   const stream = fs.createWriteStream(beam.file);
-  const buffer = new Buffer(Uint8Array.from(bytes));
+  const buffer = new Buffer(bytes);
 
   stream.write(buffer);
 

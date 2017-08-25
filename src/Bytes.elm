@@ -69,7 +69,7 @@ pad : Int -> Int -> Bytes
 pad n size =
     case size % n of
         0 ->
-            Bytes <| []
+            Bytes []
 
         r ->
             Bytes <| List.repeat (n - r) 0
