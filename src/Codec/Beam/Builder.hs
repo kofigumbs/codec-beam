@@ -1,9 +1,9 @@
 module Codec.Beam.Builder where
 
-import qualified Data.ByteString.Builder as Builder
-import qualified Data.ByteString.Lazy as BS
-import qualified Data.Map as Map
+import Data.Map (Map)
 import Data.Word (Word8, Word32)
+import Data.ByteString.Lazy (ByteString)
+import qualified Data.ByteString.Builder as BS
 
 
 {-| Create structurally correct BEAM code.
@@ -18,7 +18,7 @@ data Operand
   = Lit Int
   | Int Int
   | Nil
-  | Atom BS.ByteString
+  | Atom ByteString
   | Reg Register
   | Label Label
   | Ext Literal
@@ -27,15 +27,15 @@ data Operand
 data Literal
   = EInt Int
   | EFloat Double
-  | EAtom BS.ByteString
-  | EBinary BS.ByteString
+  | EAtom ByteString
+  | EBinary ByteString
   | ETuple [Literal]
   | EList [Literal]
 
 
 data Lambda
   = Lambda
-      { _name :: BS.ByteString
+      { _name :: ByteString
       , _arity :: Int
       , _label :: Int
       , _index :: Int
@@ -53,7 +53,7 @@ type Label
 
 
 type Export
-  = (BS.ByteString, Int, Int)
+  = (ByteString, Int, Int)
 
 
 data Access
@@ -67,10 +67,10 @@ data Builder =
     , _overallLabelCount :: Int
     , _currentLabelCount :: Int
     , _functionCount :: Word32
-    , _atomTable :: Map.Map BS.ByteString Int
+    , _atomTable :: Map ByteString Int
     , _literalTable :: [Literal]
     , _lambdaTable :: [Lambda]
-    , _exportNextLabel :: Maybe (BS.ByteString, Int)
+    , _exportNextLabel :: Maybe (ByteString, Int)
     , _toExport :: [Export]
-    , _code :: Builder.Builder
+    , _code :: BS.Builder
     }
