@@ -1,73 +1,22 @@
 module Codec.Beam
   ( encode
-  , Op(..), Operand(..), Register(..), Access(..)
-  , Encoding.Literal(..)
+  , Op, Operand(..), Register(..), Access(..), Literal(..)
   , Builder, new, append, toLazyByteString
+  , module Codec.Beam.Genop
   ) where
 
+import Data.Map (Map, (!))
 import Data.Monoid ((<>))
 import Data.Word (Word8, Word32)
+import qualified Codec.Compression.Zlib as Zlib
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as BS
+import qualified Data.List as List
 import qualified Data.Map as Map
 
+import Codec.Beam.Builder
+import Codec.Beam.Genop
 import qualified Codec.Beam.Bytes as Bytes
-import qualified Codec.Beam.Encoding as Encoding
-
-
-{-| Create structurally correct BEAM code.
- -}
-
-
-data Op
-  = Label Label
-  | FuncInfo Access BS.ByteString Int
-  | Call Int Label
-  | CallOnly Int Label
-  | Allocate Int Int
-  | Deallocate Int
-  | Return
-  | IsLt Label Operand Operand
-  | IsGe Label Operand Operand
-  | IsEq Label Operand Operand
-  | IsNe Label Operand Operand
-  | IsEqExact Label Operand Operand
-  | IsNeExact Label Operand Operand
-  | IsNil Label Operand
-  | Jump Label
-  | Move Operand Register
-  | GetList Operand Register Register
-  | GetTupleElement Register Int Register
-  | SetTupleElement Operand Register Int
-  | PutList Operand Operand Register
-  | PutTuple Int Register
-  | Put Operand
-  | CallFun Int
-  | MakeFun BS.ByteString Int Label Int
-
-
-data Operand
-  = Lit Int
-  | Int Int
-  | Nil
-  | Atom BS.ByteString
-  | Reg Register
-  | Lab Int
-  | Ext Encoding.Literal
-
-
-data Register
-  = X Int
-  | Y Int
-
-
-data Access
-  = Public
-  | Private
-
-
-type Label
-  = Int
 
 
 encode :: BS.ByteString -> [Op] -> BS.ByteString
@@ -76,181 +25,40 @@ encode name =
 
 
 
--- Incremental encoding
-
-
-data Builder =
-  Builder
-    { moduleName :: Operand
-    , overallLabelCount :: Int
-    , currentLabelCount :: Int
-    , functionCount :: Word32
-    , atomTable :: Map.Map BS.ByteString Int
-    , literalTable :: [Encoding.Literal]
-    , lambdaTable :: [Encoding.Lambda]
-    , exportNextLabel :: Maybe (BS.ByteString, Int)
-    , toExport :: [(BS.ByteString, Int, Int)]
-    , code :: Builder.Builder
-    }
+{-| Incremental encoding
+ -}
 
 
 new :: BS.ByteString -> Builder
 new name =
   Builder
-    { moduleName = Atom name
-    , currentLabelCount = 0
-    , overallLabelCount = 0
-    , functionCount = 0
-    , atomTable = Map.singleton name 1
-    , literalTable = []
-    , lambdaTable = []
-    , exportNextLabel = Nothing
-    , toExport = []
-    , code = mempty
+    { _moduleName = Atom name
+    , _currentLabelCount = 0
+    , _overallLabelCount = 0
+    , _functionCount = 0
+    , _atomTable = Map.singleton name 1
+    , _literalTable = []
+    , _lambdaTable = []
+    , _exportNextLabel = Nothing
+    , _toExport = []
+    , _code = mempty
     }
-
-
-toLazyByteString :: Builder -> BS.ByteString
-toLazyByteString
-  Builder
-    { currentLabelCount = current
-    , overallLabelCount = overall
-    , functionCount = functions
-    , atomTable = atoms
-    , literalTable = literals
-    , lambdaTable = lambdas
-    , toExport = exports
-    , code = code
-    } =
-  Encoding.for (overall + current + 1) functions atoms literals lambdas exports code
 
 
 append :: Builder -> [Op] -> Builder
 append builder =
-  foldl appendOp $ builder
-    { currentLabelCount =
+  foldl collectOp $ builder
+    { _currentLabelCount =
         0
-    , overallLabelCount =
-        overallLabelCount builder + currentLabelCount builder
+    , _overallLabelCount =
+        _overallLabelCount builder + _currentLabelCount builder
     }
 
-
-appendOp :: Builder -> Op -> Builder
-appendOp builder op =
-  case op of
-    Label uid ->
-      builder
-        { currentLabelCount =
-            currentLabelCount builder + 1
-
-        , exportNextLabel =
-            Nothing
-
-        , toExport =
-            case exportNextLabel builder of
-              Just (f, a) ->
-                (f, a, uid + overallLabelCount builder) : toExport builder
-              Nothing ->
-                toExport builder
-        } |>
-
-      instruction 1 [ Lit (uid + overallLabelCount builder) ]
-
-    FuncInfo Private functionName arity ->
-      builder
-        { functionCount =
-            functionCount builder + 1
-        } |>
-
-      instruction 2 [ moduleName builder, Atom functionName, Lit arity ]
-
-    FuncInfo Public functionName arity ->
-      builder
-        { functionCount =
-            functionCount builder + 1
-
-        , exportNextLabel =
-            Just (functionName, arity)
-        } |>
-
-      instruction 2 [ moduleName builder, Atom functionName, Lit arity ]
-
-    Call arity label ->
-      instruction 4 [ Lit arity, Lab label ] builder
-
-    CallOnly arity label ->
-      instruction 6 [ Lit arity, Lab label ] builder
-
-    Allocate stackNeed live ->
-      instruction 12 [ Lit stackNeed, Lit live ] builder
-
-    Deallocate n ->
-      instruction 18 [ Lit n ] builder
-
-    Return ->
-      instruction 19 [] builder
-
-    IsLt label term1 term2 ->
-      instruction 39 [ Lab label, term1, term2 ] builder
-
-    IsGe label term1 term2 ->
-      instruction 40 [ Lab label, term1, term2 ] builder
-
-    IsEq label term1 term2 ->
-      instruction 41 [ Lab label, term1, term2 ] builder
-
-    IsNe label term1 term2 ->
-      instruction 42 [ Lab label, term1, term2 ] builder
-
-    IsEqExact label term1 term2 ->
-      instruction 43 [ Lab label, term1, term2 ] builder
-
-    IsNeExact label term1 term2 ->
-      instruction 44 [ Lab label, term1, term2 ] builder
-
-    IsNil label term ->
-      instruction 55 [ Lab label, term ] builder
-
-    Jump label ->
-      instruction 61 [ Lab label ] builder
-
-    Move source destination ->
-      instruction 64 [ source, Reg destination ] builder
-
-    GetList source first rest ->
-      instruction 65 [ source, Reg first, Reg rest ] builder
-
-    GetTupleElement source element destination ->
-      instruction 66 [ Reg source, Lit element, Reg destination ] builder
-
-    SetTupleElement element tuple position ->
-      instruction 67 [ element, Reg tuple, Lit position ] builder
-
-    PutList car cdr destination ->
-      instruction 69 [ car, cdr, Reg destination ] builder
-
-    PutTuple size destination ->
-      instruction 70 [ Lit size, Reg destination ] builder
-
-    Put value ->
-      instruction 71 [ value ] builder
-
-    CallFun arity ->
-      instruction 75 [ Lit arity ] builder
-
-    MakeFun name arity label free ->
-      builder
-        { lambdaTable =
-            Encoding.Lambda name arity label (length (lambdaTable builder)) free
-              : lambdaTable builder
-        } |>
-
-      instruction 103 [ Lit (length (lambdaTable builder)) ]
-
   where
-    instruction opCode args newBuilder =
+    collectOp acc (Op opCode f) =
+      let (args, newBuilder) = f acc in
       appendCode newBuilder (Builder.word8 opCode)
-        |> \b -> foldl appendOperand b args
+        |> foldl appendOperand $ args
 
 
 appendOperand :: Builder -> Operand -> Builder
@@ -274,52 +82,231 @@ appendOperand builder operand =
     Reg (Y value) ->
       tag Bytes.internal 4 value
 
-    Lab value ->
-      tag Bytes.internal 5 (value + overallLabelCount builder)
+    Label value ->
+      tag Bytes.internal 5 (value + _overallLabelCount builder)
 
     Ext literal ->
       tag Bytes.external 12 |> withLiteral literal
-
 
   where
     tag encoder value =
       appendCode builder . Builder.lazyByteString . BS.pack . encoder value
 
     withAtom name toBuilder =
-      case Map.lookup name (atomTable builder) of
+      case Map.lookup name (_atomTable builder) of
         Just value ->
           toBuilder value
 
         Nothing ->
           let
             old =
-              atomTable builder
+              _atomTable builder
 
             value =
               Map.size old + 1
           in
-            (toBuilder value)
-              { atomTable = Map.insert name value old
-              }
+            (toBuilder value) { _atomTable = Map.insert name value old }
 
     withLiteral literal toBuilder =
       let
         new =
-          literal : literalTable builder
+          literal : _literalTable builder
 
         value =
           length new
       in
-        (toBuilder value)
-          { literalTable = new
-          }
+        (toBuilder value) { _literalTable = new }
 
 
 appendCode :: Builder -> Builder.Builder -> Builder
 appendCode builder bytes =
-  builder { code = code builder <> bytes }
+  builder { _code = _code builder <> bytes }
+
+
+toLazyByteString :: Builder -> BS.ByteString
+toLazyByteString
+  ( Builder
+      _
+      current
+      overall
+      functions
+      atomTable
+      literalTable
+      lambdaTable
+      _
+      exportTable
+      bytes
+  ) =
+  "FOR1" <> pack32 (BS.length sections + 4) <> "BEAM" <> sections
+
+  where
+    sections =
+         "Atom" <> alignSection (atoms atomTable)
+      <> "LocT" <> alignSection (pack32 0)
+      <> "StrT" <> alignSection (pack32 0)
+      <> "LitT" <> alignSection (literals literalTable)
+      <> "ImpT" <> alignSection (pack32 0)
+      <> "FunT" <> alignSection (lambdas lambdaTable atomTable)
+      <> "ExpT" <> alignSection (exports exportTable atomTable)
+      <> "Code" <> alignSection (code bytes (overall + current + 1) functions)
+
+
+atoms :: Map BS.ByteString Int -> BS.ByteString
+atoms table =
+  pack32 (length list) <> mconcat (map encode list)
+
+  where
+    encode (name, _) =
+      pack8 (BS.length name) <> name
+
+    list =
+      List.sortOn snd (Map.toList table)
+
+
+code :: Builder.Builder -> Int -> Word32 -> BS.ByteString
+code builder labelCount functionCount =
+  mconcat
+    [ pack32 headerLength
+    , pack32 instructionSetId
+    , pack32 maxOpCode
+    , pack32 (fromIntegral labelCount)
+    , pack32 functionCount
+    , Builder.toLazyByteString builder
+    , pack8 intCodeEnd
+    ]
+
+  where
+    headerLength =
+      16
+
+    instructionSetId =
+      0
+
+    maxOpCode =
+      158
+
+    intCodeEnd =
+      3
+
+
+lambdas :: [Lambda] -> Map BS.ByteString Int -> BS.ByteString
+lambdas lambdaTable atomTable =
+  pack32 (length lambdaTable) <> mconcat (map fromLambda lambdaTable)
+
+  where
+    fromLambda (Lambda name arity label index free) =
+      mconcat
+        [ pack32 (atomTable ! name)
+        , pack32 arity
+        , pack32 label
+        , pack32 index
+        , pack32 free
+        , pack32 oldUnique
+        ]
+
+    oldUnique =
+      0
+
+
+exports :: [Export] -> Map BS.ByteString Int -> BS.ByteString
+exports exportTable atomTable =
+  pack32 (length exportTable) <> mconcat (map fromTuple exportTable)
+
+  where
+    fromTuple (name, arity, label) =
+      pack32 (atomTable ! name) <> pack32 arity <> pack32 label
+
+
+literals :: [Literal] -> BS.ByteString
+literals table =
+  pack32 (BS.length encoded) <> Zlib.compress encoded
+
+  where
+    encoded =
+      pack32 (length table) <> pack32 (BS.length packed) <> packed
+
+    packed =
+      formatMarker <> packLiterals table
+
+    formatMarker =
+      pack8 131
+
+
+packLiterals :: [Literal] -> BS.ByteString
+packLiterals =
+  foldr (BS.append . singleton) mempty
+
+  where
+    singleton lit =
+      case lit of
+        EInt value | value < 256 ->
+          pack8 97 <> pack8 value
+
+        EInt value ->
+          pack8 98 <> pack32 value
+
+        EFloat value ->
+          pack8 70 <> packDouble value
+
+        EAtom value ->
+          pack8 119 <> pack8 (BS.length value) <> value
+
+        EBinary value ->
+          pack8 109 <> pack32 (BS.length value) <> value
+
+        ETuple elements | length elements < 256 ->
+          mconcat
+            [ pack8 104
+            , pack8 (length elements)
+            , packLiterals elements
+            ]
+
+        ETuple elements ->
+          mconcat
+            [ pack8 105
+            , pack32 (length elements)
+            , packLiterals elements
+            ]
+
+        EList elements ->
+          mconcat
+            [ pack8 108
+            , pack32 (length elements)
+            , packLiterals elements
+            , pack8 106
+            ]
+
+
+alignSection :: BS.ByteString -> BS.ByteString
+alignSection bytes =
+  pack32 size <> bytes <> padding
+
+  where
+    size =
+      BS.length bytes
+
+    padding =
+      case mod size 4 of
+        0 -> BS.empty
+        r -> BS.replicate (4 - r) 0
+
+
+pack8 :: Integral n => n -> BS.ByteString
+pack8 =
+  BS.singleton . fromIntegral
+
+
+pack32 :: Integral n => n -> BS.ByteString
+pack32 =
+  Builder.toLazyByteString . Builder.word32BE . fromIntegral
+
+
+packDouble :: Double -> BS.ByteString
+packDouble =
+  Builder.toLazyByteString . Builder.doubleBE
 
 
 (|>) :: a -> (a -> b) -> b
-(|>) =
-  flip ($)
+{-# INLINE (|>) #-}
+a |> f =
+  f a

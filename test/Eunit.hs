@@ -67,11 +67,11 @@ testConstant name toOperand value =
   test name
     [ "?assertEqual(" <> bshow value <> ", " <> name <> ":check())"
     ]
-    [ Beam.Label 1
-    , Beam.FuncInfo Beam.Public "check" 0
-    , Beam.Label 2
-    , Beam.Move (toOperand value) (Beam.X 0)
-    , Beam.Return
+    [ Beam.label 1
+    , Beam.funcInfo Beam.Public "check" 0
+    , Beam.label 2
+    , Beam.move (toOperand value) (Beam.X 0)
+    , Beam.return
     ]
 
 
@@ -82,15 +82,15 @@ testCmp
   -> Test
 testCmp name toOp info =
   test name [body]
-    [ Beam.Label 1
-    , Beam.FuncInfo Beam.Public "check" 2
-    , Beam.Label 2
+    [ Beam.label 1
+    , Beam.funcInfo Beam.Public "check" 2
+    , Beam.label 2
     , toOp 3 (Beam.Reg (Beam.X 0)) (Beam.Reg (Beam.X 1))
-    , Beam.Move (Beam.Atom (bshow True)) (Beam.X 0)
-    , Beam.Return
-    , Beam.Label 3
-    , Beam.Move (Beam.Atom (bshow False)) (Beam.X 0)
-    , Beam.Return
+    , Beam.move (Beam.Atom (bshow True)) (Beam.X 0)
+    , Beam.return
+    , Beam.label 3
+    , Beam.move (Beam.Atom (bshow False)) (Beam.X 0)
+    , Beam.return
     ]
 
   where

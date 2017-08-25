@@ -29,8 +29,9 @@ Library
         Codec.Beam
 
     other-modules:
+        Codec.Beam.Builder
         Codec.Beam.Bytes
-        Codec.Beam.Encoding
+        Codec.Beam.Genop
 
     Build-depends:
         base,
