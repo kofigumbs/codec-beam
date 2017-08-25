@@ -2,3 +2,5 @@
 *.erl
 *.beam
 *.dump
+elm.js
+elm-stuff/
