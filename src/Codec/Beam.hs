@@ -105,9 +105,7 @@ appendOperand builder operand =
             value =
               Map.size old + 1
           in
-            (toBuilder value)
-              { _atomTable = Map.insert name value old
-              }
+            (toBuilder value) { _atomTable = Map.insert name value old }
 
     withLiteral literal toBuilder =
       let
@@ -117,9 +115,7 @@ appendOperand builder operand =
         value =
           length new
       in
-        (toBuilder value)
-          { _literalTable = new
-          }
+        (toBuilder value) { _literalTable = new }
 
 
 appendCode :: Builder -> Builder.Builder -> Builder
@@ -237,7 +233,9 @@ literals table =
 
 
 packLiterals :: [Literal] -> BS.ByteString
-packLiterals = foldr (BS.append . singleton) mempty
+packLiterals =
+  foldr (BS.append . singleton) mempty
+
   where
     singleton lit =
       case lit of
@@ -309,5 +307,6 @@ packDouble =
 
 
 (|>) :: a -> (a -> b) -> b
-(|>) =
-  flip ($)
+{-# INLINE (|>) #-}
+a |> f =
+  f a
