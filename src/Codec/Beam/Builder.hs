@@ -1,4 +1,9 @@
-module Codec.Beam.Builder where
+module Codec.Beam.Builder
+  ( Builder(..)
+  , encode, new, append, toLazyByteString
+  , Op(..), Operand(..)
+  , Literal(..), Register(..), Access(..), Lambda(..), Label
+  ) where
 
 import Data.Map (Map, (!))
 import Data.Monoid ((<>))
@@ -26,7 +31,7 @@ data Operand
   | Nil
   | Atom BS.ByteString
   | Reg Register
-  | Lab Int
+  | Label Label
   | Ext Literal
 
 
@@ -120,7 +125,7 @@ append builder =
     collectOp acc (Op opCode f) =
       let (args, newBuilder) = f acc in
       appendCode newBuilder (Builder.word8 opCode)
-        |> \b -> foldl appendOperand b args
+        |> foldl appendOperand $ args
 
 
 appendOperand :: Builder -> Operand -> Builder
@@ -144,12 +149,11 @@ appendOperand builder operand =
     Reg (Y value) ->
       tag Bytes.internal 4 value
 
-    Lab value ->
+    Label value ->
       tag Bytes.internal 5 (value + _overallLabelCount builder)
 
     Ext literal ->
       tag Bytes.external 12 |> withLiteral literal
-
 
   where
     tag encoder value =
@@ -188,10 +192,6 @@ appendOperand builder operand =
 appendCode :: Builder -> Builder.Builder -> Builder
 appendCode builder bytes =
   builder { _code = _code builder <> bytes }
-
-
-
--- Encoding
 
 
 toLazyByteString :: Builder -> BS.ByteString

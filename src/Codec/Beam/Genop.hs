@@ -5,6 +5,9 @@ import qualified Data.ByteString.Lazy as BS
 import Codec.Beam.Builder
 
 
+-- Instructions
+
+
 label :: Label -> Op
 label uid =
   Op 1 $ \builder ->
@@ -27,15 +30,7 @@ label uid =
 
 
 funcInfo :: Access -> BS.ByteString -> Int -> Op
-funcInfo Private functionName arity =
-  Op 2 $ \builder ->
-    ( [ _moduleName builder, Atom functionName, Lit arity ]
-    , builder
-        { _functionCount =
-            _functionCount builder + 1
-        }
-    )
-funcInfo Public functionName arity =
+funcInfo access functionName arity =
   Op 2 $ \builder ->
     ( [ _moduleName builder, Atom functionName, Lit arity ]
     , builder
@@ -43,19 +38,23 @@ funcInfo Public functionName arity =
             _functionCount builder + 1
 
         , _exportNextLabel =
-            Just (functionName, arity)
+            exportNextLabel access builder
         }
     )
+
+  where
+    exportNextLabel Public _ = Just (functionName, arity)
+    exportNextLabel Private builder = _exportNextLabel builder
 
 
 call :: Int -> Label -> Op
 call arity label =
-  Op 4 $ (,) [ Lit arity, Lab label ]
+  Op 4 $ (,) [ Lit arity, Label label ]
 
 
 callOnly :: Int -> Label -> Op
 callOnly arity label =
-  Op 6 $ (,) [ Lit arity, Lab label ]
+  Op 6 $ (,) [ Lit arity, Label label ]
 
 
 allocate :: Int -> Int -> Op
@@ -75,42 +74,42 @@ return =
 
 isLt :: Label -> Operand -> Operand -> Op
 isLt label term1 term2 =
-  Op 39 $ (,) [ Lab label, term1, term2 ]
+  Op 39 $ (,) [ Label label, term1, term2 ]
 
 
 isGe :: Label -> Operand -> Operand -> Op
 isGe label term1 term2 =
-  Op 40 $ (,) [ Lab label, term1, term2 ]
+  Op 40 $ (,) [ Label label, term1, term2 ]
 
 
 isEq :: Label -> Operand -> Operand -> Op
 isEq label term1 term2 =
-  Op 41 $ (,) [ Lab label, term1, term2 ]
+  Op 41 $ (,) [ Label label, term1, term2 ]
 
 
 isNe :: Label -> Operand -> Operand -> Op
 isNe label term1 term2 =
-  Op 42 $ (,) [ Lab label, term1, term2 ]
+  Op 42 $ (,) [ Label label, term1, term2 ]
 
 
 isEqExact :: Label -> Operand -> Operand -> Op
 isEqExact label term1 term2 =
-  Op 43 $ (,) [ Lab label, term1, term2 ]
+  Op 43 $ (,) [ Label label, term1, term2 ]
 
 
 isNeExact :: Label -> Operand -> Operand -> Op
 isNeExact label term1 term2 =
-  Op 44 $ (,) [ Lab label, term1, term2 ]
+  Op 44 $ (,) [ Label label, term1, term2 ]
 
 
 isNil :: Label -> Operand -> Op
 isNil label term =
-  Op 55 $ (,) [ Lab label, term ]
+  Op 55 $ (,) [ Label label, term ]
 
 
 jump :: Label -> Op
 jump label =
-  Op 61 $ (,) [ Lab label ]
+  Op 61 $ (,) [ Label label ]
 
 
 move :: Operand -> Register -> Op
