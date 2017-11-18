@@ -1,10 +1,12 @@
 module Codec.Beam
-  ( encode
-  , Op, Operand(..), Register(..), Access(..), Literal(..)
+  ( -- * Generate BEAM code
+    encode
+  , Op, Operand(..), Register(..), Access(..), Literal(..), Label
+    -- * Incremental encoding
   , Builder, new, append, toLazyByteString
-  , module Codec.Beam.Genop
   ) where
 
+import Control.Monad.State.Strict (runState)
 import Data.Map (Map, (!))
 import Data.Monoid ((<>))
 import Data.Word (Word8, Word32)
@@ -14,22 +16,24 @@ import qualified Data.ByteString.Lazy as BS
 import qualified Data.List as List
 import qualified Data.Map as Map
 
-import Codec.Beam.Builder
+import Codec.Beam.Internal
 import Codec.Beam.Genop
 import qualified Codec.Beam.Bytes as Bytes
 
 
-encode :: BS.ByteString -> [Op] -> BS.ByteString
+-- | Convenience to create code for a BEAM module all at once
+encode
+  :: BS.ByteString -- ^ module name
+  -> [Op]          -- ^ instructions
+  -> BS.ByteString -- ^ return encoded BEAM
 encode name =
   toLazyByteString . append (new name)
 
 
-
-{-| Incremental encoding
- -}
-
-
-new :: BS.ByteString -> Builder
+-- | Create a fresh 'Builder' for a BEAM module
+new
+  :: BS.ByteString -- ^ module name
+  -> Builder       -- ^ return encoding state
 new name =
   Builder
     { _moduleName = Atom name
@@ -45,7 +49,11 @@ new name =
     }
 
 
-append :: Builder -> [Op] -> Builder
+-- | Add instructions to the module being encoded
+append
+  :: Builder -- ^ encoding state
+  -> [Op]    -- ^ instructions
+  -> Builder -- ^ return new encoding state
 append builder =
   foldl collectOp $ builder
     { _currentLabelCount =
@@ -55,8 +63,8 @@ append builder =
     }
 
   where
-    collectOp acc (Op opCode f) =
-      let (args, newBuilder) = f acc in
+    collectOp acc (Op opCode state) =
+      let (args, newBuilder) = runState state acc in
       appendCode newBuilder (Builder.word8 opCode)
         |> foldl appendOperand $ args
 
@@ -65,32 +73,32 @@ appendOperand :: Builder -> Operand -> Builder
 appendOperand builder operand =
   case operand of
     Lit value ->
-      tag Bytes.internal 0 value
+      tag (Bytes.internal 0) value
 
     Int value ->
-      tag Bytes.internal 1 value
+      tag (Bytes.internal 1) value
 
     Nil ->
-      tag Bytes.internal 2 0
+      tag (Bytes.internal 2) 0
 
     Atom name ->
-      tag Bytes.internal 2 |> withAtom name
+      tag (Bytes.internal 2) |> withAtom name
 
     Reg (X value) ->
-      tag Bytes.internal 3 value
+      tag (Bytes.internal 3) value
 
     Reg (Y value) ->
-      tag Bytes.internal 4 value
+      tag (Bytes.internal 4) value
 
     Label value ->
-      tag Bytes.internal 5 (value + _overallLabelCount builder)
+      tag (Bytes.internal 5) $ value + _overallLabelCount builder
 
     Ext literal ->
-      tag Bytes.external 12 |> withLiteral literal
+      tag (Bytes.external 12) |> withLiteral literal
 
   where
-    tag encoder value =
-      appendCode builder . Builder.lazyByteString . BS.pack . encoder value
+    tag encoder =
+      appendCode builder . Builder.lazyByteString . BS.pack . encoder
 
     withAtom name toBuilder =
       case Map.lookup name (_atomTable builder) of
@@ -123,6 +131,7 @@ appendCode builder bytes =
   builder { _code = _code builder <> bytes }
 
 
+-- | Turn the module encoding state into final BEAM code
 toLazyByteString :: Builder -> BS.ByteString
 toLazyByteString
   ( Builder

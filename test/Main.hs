@@ -1,6 +1,7 @@
 module Main where
 
 import qualified Codec.Beam as Beam
+import qualified Codec.Beam.Genop as Beam
 import qualified Eunit
 
 
@@ -19,14 +20,14 @@ main =
         , "?assert(not erlang:function_exported(api, private, 0))"
         ]
         [ [ Beam.label 1
-          , Beam.funcInfo Beam.Private "private" 0
+          , Beam.func_info Beam.Private "private" 0
           , Beam.label 2
-          , Beam.return
+          , Beam.return_
           ]
         , [ Beam.label 1
-          , Beam.funcInfo Beam.Public "public" 0
+          , Beam.func_info Beam.Public "public" 0
           , Beam.label 2
-          , Beam.return
+          , Beam.return_
           ]
         ]
 
@@ -46,37 +47,37 @@ main =
     , Eunit.testConstant_ "constant_nil" Beam.Nil "[]"
 
     -- Comparisons
-    , Eunit.testCmp "is_equal" Beam.isEq
+    , Eunit.testCmp "is_equal" Beam.is_eq
         [ ("2",   "3",   False)
         , ("2.0", "3",   False)
         , ("2.0", "2",   True)
         , ("2.0", "2.0", True)
         ]
-    , Eunit.testCmp "is_not_equal" Beam.isNe
+    , Eunit.testCmp "is_not_equal" Beam.is_ne
         [ ("2",   "3",   True)
         , ("2.0", "3",   True)
         , ("2.0", "2",   False)
         , ("2.0", "2.0", False)
         ]
-    , Eunit.testCmp "is_exactly_equal" Beam.isEqExact
+    , Eunit.testCmp "is_exactly_equal" Beam.is_eq_exact
         [ ("2",   "3",   False)
         , ("2.0", "3",   False)
         , ("2.0", "2",   False)
         , ("2.0", "2.0", True)
         ]
-    , Eunit.testCmp "is_not_exactly_equal" Beam.isNeExact
+    , Eunit.testCmp "is_not_exactly_equal" Beam.is_ne_exact
         [ ("2",   "3",   True)
         , ("2.0", "3",   True)
         , ("2.0", "2",   True)
         , ("2.0", "2.0", False)
         ]
-    , Eunit.testCmp "is_less_than" Beam.isLt
+    , Eunit.testCmp "is_less_than" Beam.is_lt
         [ ("5",   "6",   True)
         , ("6",   "5",   False)
         , ("5.0", "5",   False)
         , ("6.0", "5.0", False)
         ]
-    , Eunit.testCmp "is_greater_than_or_equal" Beam.isGe
+    , Eunit.testCmp "is_greater_than_or_equal" Beam.is_ge
         [ ("5",   "6",   False)
         , ("6",   "5",   True)
         , ("5.0", "5",   True)
@@ -97,25 +98,25 @@ main =
         , "?assertEqual(300, element(300, large_tuple:test()))"
         ]
         [ Beam.label 1
-        , Beam.funcInfo Beam.Public "test" 0
+        , Beam.func_info Beam.Public "test" 0
         , Beam.label 2
         , Beam.move (Beam.Ext (Beam.ETuple (map Beam.EInt [1..300]))) (Beam.X 0)
-        , Beam.return
+        , Beam.return_
         ]
 
     , Eunit.test "call_into_identity"
         [ "?assertEqual(1023, call_into_identity:test())"
         ]
         [ Beam.label 1
-        , Beam.funcInfo Beam.Public "test" 0
+        , Beam.func_info Beam.Public "test" 0
         , Beam.label 2
         , Beam.move (Beam.Int 1023) (Beam.X 0)
-        , Beam.callOnly 1 4
-        , Beam.return
+        , Beam.call_only 1 4
+        , Beam.return_
         , Beam.label 3
-        , Beam.funcInfo Beam.Private "identity" 1
+        , Beam.func_info Beam.Private "identity" 1
         , Beam.label 4
-        , Beam.return
+        , Beam.return_
         ]
 
     , Eunit.test "is_nil"
@@ -123,14 +124,14 @@ main =
         , "?assertEqual(no, is_nil:test(23))"
         ]
         [ Beam.label 1
-        , Beam.funcInfo Beam.Public "test" 1
+        , Beam.func_info Beam.Public "test" 1
         , Beam.label 2
-        , Beam.isNil 3 (Beam.Reg (Beam.X 0))
+        , Beam.is_nil 3 (Beam.Reg (Beam.X 0))
         , Beam.move (Beam.Atom "yes") (Beam.X 0)
-        , Beam.return
+        , Beam.return_
         , Beam.label 3
         , Beam.move (Beam.Atom "no") (Beam.X 0)
-        , Beam.return
+        , Beam.return_
         ]
 
     -- Based on https://happi.github.io/theBeamBook/#x_and_y_regs_in_memory
@@ -139,7 +140,7 @@ main =
         , "?assertEqual(4, allocate_for_call_fun:apply2(2, 2, _add))"
         ]
         [ Beam.label 1
-        , Beam.funcInfo Beam.Public "apply2" 3
+        , Beam.func_info Beam.Public "apply2" 3
         , Beam.label 2
         , Beam.allocate 2 3
         , Beam.move (Beam.Reg (Beam.X 2)) (Beam.Y 1)
@@ -152,13 +153,13 @@ main =
         , Beam.move (Beam.Reg (Beam.Y 1)) (Beam.X 2)
         , Beam.move (Beam.Reg (Beam.X 0)) (Beam.X 1)
         , Beam.move (Beam.Reg (Beam.Y 0)) (Beam.X 0)
-        , Beam.callFun 2
+        , Beam.call_fun 2
         , Beam.deallocate 2
-        , Beam.return
+        , Beam.return_
         , Beam.label 3
-        , Beam.funcInfo Beam.Private "identity" 1
+        , Beam.func_info Beam.Private "identity" 1
         , Beam.label 4
-        , Beam.return
+        , Beam.return_
         ]
 
     , Eunit.test "get_tuple_element"
@@ -166,71 +167,71 @@ main =
         , "?assertEqual(hi, get_tuple_element:second({oh, hi, there}))"
         ]
         [ Beam.label 1
-        , Beam.funcInfo Beam.Public "first" 1
+        , Beam.func_info Beam.Public "first" 1
         , Beam.label 2
-        , Beam.getTupleElement (Beam.X 0) 0 (Beam.X 0)
-        , Beam.return
+        , Beam.get_tuple_element (Beam.X 0) 0 (Beam.X 0)
+        , Beam.return_
         , Beam.label 3
-        , Beam.funcInfo Beam.Public "second" 1
+        , Beam.func_info Beam.Public "second" 1
         , Beam.label 4
-        , Beam.getTupleElement (Beam.X 0) 1 (Beam.X 0)
-        , Beam.return
+        , Beam.get_tuple_element (Beam.X 0) 1 (Beam.X 0)
+        , Beam.return_
         ]
 
     , Eunit.test "set_tuple_element"
         [ "?assertEqual({dream, work}, set_tuple_element:make({team, work}))"
         ]
         [ Beam.label 1
-        , Beam.funcInfo Beam.Public "make" 1
+        , Beam.func_info Beam.Public "make" 1
         , Beam.label 2
-        , Beam.setTupleElement (Beam.Atom "dream") (Beam.X 0) 0
-        , Beam.return
+        , Beam.set_tuple_element (Beam.Atom "dream") (Beam.X 0) 0
+        , Beam.return_
         ]
 
     , Eunit.test "put_list"
         [ "?assertEqual([one, 2], put_list:test())"
         ]
         [ Beam.label 1
-        , Beam.funcInfo Beam.Public "test" 0
+        , Beam.func_info Beam.Public "test" 0
         , Beam.label 2
-        , Beam.putList (Beam.Int 2) Beam.Nil (Beam.X 0)
-        , Beam.putList (Beam.Atom "one") (Beam.Reg (Beam.X 0)) (Beam.X 0)
-        , Beam.return
+        , Beam.put_list (Beam.Int 2) Beam.Nil (Beam.X 0)
+        , Beam.put_list (Beam.Atom "one") (Beam.Reg (Beam.X 0)) (Beam.X 0)
+        , Beam.return_
         ]
 
     , Eunit.test "make_a_tuple"
         [ "?assertEqual({one, 2}, make_a_tuple:test())"
         ]
         [ Beam.label 1
-        , Beam.funcInfo Beam.Public "test" 0
+        , Beam.func_info Beam.Public "test" 0
         , Beam.label 2
-        , Beam.putTuple 2 (Beam.X 0)
+        , Beam.put_tuple 2 (Beam.X 0)
         , Beam.put (Beam.Atom "one")
         , Beam.put (Beam.Int 2)
-        , Beam.return
+        , Beam.return_
         ]
 
     , Eunit.test "get_da_list"
         [ "?assertEqual(2, get_da_list:second([1,2,3]))"
         ]
         [ Beam.label 1
-        , Beam.funcInfo Beam.Public "second" 1
+        , Beam.func_info Beam.Public "second" 1
         , Beam.label 2
-        , Beam.getList (Beam.Reg (Beam.X 0)) (Beam.X 1) (Beam.X 0)
-        , Beam.getList (Beam.Reg (Beam.X 0)) (Beam.X 0) (Beam.X 1)
-        , Beam.return
+        , Beam.get_list (Beam.Reg (Beam.X 0)) (Beam.X 1) (Beam.X 0)
+        , Beam.get_list (Beam.Reg (Beam.X 0)) (Beam.X 0) (Beam.X 1)
+        , Beam.return_
         ]
 
     , Eunit.test "jumping_around"
         [ "?assertEqual(yay, jumping_around:test())"
         ]
         [ Beam.label 1
-        , Beam.funcInfo Beam.Public "test" 0
+        , Beam.func_info Beam.Public "test" 0
         , Beam.label 2
         , Beam.jump 4
         , Beam.label 3
         , Beam.move (Beam.Atom "yay") (Beam.X 0)
-        , Beam.return
+        , Beam.return_
         , Beam.label 4
         , Beam.jump 3
         ]
@@ -239,13 +240,13 @@ main =
         [ "?assertEqual(to_capture, (simple_lambda:test(to_capture))())"
         ]
         [ Beam.label 1
-        , Beam.funcInfo Beam.Public "test" 1
+        , Beam.func_info Beam.Public "test" 1
         , Beam.label 2
-        , Beam.makeFun "lambda_function" 0 4 1
-        , Beam.return
+        , Beam.make_fun "lambda_function" 0 4 1
+        , Beam.return_
         , Beam.label 3
-        , Beam.funcInfo Beam.Private "lambda_function" 1
+        , Beam.func_info Beam.Private "lambda_function" 1
         , Beam.label 4
-        , Beam.return
+        , Beam.return_
         ]
     ]
