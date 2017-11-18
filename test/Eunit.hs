@@ -26,7 +26,7 @@ import qualified Codec.Beam as Beam
 
 erlangDir :: FilePath
 erlangDir =
-  "test" </> "eunit"
+  "test" </> ".eunit"
 
 
 erlangModuleName :: String
@@ -71,7 +71,7 @@ testConstant name toOperand value =
     , Beam.funcInfo Beam.Public "check" 0
     , Beam.label 2
     , Beam.move (toOperand value) (Beam.X 0)
-    , Beam.return
+    , Beam.return_
     ]
 
 
@@ -87,10 +87,10 @@ testCmp name toOp info =
     , Beam.label 2
     , toOp 3 (Beam.Reg (Beam.X 0)) (Beam.Reg (Beam.X 1))
     , Beam.move (Beam.Atom (bshow True)) (Beam.X 0)
-    , Beam.return
+    , Beam.return_
     , Beam.label 3
     , Beam.move (Beam.Atom (bshow False)) (Beam.X 0)
-    , Beam.return
+    , Beam.return_
     ]
 
   where

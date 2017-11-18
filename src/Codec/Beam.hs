@@ -5,6 +5,7 @@ module Codec.Beam
   , module Codec.Beam.Genop
   ) where
 
+import Control.Monad.State.Strict (runState)
 import Data.Map (Map, (!))
 import Data.Monoid ((<>))
 import Data.Word (Word8, Word32)
@@ -55,8 +56,8 @@ append builder =
     }
 
   where
-    collectOp acc (Op opCode f) =
-      let (args, newBuilder) = f acc in
+    collectOp acc (Op opCode state) =
+      let (args, newBuilder) = runState state acc in
       appendCode newBuilder (Builder.word8 opCode)
         |> foldl appendOperand $ args
 

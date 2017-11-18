@@ -1,46 +1,48 @@
 module Codec.Beam.Genop where
 
-import qualified Data.ByteString.Lazy as BS
+import Data.ByteString.Lazy (ByteString)
+import qualified Control.Monad.State.Strict as State
 
 import Codec.Beam.Builder
 
 
 -- Instructions
+-- https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab
 
 
 label :: Label -> Op
 label uid =
-  Op 1 $ \builder ->
-    ( [ Lit (uid + _overallLabelCount builder) ]
-    , builder
-        { _currentLabelCount =
-            _currentLabelCount builder + 1
+  Op 1 $ do
+    builder <- State.get
+    State.put $ builder
+      { _currentLabelCount =
+          _currentLabelCount builder + 1
 
-        , _exportNextLabel =
-            Nothing
+      , _exportNextLabel =
+          Nothing
 
-        , _toExport =
-            case _exportNextLabel builder of
-              Just (f, a) ->
-                (f, a, uid + _overallLabelCount builder) : _toExport builder
-              Nothing ->
-                _toExport builder
-        }
-    )
+      , _toExport =
+          case _exportNextLabel builder of
+            Just (f, a) ->
+              (f, a, uid + _overallLabelCount builder) : _toExport builder
+            Nothing ->
+              _toExport builder
+      }
+    return [ Lit (uid + _overallLabelCount builder) ]
 
 
-funcInfo :: Access -> BS.ByteString -> Int -> Op
+funcInfo :: Access -> ByteString -> Int -> Op
 funcInfo access functionName arity =
-  Op 2 $ \builder ->
-    ( [ _moduleName builder, Atom functionName, Lit arity ]
-    , builder
-        { _functionCount =
-            _functionCount builder + 1
+  Op 2 $ do
+    builder <- State.get
+    State.put $ builder
+      { _functionCount =
+          _functionCount builder + 1
 
-        , _exportNextLabel =
-            exportNextLabel access builder
-        }
-    )
+      , _exportNextLabel =
+          exportNextLabel access builder
+      }
+    return [ _moduleName builder, Atom functionName, Lit arity ]
 
   where
     exportNextLabel Public _ = Just (functionName, arity)
@@ -49,116 +51,116 @@ funcInfo access functionName arity =
 
 call :: Int -> Label -> Op
 call arity label =
-  Op 4 $ (,) [ Lit arity, Label label ]
+  Op 4 $ return [ Lit arity, Label label ]
 
 
 callOnly :: Int -> Label -> Op
 callOnly arity label =
-  Op 6 $ (,) [ Lit arity, Label label ]
+  Op 6 $ return [ Lit arity, Label label ]
 
 
 allocate :: Int -> Int -> Op
 allocate stackNeed live =
-  Op 12 $ (,) [ Lit stackNeed, Lit live ]
+  Op 12 $ return [ Lit stackNeed, Lit live ]
 
 
 deallocate :: Int -> Op
 deallocate n =
-  Op 18 $ (,) [ Lit n ]
+  Op 18 $ return [ Lit n ]
 
 
-return :: Op
-return =
-  Op 19 $ (,) []
+return_ :: Op
+return_ =
+  Op 19 $ return []
 
 
 isLt :: Label -> Operand -> Operand -> Op
 isLt label term1 term2 =
-  Op 39 $ (,) [ Label label, term1, term2 ]
+  Op 39 $ return [ Label label, term1, term2 ]
 
 
 isGe :: Label -> Operand -> Operand -> Op
 isGe label term1 term2 =
-  Op 40 $ (,) [ Label label, term1, term2 ]
+  Op 40 $ return [ Label label, term1, term2 ]
 
 
 isEq :: Label -> Operand -> Operand -> Op
 isEq label term1 term2 =
-  Op 41 $ (,) [ Label label, term1, term2 ]
+  Op 41 $ return [ Label label, term1, term2 ]
 
 
 isNe :: Label -> Operand -> Operand -> Op
 isNe label term1 term2 =
-  Op 42 $ (,) [ Label label, term1, term2 ]
+  Op 42 $ return [ Label label, term1, term2 ]
 
 
 isEqExact :: Label -> Operand -> Operand -> Op
 isEqExact label term1 term2 =
-  Op 43 $ (,) [ Label label, term1, term2 ]
+  Op 43 $ return [ Label label, term1, term2 ]
 
 
 isNeExact :: Label -> Operand -> Operand -> Op
 isNeExact label term1 term2 =
-  Op 44 $ (,) [ Label label, term1, term2 ]
+  Op 44 $ return [ Label label, term1, term2 ]
 
 
 isNil :: Label -> Operand -> Op
 isNil label term =
-  Op 55 $ (,) [ Label label, term ]
+  Op 55 $ return [ Label label, term ]
 
 
 jump :: Label -> Op
 jump label =
-  Op 61 $ (,) [ Label label ]
+  Op 61 $ return [ Label label ]
 
 
 move :: Operand -> Register -> Op
 move source destination =
-  Op 64 $ (,) [ source, Reg destination ]
+  Op 64 $ return [ source, Reg destination ]
 
 
 getList :: Operand -> Register -> Register -> Op
 getList source first rest =
-  Op 65 $ (,) [ source, Reg first, Reg rest ]
+  Op 65 $ return [ source, Reg first, Reg rest ]
 
 
 getTupleElement :: Register -> Int -> Register -> Op
 getTupleElement source element destination =
-  Op 66 $ (,) [ Reg source, Lit element, Reg destination ]
+  Op 66 $ return [ Reg source, Lit element, Reg destination ]
 
 
 setTupleElement :: Operand -> Register -> Int -> Op
 setTupleElement element tuple position =
-  Op 67 $ (,) [ element, Reg tuple, Lit position ]
+  Op 67 $ return [ element, Reg tuple, Lit position ]
 
 
 putList :: Operand -> Operand -> Register -> Op
 putList car cdr destination =
-  Op 69 $ (,) [ car, cdr, Reg destination ]
+  Op 69 $ return [ car, cdr, Reg destination ]
 
 
 putTuple :: Int -> Register -> Op
 putTuple size destination =
-  Op 70 $ (,) [ Lit size, Reg destination ]
+  Op 70 $ return [ Lit size, Reg destination ]
 
 
 put :: Operand -> Op
 put value =
-  Op 71 $ (,) [ value ]
+  Op 71 $ return [ value ]
 
 
 callFun :: Int -> Op
 callFun arity =
-  Op 75 $ (,) [ Lit arity ]
+  Op 75 $ return [ Lit arity ]
 
 
-makeFun :: BS.ByteString -> Int -> Label -> Int -> Op
+makeFun :: ByteString -> Int -> Label -> Int -> Op
 makeFun name arity label free =
-  Op 103 $ \builder ->
-    ( [ Lit (length (_lambdaTable builder)) ]
-    , builder
-        { _lambdaTable =
-            Lambda name arity label (length (_lambdaTable builder)) free
-              : _lambdaTable builder
-        }
-    )
+  Op 103 $ do
+    builder <- State.get
+    State.put $ builder
+      { _lambdaTable =
+          Lambda name arity label (length (_lambdaTable builder)) free
+            : _lambdaTable builder
+      }
+    return [ Lit (length (_lambdaTable builder)) ]

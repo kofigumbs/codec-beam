@@ -1,5 +1,6 @@
 module Codec.Beam.Builder where
 
+import Control.Monad.State.Strict (State)
 import Data.Map (Map)
 import Data.Word (Word8, Word32)
 import Data.ByteString.Lazy (ByteString)
@@ -11,7 +12,7 @@ import qualified Data.ByteString.Builder as BS
 
 
 data Op
-  = Op Word8 (Builder -> ([Operand], Builder))
+  = Op Word8 (State Builder [Operand])
 
 
 data Operand

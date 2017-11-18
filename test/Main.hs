@@ -21,12 +21,12 @@ main =
         [ [ Beam.label 1
           , Beam.funcInfo Beam.Private "private" 0
           , Beam.label 2
-          , Beam.return
+          , Beam.return_
           ]
         , [ Beam.label 1
           , Beam.funcInfo Beam.Public "public" 0
           , Beam.label 2
-          , Beam.return
+          , Beam.return_
           ]
         ]
 
@@ -100,7 +100,7 @@ main =
         , Beam.funcInfo Beam.Public "test" 0
         , Beam.label 2
         , Beam.move (Beam.Ext (Beam.ETuple (map Beam.EInt [1..300]))) (Beam.X 0)
-        , Beam.return
+        , Beam.return_
         ]
 
     , Eunit.test "call_into_identity"
@@ -111,11 +111,11 @@ main =
         , Beam.label 2
         , Beam.move (Beam.Int 1023) (Beam.X 0)
         , Beam.callOnly 1 4
-        , Beam.return
+        , Beam.return_
         , Beam.label 3
         , Beam.funcInfo Beam.Private "identity" 1
         , Beam.label 4
-        , Beam.return
+        , Beam.return_
         ]
 
     , Eunit.test "is_nil"
@@ -127,10 +127,10 @@ main =
         , Beam.label 2
         , Beam.isNil 3 (Beam.Reg (Beam.X 0))
         , Beam.move (Beam.Atom "yes") (Beam.X 0)
-        , Beam.return
+        , Beam.return_
         , Beam.label 3
         , Beam.move (Beam.Atom "no") (Beam.X 0)
-        , Beam.return
+        , Beam.return_
         ]
 
     -- Based on https://happi.github.io/theBeamBook/#x_and_y_regs_in_memory
@@ -154,11 +154,11 @@ main =
         , Beam.move (Beam.Reg (Beam.Y 0)) (Beam.X 0)
         , Beam.callFun 2
         , Beam.deallocate 2
-        , Beam.return
+        , Beam.return_
         , Beam.label 3
         , Beam.funcInfo Beam.Private "identity" 1
         , Beam.label 4
-        , Beam.return
+        , Beam.return_
         ]
 
     , Eunit.test "get_tuple_element"
@@ -169,12 +169,12 @@ main =
         , Beam.funcInfo Beam.Public "first" 1
         , Beam.label 2
         , Beam.getTupleElement (Beam.X 0) 0 (Beam.X 0)
-        , Beam.return
+        , Beam.return_
         , Beam.label 3
         , Beam.funcInfo Beam.Public "second" 1
         , Beam.label 4
         , Beam.getTupleElement (Beam.X 0) 1 (Beam.X 0)
-        , Beam.return
+        , Beam.return_
         ]
 
     , Eunit.test "set_tuple_element"
@@ -184,7 +184,7 @@ main =
         , Beam.funcInfo Beam.Public "make" 1
         , Beam.label 2
         , Beam.setTupleElement (Beam.Atom "dream") (Beam.X 0) 0
-        , Beam.return
+        , Beam.return_
         ]
 
     , Eunit.test "put_list"
@@ -195,7 +195,7 @@ main =
         , Beam.label 2
         , Beam.putList (Beam.Int 2) Beam.Nil (Beam.X 0)
         , Beam.putList (Beam.Atom "one") (Beam.Reg (Beam.X 0)) (Beam.X 0)
-        , Beam.return
+        , Beam.return_
         ]
 
     , Eunit.test "make_a_tuple"
@@ -207,7 +207,7 @@ main =
         , Beam.putTuple 2 (Beam.X 0)
         , Beam.put (Beam.Atom "one")
         , Beam.put (Beam.Int 2)
-        , Beam.return
+        , Beam.return_
         ]
 
     , Eunit.test "get_da_list"
@@ -218,7 +218,7 @@ main =
         , Beam.label 2
         , Beam.getList (Beam.Reg (Beam.X 0)) (Beam.X 1) (Beam.X 0)
         , Beam.getList (Beam.Reg (Beam.X 0)) (Beam.X 0) (Beam.X 1)
-        , Beam.return
+        , Beam.return_
         ]
 
     , Eunit.test "jumping_around"
@@ -230,7 +230,7 @@ main =
         , Beam.jump 4
         , Beam.label 3
         , Beam.move (Beam.Atom "yay") (Beam.X 0)
-        , Beam.return
+        , Beam.return_
         , Beam.label 4
         , Beam.jump 3
         ]
@@ -242,10 +242,10 @@ main =
         , Beam.funcInfo Beam.Public "test" 1
         , Beam.label 2
         , Beam.makeFun "lambda_function" 0 4 1
-        , Beam.return
+        , Beam.return_
         , Beam.label 3
         , Beam.funcInfo Beam.Private "lambda_function" 1
         , Beam.label 4
-        , Beam.return
+        , Beam.return_
         ]
     ]
