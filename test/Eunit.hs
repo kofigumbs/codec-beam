@@ -19,6 +19,7 @@ import Prelude hiding (unlines)
 import BShow
 
 import qualified Codec.Beam as Beam
+import qualified Codec.Beam.Genop as Beam
 
 
 -- Helpers

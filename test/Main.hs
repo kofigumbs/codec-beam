@@ -1,6 +1,7 @@
 module Main where
 
 import qualified Codec.Beam as Beam
+import qualified Codec.Beam.Genop as Beam
 import qualified Eunit
 
 

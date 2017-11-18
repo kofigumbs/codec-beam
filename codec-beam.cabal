@@ -27,11 +27,11 @@ Library
 
     exposed-modules:
         Codec.Beam
+        Codec.Beam.Genop
 
     other-modules:
         Codec.Beam.Builder
         Codec.Beam.Bytes
-        Codec.Beam.Genop
 
     Build-depends:
         base,

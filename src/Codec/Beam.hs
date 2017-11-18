@@ -2,7 +2,6 @@ module Codec.Beam
   ( encode
   , Op, Operand(..), Register(..), Access(..), Literal(..)
   , Builder, new, append, toLazyByteString
-  , module Codec.Beam.Genop
   ) where
 
 import Control.Monad.State.Strict (runState)
@@ -66,32 +65,32 @@ appendOperand :: Builder -> Operand -> Builder
 appendOperand builder operand =
   case operand of
     Lit value ->
-      tag Bytes.internal 0 value
+      tag (Bytes.internal 0) value
 
     Int value ->
-      tag Bytes.internal 1 value
+      tag (Bytes.internal 1) value
 
     Nil ->
-      tag Bytes.internal 2 0
+      tag (Bytes.internal 2) 0
 
     Atom name ->
-      tag Bytes.internal 2 |> withAtom name
+      tag (Bytes.internal 2) |> withAtom name
 
     Reg (X value) ->
-      tag Bytes.internal 3 value
+      tag (Bytes.internal 3) value
 
     Reg (Y value) ->
-      tag Bytes.internal 4 value
+      tag (Bytes.internal 4) value
 
     Label value ->
-      tag Bytes.internal 5 (value + _overallLabelCount builder)
+      tag (Bytes.internal 5) $ value + _overallLabelCount builder
 
     Ext literal ->
-      tag Bytes.external 12 |> withLiteral literal
+      tag (Bytes.external 12) |> withLiteral literal
 
   where
-    tag encoder value =
-      appendCode builder . Builder.lazyByteString . BS.pack . encoder value
+    tag encoder =
+      appendCode builder . Builder.lazyByteString . BS.pack . encoder
 
     withAtom name toBuilder =
       case Map.lookup name (_atomTable builder) of
