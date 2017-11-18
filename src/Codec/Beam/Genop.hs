@@ -1,4 +1,4 @@
--- | This module represents a type-safe port of erlang's general instructions
+-- | This module represents a type-safe port of Erlang's general instructions
 --   (<https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab>).
 --   In the end state, there should only be few variations:
 --
