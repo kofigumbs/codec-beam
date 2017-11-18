@@ -1,4 +1,4 @@
-module Codec.Beam.Builder where
+module Codec.Beam.Internal where
 
 import Control.Monad.State.Strict (State)
 import Data.Map (Map)
@@ -7,10 +7,7 @@ import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Builder as BS
 
 
-{-| Create structurally correct BEAM code.
- -}
-
-
+-- | You can find implementations in "Codec.Beam.Genop"
 data Op
   = Op Word8 (State Builder [Operand])
 

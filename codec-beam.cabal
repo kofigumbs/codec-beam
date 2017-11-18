@@ -30,8 +30,8 @@ Library
         Codec.Beam.Genop
 
     other-modules:
-        Codec.Beam.Builder
         Codec.Beam.Bytes
+        Codec.Beam.Internal
 
     Build-depends:
         base,

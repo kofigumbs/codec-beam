@@ -1,6 +1,8 @@
 module Codec.Beam
-  ( encode
-  , Op, Operand(..), Register(..), Access(..), Literal(..)
+  ( -- * Generate BEAM code
+    encode
+  , Op, Operand(..), Register(..), Access(..), Literal(..), Label
+    -- * Incremental encoding
   , Builder, new, append, toLazyByteString
   ) where
 
@@ -14,22 +16,24 @@ import qualified Data.ByteString.Lazy as BS
 import qualified Data.List as List
 import qualified Data.Map as Map
 
-import Codec.Beam.Builder
+import Codec.Beam.Internal
 import Codec.Beam.Genop
 import qualified Codec.Beam.Bytes as Bytes
 
 
-encode :: BS.ByteString -> [Op] -> BS.ByteString
+-- | Convenience to create code for a BEAM module all at once
+encode
+  :: BS.ByteString -- ^ module name
+  -> [Op]          -- ^ instructions
+  -> BS.ByteString -- ^ return encoded BEAM
 encode name =
   toLazyByteString . append (new name)
 
 
-
-{-| Incremental encoding
- -}
-
-
-new :: BS.ByteString -> Builder
+-- | Create a fresh 'Builder' for a BEAM module
+new
+  :: BS.ByteString -- ^ module name
+  -> Builder       -- ^ return encoding state
 new name =
   Builder
     { _moduleName = Atom name
@@ -45,7 +49,11 @@ new name =
     }
 
 
-append :: Builder -> [Op] -> Builder
+-- | Add instructions to the module being encoded
+append
+  :: Builder -- ^ encoding state
+  -> [Op]    -- ^ instructions
+  -> Builder -- ^ return new encoding state
 append builder =
   foldl collectOp $ builder
     { _currentLabelCount =
@@ -123,6 +131,7 @@ appendCode builder bytes =
   builder { _code = _code builder <> bytes }
 
 
+-- | Turn the module encoding state into final BEAM code
 toLazyByteString :: Builder -> BS.ByteString
 toLazyByteString
   ( Builder

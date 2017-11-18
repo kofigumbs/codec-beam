@@ -1,13 +1,17 @@
+-- | This module represents a type-safe port of erlang's general instructions
+--   (<https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab>).
+--   In the end state, there should only be few variations:
+--
+--     * Prefer camel-casing to snake-casing
+--     * Some operations should not be used manually (i.e. @int_code_end@)
+--     * Prelude name clashes end with an underscore (i.e. 'return_')
+
 module Codec.Beam.Genop where
 
 import Data.ByteString.Lazy (ByteString)
 import qualified Control.Monad.State.Strict as State
 
-import Codec.Beam.Builder
-
-
--- Instructions
--- https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab
+import Codec.Beam.Internal
 
 
 label :: Label -> Op
