@@ -20,11 +20,9 @@ before_install:
 
 install:
 - stack --no-terminal --install-ghc build --only-dependencies
-- stack --no-terminal build hlint
 
 script:
 - stack --no-terminal test
-- stack --no-terminal exec hlint .
 
 notifications:
   email: false
