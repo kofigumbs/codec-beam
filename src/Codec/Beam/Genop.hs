@@ -2,7 +2,6 @@
 --   (<https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab>).
 --   In the end state, there should only be few variations:
 --
---     * Prefer camel-casing to snake-casing
 --     * Some operations should not be used manually (i.e. @int_code_end@)
 --     * Prelude name clashes end with an underscore (i.e. 'return_')
 
@@ -35,8 +34,8 @@ label uid =
     return [ Lit (uid + _overallLabelCount builder) ]
 
 
-funcInfo :: Access -> ByteString -> Int -> Op
-funcInfo access functionName arity =
+func_info :: Access -> ByteString -> Int -> Op
+func_info access functionName arity =
   Op 2 $ do
     builder <- State.get
     State.put $ builder
@@ -58,8 +57,8 @@ call arity label =
   Op 4 $ return [ Lit arity, Label label ]
 
 
-callOnly :: Int -> Label -> Op
-callOnly arity label =
+call_only :: Int -> Label -> Op
+call_only arity label =
   Op 6 $ return [ Lit arity, Label label ]
 
 
@@ -78,38 +77,38 @@ return_ =
   Op 19 $ return []
 
 
-isLt :: Label -> Operand -> Operand -> Op
-isLt label term1 term2 =
+is_lt :: Label -> Operand -> Operand -> Op
+is_lt label term1 term2 =
   Op 39 $ return [ Label label, term1, term2 ]
 
 
-isGe :: Label -> Operand -> Operand -> Op
-isGe label term1 term2 =
+is_ge :: Label -> Operand -> Operand -> Op
+is_ge label term1 term2 =
   Op 40 $ return [ Label label, term1, term2 ]
 
 
-isEq :: Label -> Operand -> Operand -> Op
-isEq label term1 term2 =
+is_eq :: Label -> Operand -> Operand -> Op
+is_eq label term1 term2 =
   Op 41 $ return [ Label label, term1, term2 ]
 
 
-isNe :: Label -> Operand -> Operand -> Op
-isNe label term1 term2 =
+is_ne :: Label -> Operand -> Operand -> Op
+is_ne label term1 term2 =
   Op 42 $ return [ Label label, term1, term2 ]
 
 
-isEqExact :: Label -> Operand -> Operand -> Op
-isEqExact label term1 term2 =
+is_eq_exact :: Label -> Operand -> Operand -> Op
+is_eq_exact label term1 term2 =
   Op 43 $ return [ Label label, term1, term2 ]
 
 
-isNeExact :: Label -> Operand -> Operand -> Op
-isNeExact label term1 term2 =
+is_ne_exact :: Label -> Operand -> Operand -> Op
+is_ne_exact label term1 term2 =
   Op 44 $ return [ Label label, term1, term2 ]
 
 
-isNil :: Label -> Operand -> Op
-isNil label term =
+is_nil :: Label -> Operand -> Op
+is_nil label term =
   Op 55 $ return [ Label label, term ]
 
 
@@ -123,28 +122,28 @@ move source destination =
   Op 64 $ return [ source, Reg destination ]
 
 
-getList :: Operand -> Register -> Register -> Op
-getList source first rest =
+get_list :: Operand -> Register -> Register -> Op
+get_list source first rest =
   Op 65 $ return [ source, Reg first, Reg rest ]
 
 
-getTupleElement :: Register -> Int -> Register -> Op
-getTupleElement source element destination =
+get_tuple_element :: Register -> Int -> Register -> Op
+get_tuple_element source element destination =
   Op 66 $ return [ Reg source, Lit element, Reg destination ]
 
 
-setTupleElement :: Operand -> Register -> Int -> Op
-setTupleElement element tuple position =
+set_tuple_element :: Operand -> Register -> Int -> Op
+set_tuple_element element tuple position =
   Op 67 $ return [ element, Reg tuple, Lit position ]
 
 
-putList :: Operand -> Operand -> Register -> Op
-putList car cdr destination =
+put_list :: Operand -> Operand -> Register -> Op
+put_list car cdr destination =
   Op 69 $ return [ car, cdr, Reg destination ]
 
 
-putTuple :: Int -> Register -> Op
-putTuple size destination =
+put_tuple :: Int -> Register -> Op
+put_tuple size destination =
   Op 70 $ return [ Lit size, Reg destination ]
 
 
@@ -153,13 +152,13 @@ put value =
   Op 71 $ return [ value ]
 
 
-callFun :: Int -> Op
-callFun arity =
+call_fun :: Int -> Op
+call_fun arity =
   Op 75 $ return [ Lit arity ]
 
 
-makeFun :: ByteString -> Int -> Label -> Int -> Op
-makeFun name arity label free =
+make_fun :: ByteString -> Int -> Label -> Int -> Op
+make_fun name arity label free =
   Op 103 $ do
     builder <- State.get
     State.put $ builder
