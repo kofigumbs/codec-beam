@@ -109,7 +109,17 @@ is_ne_exact label term1 term2 =
 
 is_nil :: Label -> Operand -> Op
 is_nil label term =
+  Op 52 $ return [ Label label, term ]
+
+
+is_list :: Label -> Operand -> Op
+is_list label term =
   Op 55 $ return [ Label label, term ]
+
+
+is_nonempty_list :: Label -> Operand -> Op
+is_nonempty_list label term =
+  Op 56 $ return [ Label label, term ]
 
 
 jump :: Label -> Op
@@ -167,3 +177,8 @@ make_fun name arity label free =
             : _lambdaTable builder
       }
     return [ Lit (length (_lambdaTable builder)) ]
+
+
+is_map :: Label -> Operand -> Op
+is_map label term =
+  Op 156 $ return [ Label label, term ]

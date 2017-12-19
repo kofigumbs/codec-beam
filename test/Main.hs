@@ -123,12 +123,62 @@ main =
 
     , Eunit.test "is_nil"
         [ "?assertEqual(yes, is_nil:test([])),"
-        , "?assertEqual(no, is_nil:test(23))"
+        , "?assertEqual(no, is_nil:test(23)),"
+        , "?assertEqual(no, is_nil:test([23]))"
         ]
         [ Beam.label 1
         , Beam.func_info Beam.Public "test" 1
         , Beam.label 2
         , Beam.is_nil 3 (Beam.Reg (Beam.X 0))
+        , Beam.move (Beam.Atom "yes") (Beam.X 0)
+        , Beam.return_
+        , Beam.label 3
+        , Beam.move (Beam.Atom "no") (Beam.X 0)
+        , Beam.return_
+        ]
+
+    , Eunit.test "is_list"
+        [ "?assertEqual(yes, is_list:test([])),"
+        , "?assertEqual(no, is_list:test(23)),"
+        , "?assertEqual(yes, is_list:test([23]))"
+        ]
+        [ Beam.label 1
+        , Beam.func_info Beam.Public "test" 1
+        , Beam.label 2
+        , Beam.is_list 3 (Beam.Reg (Beam.X 0))
+        , Beam.move (Beam.Atom "yes") (Beam.X 0)
+        , Beam.return_
+        , Beam.label 3
+        , Beam.move (Beam.Atom "no") (Beam.X 0)
+        , Beam.return_
+        ]
+
+    , Eunit.test "is_nonempty_list"
+        [ "?assertEqual(no, is_nonempty_list:test([])),"
+        , "?assertEqual(no, is_nonempty_list:test(23)),"
+        , "?assertEqual(yes, is_nonempty_list:test([23]))"
+        ]
+        [ Beam.label 1
+        , Beam.func_info Beam.Public "test" 1
+        , Beam.label 2
+        , Beam.is_nonempty_list 3 (Beam.Reg (Beam.X 0))
+        , Beam.move (Beam.Atom "yes") (Beam.X 0)
+        , Beam.return_
+        , Beam.label 3
+        , Beam.move (Beam.Atom "no") (Beam.X 0)
+        , Beam.return_
+        ]
+
+
+    , Eunit.test "is_map"
+        [ "?assertEqual(yes, is_map:test(#{})),"
+        , "?assertEqual(no, is_map:test(23)),"
+        , "?assertEqual(yes, is_map:test(#{a=>23}))"
+        ]
+        [ Beam.label 1
+        , Beam.func_info Beam.Public "test" 1
+        , Beam.label 2
+        , Beam.is_map 3 (Beam.Reg (Beam.X 0))
         , Beam.move (Beam.Atom "yes") (Beam.X 0)
         , Beam.return_
         , Beam.label 3
