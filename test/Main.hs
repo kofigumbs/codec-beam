@@ -92,6 +92,8 @@ main =
     , Eunit.testConstant_ "small_tuple" (Beam.Ext (Beam.ETuple [Beam.EInt 1])) "{1}"
     , Eunit.testConstant_ "empty_list" (Beam.Ext (Beam.EList [])) "[]"
     , Eunit.testConstant_ "small_list" (Beam.Ext (Beam.EList [Beam.EInt 4, Beam.EInt 5])) "[4, 5]"
+    , Eunit.testConstant_ "empty_map" (Beam.Ext (Beam.EMap [])) "#{}"
+    , Eunit.testConstant_ "small_map" (Beam.Ext (Beam.EMap [(Beam.EAtom "a", Beam.EInt 1), (Beam.EAtom "b", Beam.EInt 2)])) "#{a=>1,b=>2}"
 
     , Eunit.test "large_tuple"
         [ "?assertEqual(300, tuple_size(large_tuple:test())),"
