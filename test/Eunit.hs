@@ -4,7 +4,6 @@ module Eunit
   , testMany
   , testConstant
   , testConstant_
-  , testCmp
   ) where
 
 
@@ -74,33 +73,6 @@ testConstant name toOperand value =
     , Beam.move (toOperand value) (Beam.X 0)
     , Beam.return_
     ]
-
-
-testCmp
-  :: BS.ByteString
-  -> (Int -> Beam.Operand -> Beam.Operand -> Beam.Op)
-  -> [(BS.ByteString, BS.ByteString, Bool)]
-  -> Test
-testCmp name toOp info =
-  test name [body]
-    [ Beam.label 1
-    , Beam.func_info Beam.Public "check" 2
-    , Beam.label 2
-    , toOp 3 (Beam.Reg (Beam.X 0)) (Beam.Reg (Beam.X 1))
-    , Beam.move (Beam.Atom (bshow True)) (Beam.X 0)
-    , Beam.return_
-    , Beam.label 3
-    , Beam.move (Beam.Atom (bshow False)) (Beam.X 0)
-    , Beam.return_
-    ]
-
-  where
-    body =
-      BS.intercalate ",\n" $ map line info
-
-    line (first, second, pass) =
-      "?assertEqual(" <> bshow pass <> ", "
-      <> name <> ":check(" <> first <> ", " <> second <> "))"
 
 
 testMany
