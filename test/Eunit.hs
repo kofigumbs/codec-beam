@@ -12,7 +12,7 @@ import Prelude hiding (unlines)
 import qualified Codec.Beam as Beam
 
 
--- Helpers
+-- Config
 
 
 erlangDir :: FilePath
@@ -23,21 +23,6 @@ erlangDir =
 erlangModuleName :: String
 erlangModuleName =
   "codec_tests"
-
-
-unlines :: [BS.ByteString] -> BS.ByteString
-unlines =
-  BS.intercalate "\n"
-
-
-toString :: BS.ByteString -> String
-toString =
-  unpack . decodeUtf8
-
-
-fromString :: String -> BS.ByteString
-fromString =
-  encodeUtf8 . pack
 
 
 
@@ -95,3 +80,22 @@ run tests =
         , "-eval", "eunit:test(" ++ erlangModuleName ++ ", [verbose])"
         , "-run", "init", "stop"
         ]
+
+
+
+-- Helpers
+
+
+unlines :: [BS.ByteString] -> BS.ByteString
+unlines =
+  BS.intercalate "\n"
+
+
+toString :: BS.ByteString -> String
+toString =
+  unpack . decodeUtf8
+
+
+fromString :: String -> BS.ByteString
+fromString =
+  encodeUtf8 . pack
