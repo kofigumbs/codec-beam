@@ -285,6 +285,13 @@ packLiterals =
             , pack8 106
             ]
 
+        EMap pairs ->
+          mconcat
+            [ pack8 116
+            , pack32 (length pairs)
+            , mconcat $ fmap (\(x, y) -> singleton x <> singleton y) pairs
+            ]
+
 
 alignSection :: BS.ByteString -> BS.ByteString
 alignSection bytes =

@@ -1,8 +1,12 @@
 module Main where
 
+import Data.ByteString.Lazy (ByteString)
+
 import qualified Codec.Beam as Beam
 import qualified Codec.Beam.Genop as Beam
 import qualified Eunit
+
+import BShow
 
 
 main :: IO ()
@@ -32,66 +36,74 @@ main =
         ]
 
     -- From beam_asm: https://git.io/vHTBY
-    , Eunit.testConstant "number_five" Beam.Int 5
-    , Eunit.testConstant "number_one_thousand" Beam.Int 5
-    , Eunit.testConstant "number_two_thousand_forty_seven" Beam.Int 2047
-    , Eunit.testConstant "number_two_thousand_forty_eight" Beam.Int 2048
-    , Eunit.testConstant "number_negative_one" Beam.Int (-1)
-    , Eunit.testConstant "number_large_negative" Beam.Int (-4294967295)
-    , Eunit.testConstant "number_large_positive" Beam.Int 4294967295
-    , Eunit.testConstant "number_very_large_positive" Beam.Int 429496729501
+    , withConstant "number_five" Beam.Int 5
+    , withConstant "number_one_thousand" Beam.Int 5
+    , withConstant "number_two_thousand_forty_seven" Beam.Int 2047
+    , withConstant "number_two_thousand_forty_eight" Beam.Int 2048
+    , withConstant "number_negative_one" Beam.Int (-1)
+    , withConstant "number_large_negative" Beam.Int (-4294967295)
+    , withConstant "number_large_positive" Beam.Int 4294967295
+    , withConstant "number_very_large_positive" Beam.Int 429496729501
 
     -- Atom table encodings
-    , Eunit.testConstant "arbitrary_atom" Beam.Atom "hello"
-    , Eunit.testConstant "module_name_atom" Beam.Atom "module_name_atom"
-    , Eunit.testConstant_ "constant_nil" Beam.Nil "[]"
+    , withConstant "arbitrary_atom" Beam.Atom "hello"
+    , withConstant "module_name_atom" Beam.Atom "module_name_atom"
+    , withConstant_ "constant_nil" Beam.Nil "[]"
 
     -- Comparisons
-    , Eunit.testCmp "is_equal" Beam.is_eq
-        [ ("2",   "3",   False)
-        , ("2.0", "3",   False)
-        , ("2.0", "2",   True)
-        , ("2.0", "2.0", True)
+    , Eunit.test "is_equal"
+        [ "?assertNot(is_equal:test(2, 3)),"
+        , "?assertNot(is_equal:test(2.0, 3)),"
+        , "?assert(is_equal:test(2.0, 2)),"
+        , "?assert(is_equal:test(2.0, 2.0))"
         ]
-    , Eunit.testCmp "is_not_equal" Beam.is_ne
-        [ ("2",   "3",   True)
-        , ("2.0", "3",   True)
-        , ("2.0", "2",   False)
-        , ("2.0", "2.0", False)
+        $ withCmp Beam.is_eq
+    , Eunit.test "is_not_equal"
+        [ "?assert(is_not_equal:test(2, 3)),"
+        , "?assert(is_not_equal:test(2.0, 3)),"
+        , "?assertNot(is_not_equal:test(2.0, 2)),"
+        , "?assertNot(is_not_equal:test(2.0, 2.0))"
         ]
-    , Eunit.testCmp "is_exactly_equal" Beam.is_eq_exact
-        [ ("2",   "3",   False)
-        , ("2.0", "3",   False)
-        , ("2.0", "2",   False)
-        , ("2.0", "2.0", True)
+        $ withCmp Beam.is_ne
+    , Eunit.test "is_exactly_equal"
+        [ "?assertNot(is_exactly_equal:test(2, 3)),"
+        , "?assertNot(is_exactly_equal:test(2.0, 3)),"
+        , "?assertNot(is_exactly_equal:test(2.0, 2)),"
+        , "?assert(is_exactly_equal:test(2.0, 2.0))"
         ]
-    , Eunit.testCmp "is_not_exactly_equal" Beam.is_ne_exact
-        [ ("2",   "3",   True)
-        , ("2.0", "3",   True)
-        , ("2.0", "2",   True)
-        , ("2.0", "2.0", False)
+        $ withCmp Beam.is_eq_exact
+    , Eunit.test "is_not_exactly_equal"
+        [ "?assert(is_not_exactly_equal:test(2, 3)),"
+        , "?assert(is_not_exactly_equal:test(2.0, 3)),"
+        , "?assert(is_not_exactly_equal:test(2.0, 2)),"
+        , "?assertNot(is_not_exactly_equal:test(2.0, 2.0))"
         ]
-    , Eunit.testCmp "is_less_than" Beam.is_lt
-        [ ("5",   "6",   True)
-        , ("6",   "5",   False)
-        , ("5.0", "5",   False)
-        , ("6.0", "5.0", False)
+        $ withCmp Beam.is_ne_exact
+    , Eunit.test "is_less_than"
+        [ "?assert(is_less_than:test(5, 6)),"
+        , "?assertNot(is_less_than:test(6, 5)),"
+        , "?assertNot(is_less_than:test(5.0, 5)),"
+        , "?assertNot(is_less_than:test(6.0, 5.0))"
         ]
-    , Eunit.testCmp "is_greater_than_or_equal" Beam.is_ge
-        [ ("5",   "6",   False)
-        , ("6",   "5",   True)
-        , ("5.0", "5",   True)
-        , ("5.0", "5.0", True)
+        $ withCmp Beam.is_lt
+    , Eunit.test "is_greater_than_or_equal"
+        [ "?assertNot(is_greater_than_or_equal:test(5, 6)),"
+        , "?assert(is_greater_than_or_equal:test(6, 5)),"
+        , "?assert(is_greater_than_or_equal:test(5.0, 5)),"
+        , "?assert(is_greater_than_or_equal:test(6.0, 5.0))"
         ]
+        $ withCmp Beam.is_ge
 
     -- Literal table encodings
-    , Eunit.testConstant_ "atom" (Beam.Ext (Beam.EAtom "hiya")) "hiya"
-    , Eunit.testConstant_ "float" (Beam.Ext (Beam.EFloat 3.1415)) "3.1415"
-    , Eunit.testConstant_ "bitstring" (Beam.Ext (Beam.EBinary "teapot")) "<<\"teapot\">>"
-    , Eunit.testConstant_ "empty_tuple" (Beam.Ext (Beam.ETuple [])) "{}"
-    , Eunit.testConstant_ "small_tuple" (Beam.Ext (Beam.ETuple [Beam.EInt 1])) "{1}"
-    , Eunit.testConstant_ "empty_list" (Beam.Ext (Beam.EList [])) "[]"
-    , Eunit.testConstant_ "small_list" (Beam.Ext (Beam.EList [Beam.EInt 4, Beam.EInt 5])) "[4, 5]"
+    , withConstant_ "atom" (Beam.Ext (Beam.EAtom "hiya")) "hiya"
+    , withConstant_ "float" (Beam.Ext (Beam.EFloat 3.1415)) "3.1415"
+    , withConstant_ "bitstring" (Beam.Ext (Beam.EBinary "teapot")) "<<\"teapot\">>"
+    , withConstant_ "empty_tuple" (Beam.Ext (Beam.ETuple [])) "{}"
+    , withConstant_ "small_tuple" (Beam.Ext (Beam.ETuple [Beam.EInt 1])) "{1}"
+    , withConstant_ "empty_list" (Beam.Ext (Beam.EList [])) "[]"
+    , withConstant_ "small_list" (Beam.Ext (Beam.EList [Beam.EInt 4, Beam.EInt 5])) "[4, 5]"
+    , withConstant_ "empty_map" (Beam.Ext (Beam.EMap [])) "#{}"
+    , withConstant_ "small_map" (Beam.Ext (Beam.EMap [(Beam.EAtom "a", Beam.EInt 1), (Beam.EAtom "b", Beam.EInt 2)])) "#{a=>1,b=>2}"
 
     , Eunit.test "large_tuple"
         [ "?assertEqual(300, tuple_size(large_tuple:test())),"
@@ -119,20 +131,31 @@ main =
         , Beam.return_
         ]
 
+    -- Type checks
     , Eunit.test "is_nil"
-        [ "?assertEqual(yes, is_nil:test([])),"
-        , "?assertEqual(no, is_nil:test(23))"
+        [ "?assert(is_nil:test([])),"
+        , "?assertNot(is_nil:test(23)),"
+        , "?assertNot(is_nil:test([23]))"
         ]
-        [ Beam.label 1
-        , Beam.func_info Beam.Public "test" 1
-        , Beam.label 2
-        , Beam.is_nil 3 (Beam.Reg (Beam.X 0))
-        , Beam.move (Beam.Atom "yes") (Beam.X 0)
-        , Beam.return_
-        , Beam.label 3
-        , Beam.move (Beam.Atom "no") (Beam.X 0)
-        , Beam.return_
+        $ withType Beam.is_nil
+    , Eunit.test "is_list"
+        [ "?assert(is_list:test([])),"
+        , "?assertNot(is_list:test(23)),"
+        , "?assert(is_list:test([23]))"
         ]
+        $ withType Beam.is_list
+    , Eunit.test "is_nonempty_list"
+        [ "?assertNot(is_nonempty_list:test([])),"
+        , "?assertNot(is_nonempty_list:test(23)),"
+        , "?assert(is_nonempty_list:test([23]))"
+        ]
+        $ withType Beam.is_nonempty_list
+    , Eunit.test "is_map"
+        [ "?assert(is_map:test(#{})),"
+        , "?assertNot(is_map:test(23)),"
+        , "?assert(is_map:test(#{a=>23}))"
+        ]
+        $ withType Beam.is_map
 
     -- Based on https://happi.github.io/theBeamBook/#x_and_y_regs_in_memory
     , Eunit.test "allocate_for_call_fun"
@@ -250,3 +273,50 @@ main =
         , Beam.return_
         ]
     ]
+
+
+
+-- HELPERS
+-- Having these in one spot makes it easier to see the pain-points in the API.
+-- I imagine that some of these will eventually live in a utility module within src/.
+
+
+withConstant_ :: ByteString -> Beam.Operand -> ByteString -> Eunit.Test
+withConstant_ name term =
+  withConstant name (const term)
+
+
+withConstant :: BShow a => ByteString -> (a -> Beam.Operand) -> a -> Eunit.Test
+withConstant name toOperand value =
+  Eunit.test name
+    [ mconcat ["?assertEqual(", bshow value, ", ", name, ":check())"]
+    ]
+    [ Beam.label 1
+    , Beam.func_info Beam.Public "check" 0
+    , Beam.label 2
+    , Beam.move (toOperand value) (Beam.X 0)
+    , Beam.return_
+    ]
+
+withCmp :: (Beam.Label -> Beam.Operand -> Beam.Operand -> Beam.Op) -> [Beam.Op]
+withCmp toOp =
+  jumpFunction 2 $ \i -> toOp i (Beam.Reg (Beam.X 0)) (Beam.Reg (Beam.X 1))
+
+
+withType :: (Beam.Label -> Beam.Operand -> Beam.Op) -> [Beam.Op]
+withType toOp =
+  jumpFunction 1 $ \i -> toOp i (Beam.Reg (Beam.X 0))
+
+
+jumpFunction :: Int -> (Beam.Label -> Beam.Op) -> [Beam.Op]
+jumpFunction args decision =
+  [ Beam.label 1
+  , Beam.func_info Beam.Public "test" args
+  , Beam.label 2
+  , decision 3
+  , Beam.move (Beam.Atom "true") (Beam.X 0)
+  , Beam.return_
+  , Beam.label 3
+  , Beam.move (Beam.Atom "false") (Beam.X 0)
+  , Beam.return_
+  ]

@@ -29,6 +29,7 @@ data Literal
   | EBinary ByteString
   | ETuple [Literal]
   | EList [Literal]
+  | EMap [(Literal, Literal)]
 
 
 data Lambda
