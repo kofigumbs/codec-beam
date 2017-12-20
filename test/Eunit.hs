@@ -1,11 +1,4 @@
-module Eunit
-  ( run
-  , test
-  , testMany
-  , testConstant
-  , testConstant_
-  ) where
-
+module Eunit (Test, run , test , testMany) where
 
 import Data.Monoid ((<>))
 import Data.Text.Lazy (pack, unpack)
@@ -15,10 +8,8 @@ import System.Process (callProcess)
 import qualified Data.ByteString.Lazy as BS
 
 import Prelude hiding (unlines)
-import BShow
 
 import qualified Codec.Beam as Beam
-import qualified Codec.Beam.Genop as Beam
 
 
 -- Helpers
@@ -55,24 +46,6 @@ fromString =
 
 type Test =
   IO BS.ByteString
-
-
-testConstant_ :: BS.ByteString -> Beam.Operand -> BS.ByteString -> Test
-testConstant_ name term =
-  testConstant name (const term)
-
-
-testConstant :: BShow a => BS.ByteString -> (a -> Beam.Operand) -> a -> Test
-testConstant name toOperand value =
-  test name
-    [ "?assertEqual(" <> bshow value <> ", " <> name <> ":check())"
-    ]
-    [ Beam.label 1
-    , Beam.func_info Beam.Public "check" 0
-    , Beam.label 2
-    , Beam.move (toOperand value) (Beam.X 0)
-    , Beam.return_
-    ]
 
 
 testMany

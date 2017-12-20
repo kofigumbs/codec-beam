@@ -1,8 +1,12 @@
 module Main where
 
+import Data.ByteString.Lazy (ByteString)
+
 import qualified Codec.Beam as Beam
 import qualified Codec.Beam.Genop as Beam
 import qualified Eunit
+
+import BShow
 
 
 main :: IO ()
@@ -32,19 +36,19 @@ main =
         ]
 
     -- From beam_asm: https://git.io/vHTBY
-    , Eunit.testConstant "number_five" Beam.Int 5
-    , Eunit.testConstant "number_one_thousand" Beam.Int 5
-    , Eunit.testConstant "number_two_thousand_forty_seven" Beam.Int 2047
-    , Eunit.testConstant "number_two_thousand_forty_eight" Beam.Int 2048
-    , Eunit.testConstant "number_negative_one" Beam.Int (-1)
-    , Eunit.testConstant "number_large_negative" Beam.Int (-4294967295)
-    , Eunit.testConstant "number_large_positive" Beam.Int 4294967295
-    , Eunit.testConstant "number_very_large_positive" Beam.Int 429496729501
+    , withConstant "number_five" Beam.Int 5
+    , withConstant "number_one_thousand" Beam.Int 5
+    , withConstant "number_two_thousand_forty_seven" Beam.Int 2047
+    , withConstant "number_two_thousand_forty_eight" Beam.Int 2048
+    , withConstant "number_negative_one" Beam.Int (-1)
+    , withConstant "number_large_negative" Beam.Int (-4294967295)
+    , withConstant "number_large_positive" Beam.Int 4294967295
+    , withConstant "number_very_large_positive" Beam.Int 429496729501
 
     -- Atom table encodings
-    , Eunit.testConstant "arbitrary_atom" Beam.Atom "hello"
-    , Eunit.testConstant "module_name_atom" Beam.Atom "module_name_atom"
-    , Eunit.testConstant_ "constant_nil" Beam.Nil "[]"
+    , withConstant "arbitrary_atom" Beam.Atom "hello"
+    , withConstant "module_name_atom" Beam.Atom "module_name_atom"
+    , withConstant_ "constant_nil" Beam.Nil "[]"
 
     -- Comparisons
     , Eunit.test "is_equal"
@@ -91,15 +95,15 @@ main =
         $ withCmp Beam.is_ge
 
     -- Literal table encodings
-    , Eunit.testConstant_ "atom" (Beam.Ext (Beam.EAtom "hiya")) "hiya"
-    , Eunit.testConstant_ "float" (Beam.Ext (Beam.EFloat 3.1415)) "3.1415"
-    , Eunit.testConstant_ "bitstring" (Beam.Ext (Beam.EBinary "teapot")) "<<\"teapot\">>"
-    , Eunit.testConstant_ "empty_tuple" (Beam.Ext (Beam.ETuple [])) "{}"
-    , Eunit.testConstant_ "small_tuple" (Beam.Ext (Beam.ETuple [Beam.EInt 1])) "{1}"
-    , Eunit.testConstant_ "empty_list" (Beam.Ext (Beam.EList [])) "[]"
-    , Eunit.testConstant_ "small_list" (Beam.Ext (Beam.EList [Beam.EInt 4, Beam.EInt 5])) "[4, 5]"
-    , Eunit.testConstant_ "empty_map" (Beam.Ext (Beam.EMap [])) "#{}"
-    , Eunit.testConstant_ "small_map" (Beam.Ext (Beam.EMap [(Beam.EAtom "a", Beam.EInt 1), (Beam.EAtom "b", Beam.EInt 2)])) "#{a=>1,b=>2}"
+    , withConstant_ "atom" (Beam.Ext (Beam.EAtom "hiya")) "hiya"
+    , withConstant_ "float" (Beam.Ext (Beam.EFloat 3.1415)) "3.1415"
+    , withConstant_ "bitstring" (Beam.Ext (Beam.EBinary "teapot")) "<<\"teapot\">>"
+    , withConstant_ "empty_tuple" (Beam.Ext (Beam.ETuple [])) "{}"
+    , withConstant_ "small_tuple" (Beam.Ext (Beam.ETuple [Beam.EInt 1])) "{1}"
+    , withConstant_ "empty_list" (Beam.Ext (Beam.EList [])) "[]"
+    , withConstant_ "small_list" (Beam.Ext (Beam.EList [Beam.EInt 4, Beam.EInt 5])) "[4, 5]"
+    , withConstant_ "empty_map" (Beam.Ext (Beam.EMap [])) "#{}"
+    , withConstant_ "small_map" (Beam.Ext (Beam.EMap [(Beam.EAtom "a", Beam.EInt 1), (Beam.EAtom "b", Beam.EInt 2)])) "#{a=>1,b=>2}"
 
     , Eunit.test "large_tuple"
         [ "?assertEqual(300, tuple_size(large_tuple:test())),"
@@ -273,20 +277,39 @@ main =
 
 
 -- HELPERS
+-- Having these in one spot makes it easier to see the pain-points in the API.
+-- I imagine that some of these will eventually live in a utility module within src/.
 
+
+withConstant_ :: ByteString -> Beam.Operand -> ByteString -> Eunit.Test
+withConstant_ name term =
+  withConstant name (const term)
+
+
+withConstant :: BShow a => ByteString -> (a -> Beam.Operand) -> a -> Eunit.Test
+withConstant name toOperand value =
+  Eunit.test name
+    [ mconcat ["?assertEqual(", bshow value, ", ", name, ":check())"]
+    ]
+    [ Beam.label 1
+    , Beam.func_info Beam.Public "check" 0
+    , Beam.label 2
+    , Beam.move (toOperand value) (Beam.X 0)
+    , Beam.return_
+    ]
 
 withCmp :: (Beam.Label -> Beam.Operand -> Beam.Operand -> Beam.Op) -> [Beam.Op]
 withCmp toOp =
-  basicFunction 2 $ \i -> toOp i (Beam.Reg (Beam.X 0)) (Beam.Reg (Beam.X 1))
+  jumpFunction 2 $ \i -> toOp i (Beam.Reg (Beam.X 0)) (Beam.Reg (Beam.X 1))
 
 
 withType :: (Beam.Label -> Beam.Operand -> Beam.Op) -> [Beam.Op]
 withType toOp =
-  basicFunction 1 $ \i -> toOp i (Beam.Reg (Beam.X 0))
+  jumpFunction 1 $ \i -> toOp i (Beam.Reg (Beam.X 0))
 
 
-basicFunction :: Int -> (Int -> Beam.Op) -> [Beam.Op]
-basicFunction args decision =
+jumpFunction :: Int -> (Int -> Beam.Op) -> [Beam.Op]
+jumpFunction args decision =
   [ Beam.label 1
   , Beam.func_info Beam.Public "test" args
   , Beam.label 2
