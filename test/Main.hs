@@ -308,7 +308,7 @@ withType toOp =
   jumpFunction 1 $ \i -> toOp i (Beam.Reg (Beam.X 0))
 
 
-jumpFunction :: Int -> (Int -> Beam.Op) -> [Beam.Op]
+jumpFunction :: Int -> (Beam.Label -> Beam.Op) -> [Beam.Op]
 jumpFunction args decision =
   [ Beam.label 1
   , Beam.func_info Beam.Public "test" args
