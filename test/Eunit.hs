@@ -1,13 +1,9 @@
 module Eunit (Test, run , test , testMany) where
 
 import Data.Monoid ((<>))
-import Data.Text.Lazy (pack, unpack)
-import Data.Text.Lazy.Encoding (decodeUtf8, encodeUtf8)
 import System.FilePath ((</>), (<.>))
 import System.Process (callProcess)
 import qualified Data.ByteString.Lazy as BS
-
-import Prelude hiding (unlines)
 
 import qualified Codec.Beam as Beam
 
@@ -30,31 +26,27 @@ erlangModuleName =
 
 
 type Test =
-  IO BS.ByteString
+  IO String
 
 
-testMany
-  :: BS.ByteString
-  -> [BS.ByteString]
-  -> [[Beam.Op]]
-  -> Test
+testMany :: String -> [String] -> [[Beam.Op]] -> Test
 testMany name body =
   test_ name body . Beam.toLazyByteString . foldl Beam.append (Beam.new name)
 
 
-test :: BS.ByteString -> [BS.ByteString] -> [Beam.Op] -> Test
+test :: String -> [String] -> [Beam.Op] -> Test
 test name body =
   test_ name body . Beam.encode name
 
 
-test_ :: BS.ByteString -> [BS.ByteString] -> BS.ByteString -> Test
+test_ :: String -> [String] -> BS.ByteString -> Test
 test_ name body code =
   do  let fixture =
-            erlangDir </> toString name <.> "beam"
+            erlangDir </> name <.> "beam"
 
       BS.writeFile fixture code
 
-      return (name <> "_test() ->\n" <> unlines body <> ".")
+      return $ name <> "_test() ->\n" <> unlines body <> "."
 
 
 run :: [Test] -> IO ()
@@ -64,38 +56,19 @@ run tests =
 
       let fileContents =
             unlines $
-              "-module(" <> fromString erlangModuleName <> ")."
+              "-module(" <> erlangModuleName <> ")."
                 : "-include_lib(\"eunit/include/eunit.hrl\")."
                 : functions
 
-          fileName =
+          filename =
             erlangDir </> erlangModuleName <.> "erl"
 
-      BS.writeFile fileName fileContents
+      writeFile filename fileContents
 
-      callProcess "erlc" [fileName]
+      callProcess "erlc" [filename]
 
       callProcess "erl"
         [ "-noshell", "-pa", erlangDir
-        , "-eval", "eunit:test(" ++ erlangModuleName ++ ", [verbose])"
+        , "-eval", "eunit:test(" <> erlangModuleName <> ", [verbose])"
         , "-run", "init", "stop"
         ]
-
-
-
--- Helpers
-
-
-unlines :: [BS.ByteString] -> BS.ByteString
-unlines =
-  BS.intercalate "\n"
-
-
-toString :: BS.ByteString -> String
-toString =
-  unpack . decodeUtf8
-
-
-fromString :: String -> BS.ByteString
-fromString =
-  encodeUtf8 . pack

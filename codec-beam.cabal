@@ -60,7 +60,6 @@ Test-Suite codec-beam-tests
         Main.hs
 
     other-modules:
-        BShow
         Eunit
 
     Build-depends:
