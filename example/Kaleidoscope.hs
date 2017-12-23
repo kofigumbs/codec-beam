@@ -38,7 +38,7 @@ newtype Name
 
 
 
--- LEX
+-- PARSE
 
 
 expr :: Parser Expr
@@ -48,7 +48,7 @@ expr =
   where
     table =
       [ [binary "*" Times Expr.AssocLeft, binary "/" Divide Expr.AssocLeft]
-      , [binary "+" Plus Expr.AssocLeft, binary "-" Minus Expr.AssocLeft]
+      , [binary "+" Plus  Expr.AssocLeft, binary "-" Minus  Expr.AssocLeft]
       ]
 
     binary s f assoc =
@@ -110,11 +110,6 @@ commaSep =
   Token.commaSep lexer
 
 
-semiSep :: Parser a -> Parser [a]
-semiSep =
-  Token.semiSep lexer
-
-
 reserved :: String -> Parser ()
 reserved =
   Token.reserved lexer
@@ -126,20 +121,12 @@ reservedOp =
 
 
 lexer :: Token.TokenParser ()
-lexer = Token.makeTokenParser style
-  where
-    ops = ["+","*","-",";"]
-    names = ["def"]
-    style =
-      emptyDef
-         { Token.commentLine = "#"
-         , Token.reservedOpNames = ops
-         , Token.reservedNames = names
-         }
-
-
-
--- PARSE
+lexer =
+  Token.makeTokenParser $ emptyDef
+    { Token.commentLine = "#"
+    , Token.reservedOpNames = ["+","*","-",";"]
+    , Token.reservedNames = ["def"]
+    }
 
 
 
