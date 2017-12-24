@@ -89,5 +89,6 @@ Executable kaleidoscope
         base,
         bytestring,
         filepath,
+        mtl,
         parsec,
         text

@@ -1,9 +1,13 @@
+import Control.Monad.State (State, evalState)
 import Data.Monoid ((<>))
+import Data.Text.Lazy (pack)
+import Data.Text.Lazy.Encoding (encodeUtf8)
 import System.FilePath (takeBaseName)
 import System.Environment (getArgs)
+import qualified Control.Monad.State as State
 import qualified Data.ByteString.Lazy as BS
 
-import Text.Parsec
+import Text.Parsec hiding (State)
 import Text.Parsec.Error (ParseError)
 import Text.Parsec.Language (emptyDef)
 import Text.Parsec.String (Parser)
@@ -14,8 +18,50 @@ import qualified Codec.Beam as Beam
 import qualified Codec.Beam.Genop as Genop
 
 
+main :: IO ()
+main =
+  do  file <- head <$> getArgs
+      code <- readFile file
+      let name = takeBaseName file
+      either print
+        (BS.writeFile (name <> ".beam") . Beam.encode name)
+        (compile code)
+
+
+compile :: String -> Either ParseError [Beam.Op]
+compile code =
+  flip evalState 1
+    <$> fmap concat
+    <$> mapM generate
+    <$> parse (contents topLevel) "KALEIDOSCOPE" code
+
+
+generate :: Def -> State Beam.Label [Beam.Op]
+generate (Def (Name name) args _) =
+  do  x <- nextLabel
+      y <- nextLabel
+      return
+        [ Genop.label x
+        , Genop.func_info Beam.Public (encodeUtf8 $ pack name) (length args)
+        , Genop.label y
+        , Genop.move (Beam.Atom "Hello, World!") (Beam.X 0)
+        , Genop.return_
+        ]
+
+
+nextLabel :: State Beam.Label Int
+nextLabel =
+  do  x <- State.get
+      State.modify (+ 1)
+      return x
+
+
 
 -- SYNTAX
+
+
+data Def
+  = Def Name [Expr] Expr
 
 
 data Expr
@@ -23,7 +69,6 @@ data Expr
   | BinOp Op Expr Expr
   | Var Name
   | Call Name [Expr]
-  | Function Name [Expr] Expr
 
 
 data Op
@@ -39,6 +84,25 @@ newtype Name
 
 
 -- PARSE
+
+
+topLevel :: Parser [Def]
+topLevel =
+  many $
+    do  reserved "def"
+        name <- identifier
+        args <- parens $ many variable
+        body <- expr
+        reservedOp ";"
+        return $ Def name args body
+
+
+contents :: Parser a -> Parser a
+contents inner =
+  do  Token.whiteSpace lexer
+      result <- inner
+      eof
+      return result
 
 
 expr :: Parser Expr
@@ -60,19 +124,10 @@ factor =
   choice
     [ try float
     , try integer
-    , try function
     , try call
     , variable
     , parens expr
     ]
-
-
-function :: Parser Expr
-function =
-  do  reserved "def"
-      name <- identifier
-      args <- parens $ many variable
-      Function name args <$> expr
 
 
 call :: Parser Expr
@@ -127,22 +182,3 @@ lexer =
     , Token.reservedOpNames = ["+","*","-",";"]
     , Token.reservedNames = ["def"]
     }
-
-
-
--- COMPILE
-
-
-compile :: String -> Either ParseError [Beam.Op]
-compile _ =
-  Right []
-
-
-main :: IO ()
-main =
-  do  file <- head <$> getArgs
-      code <- readFile file
-      let name = takeBaseName file
-      either print
-        (BS.writeFile (name <> ".beam") . Beam.encode name)
-        (compile code)
