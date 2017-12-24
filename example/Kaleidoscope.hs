@@ -37,16 +37,32 @@ compile code =
 
 
 generate :: Def -> State Beam.Label [Beam.Op]
-generate (Def (Name name) args _) =
+generate (Def name args body) =
+  do  beamHeader <- genFunction name (length args)
+      (beamBody, beamReturn) <- genExpr body
+      let beamFooter = [Genop.move beamReturn (Beam.X 0), Genop.return_]
+      return $ beamHeader ++ beamBody ++ beamFooter
+
+
+genFunction :: Name -> Int -> State Beam.Label [Beam.Op]
+genFunction (Name rawName) numArgs =
   do  x <- nextLabel
       y <- nextLabel
       return
         [ Genop.label x
-        , Genop.func_info Beam.Public (encodeUtf8 $ pack name) (length args)
+        , Genop.func_info Beam.Public (encodeUtf8 $ pack rawName) numArgs
         , Genop.label y
-        , Genop.move (Beam.Atom "Hello, World!") (Beam.X 0)
-        , Genop.return_
         ]
+
+
+genExpr :: Expr -> State Beam.Label ([Beam.Op], Beam.Operand)
+genExpr expr =
+  case expr of
+    Float f ->
+      return ([], Beam.Ext (Beam.EFloat f))
+
+    _ ->
+      error "TODO"
 
 
 nextLabel :: State Beam.Label Int
