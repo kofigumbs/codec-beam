@@ -9,6 +9,8 @@ module Codec.Beam
 import Control.Monad.State.Strict (runState)
 import Data.Map (Map, (!))
 import Data.Monoid ((<>))
+import Data.Text.Lazy (pack)
+import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Word (Word8, Word32)
 import qualified Codec.Compression.Zlib as Zlib
 import qualified Data.ByteString.Builder as Builder
@@ -23,7 +25,7 @@ import qualified Codec.Beam.Bytes as Bytes
 
 -- | Convenience to create code for a BEAM module all at once
 encode
-  :: BS.ByteString -- ^ module name
+  :: String        -- ^ module name
   -> [Op]          -- ^ instructions
   -> BS.ByteString -- ^ return encoded BEAM
 encode name =
@@ -32,21 +34,25 @@ encode name =
 
 -- | Create a fresh 'Builder' for a BEAM module
 new
-  :: BS.ByteString -- ^ module name
-  -> Builder       -- ^ return encoding state
+  :: String  -- ^ module name
+  -> Builder -- ^ return encoding state
 new name =
   Builder
-    { _moduleName = Atom name
+    { _moduleName = Atom name_
     , _currentLabelCount = 0
     , _overallLabelCount = 0
     , _functionCount = 0
-    , _atomTable = Map.singleton name 1
+    , _atomTable = Map.singleton name_ 1
     , _literalTable = []
     , _lambdaTable = []
     , _exportNextLabel = Nothing
     , _toExport = []
     , _code = mempty
     }
+
+  where
+    name_ =
+      encodeUtf8 (pack name)
 
 
 -- | Add instructions to the module being encoded

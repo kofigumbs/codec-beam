@@ -1,12 +1,13 @@
 module Main where
 
 import Data.ByteString.Lazy (ByteString)
+import Data.Monoid ((<>))
+import Data.Text.Lazy (unpack)
+import Data.Text.Lazy.Encoding (decodeUtf8)
 
 import qualified Codec.Beam as Beam
 import qualified Codec.Beam.Genop as Beam
 import qualified Eunit
-
-import BShow
 
 
 main :: IO ()
@@ -281,15 +282,15 @@ main =
 -- I imagine that some of these will eventually live in a utility module within src/.
 
 
-withConstant_ :: ByteString -> Beam.Operand -> ByteString -> Eunit.Test
+withConstant_ :: String -> Beam.Operand -> String -> Eunit.Test
 withConstant_ name term =
   withConstant name (const term)
 
 
-withConstant :: BShow a => ByteString -> (a -> Beam.Operand) -> a -> Eunit.Test
+withConstant :: ErlangLiteral a => String -> (a -> Beam.Operand) -> a -> Eunit.Test
 withConstant name toOperand value =
   Eunit.test name
-    [ mconcat ["?assertEqual(", bshow value, ", ", name, ":check())"]
+    [ "?assertEqual(" <> erlang value <> ", " <> name <> ":check())"
     ]
     [ Beam.label 1
     , Beam.func_info Beam.Public "check" 0
@@ -320,3 +321,23 @@ jumpFunction args decision =
   , Beam.move (Beam.Atom "false") (Beam.X 0)
   , Beam.return_
   ]
+
+
+
+-- PRINT ERLANG LITERALS
+
+
+class ErlangLiteral a where
+  erlang :: a -> String
+
+instance ErlangLiteral a => ErlangLiteral [a] where
+  erlang = mconcat . map erlang
+
+instance ErlangLiteral ByteString where
+  erlang = unpack . decodeUtf8
+
+instance ErlangLiteral Int where
+  erlang = erlang . show
+
+instance ErlangLiteral Char where
+  erlang x = [x]
