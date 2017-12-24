@@ -1,7 +1,5 @@
 import Control.Monad.State (State, evalState)
 import Data.Monoid ((<>))
-import Data.Text.Lazy (pack)
-import Data.Text.Lazy.Encoding (encodeUtf8)
 import System.FilePath (takeBaseName)
 import System.Environment (getArgs)
 import qualified Control.Monad.State as State
@@ -14,6 +12,7 @@ import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Expr as Expr
 import qualified Text.Parsec.Token as Token
 
+import ByteStringConversion (fromString)
 import qualified Codec.Beam as Beam
 import qualified Codec.Beam.Genop as Genop
 
@@ -50,7 +49,7 @@ genFunction (Name rawName) numArgs =
       y <- nextLabel
       return
         [ Genop.label x
-        , Genop.func_info Beam.Public (encodeUtf8 $ pack rawName) numArgs
+        , Genop.func_info Beam.Public (fromString rawName) numArgs
         , Genop.label y
         ]
 

@@ -2,9 +2,8 @@ module Main where
 
 import Data.ByteString.Lazy (ByteString)
 import Data.Monoid ((<>))
-import Data.Text.Lazy (unpack)
-import Data.Text.Lazy.Encoding (decodeUtf8)
 
+import ByteStringConversion (toString)
 import qualified Codec.Beam as Beam
 import qualified Codec.Beam.Genop as Beam
 import qualified Eunit
@@ -334,7 +333,7 @@ instance ErlangLiteral a => ErlangLiteral [a] where
   erlang = mconcat . map erlang
 
 instance ErlangLiteral ByteString where
-  erlang = unpack . decodeUtf8
+  erlang = toString
 
 instance ErlangLiteral Int where
   erlang = erlang . show
