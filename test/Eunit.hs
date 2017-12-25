@@ -63,12 +63,14 @@ run tests =
           filename =
             erlangDir </> erlangModuleName <.> "erl"
 
+          runnerCode =
+            "case eunit:test(" <> erlangModuleName <> ", [verbose]) of \
+            \   error -> init:stop(1); \
+            \   _ -> init:stop() \
+            \ end."
+
       writeFile filename fileContents
 
       callProcess "erlc" [filename]
 
-      callProcess "erl"
-        [ "-noshell", "-pa", erlangDir
-        , "-eval", "eunit:test(" <> erlangModuleName <> ", [verbose])"
-        , "-run", "init", "stop"
-        ]
+      callProcess "erl" ["-noshell", "-pa", erlangDir , "-eval", runnerCode]

@@ -2,9 +2,8 @@ module Main where
 
 import Data.ByteString.Lazy (ByteString)
 import Data.Monoid ((<>))
-import Data.Text.Lazy (unpack)
-import Data.Text.Lazy.Encoding (decodeUtf8)
 
+import ByteStringConversion (toString)
 import qualified Codec.Beam as Beam
 import qualified Codec.Beam.Genop as Beam
 import qualified Eunit
@@ -114,6 +113,17 @@ main =
         , Beam.func_info Beam.Public "test" 0
         , Beam.label 2
         , Beam.move (Beam.Ext (Beam.ETuple (map Beam.EInt [1..300]))) (Beam.X 0)
+        , Beam.return_
+        ]
+
+    , Eunit.test "multiple_literals"
+        [ "?assert(multiple_literals:test())"
+        ]
+        [ Beam.label 1
+        , Beam.func_info Beam.Public "test" 0
+        , Beam.label 2
+        , Beam.move (Beam.Ext (Beam.EAtom "dummy")) (Beam.X 0)
+        , Beam.move (Beam.Ext (Beam.EAtom "true")) (Beam.X 0)
         , Beam.return_
         ]
 
@@ -334,7 +344,7 @@ instance ErlangLiteral a => ErlangLiteral [a] where
   erlang = mconcat . map erlang
 
 instance ErlangLiteral ByteString where
-  erlang = unpack . decodeUtf8
+  erlang = toString
 
 instance ErlangLiteral Int where
   erlang = erlang . show

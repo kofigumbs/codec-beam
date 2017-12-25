@@ -7,10 +7,9 @@ module Codec.Beam
   ) where
 
 import Control.Monad.State.Strict (runState)
+import Data.Int (Int64)
 import Data.Map (Map, (!))
 import Data.Monoid ((<>))
-import Data.Text.Lazy (pack)
-import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Word (Word8, Word32)
 import qualified Codec.Compression.Zlib as Zlib
 import qualified Data.ByteString.Builder as Builder
@@ -18,6 +17,7 @@ import qualified Data.ByteString.Lazy as BS
 import qualified Data.List as List
 import qualified Data.Map as Map
 
+import ByteStringConversion (fromString)
 import Codec.Beam.Internal
 import Codec.Beam.Genop
 import qualified Codec.Beam.Bytes as Bytes
@@ -38,21 +38,17 @@ new
   -> Builder -- ^ return encoding state
 new name =
   Builder
-    { _moduleName = Atom name_
+    { _moduleName = Atom (fromString name)
     , _currentLabelCount = 0
     , _overallLabelCount = 0
     , _functionCount = 0
-    , _atomTable = Map.singleton name_ 1
+    , _atomTable = Map.singleton (fromString name) 1
     , _literalTable = []
     , _lambdaTable = []
     , _exportNextLabel = Nothing
     , _toExport = []
     , _code = mempty
     }
-
-  where
-    name_ =
-      encodeUtf8 (pack name)
 
 
 -- | Add instructions to the module being encoded
@@ -100,7 +96,7 @@ appendOperand builder operand =
       tag (Bytes.internal 5) $ value + _overallLabelCount builder
 
     Ext literal ->
-      tag (Bytes.external 12) |> withLiteral literal
+      tag (Bytes.external 4) |> withLiteral literal
 
   where
     tag encoder =
@@ -123,13 +119,10 @@ appendOperand builder operand =
 
     withLiteral literal toBuilder =
       let
-        new =
-          literal : _literalTable builder
-
-        value =
-          length new
+        old =
+          _literalTable builder
       in
-        (toBuilder value) { _literalTable = new }
+        (toBuilder (length old)) { _literalTable = literal : old }
 
 
 appendCode :: Builder -> Builder.Builder -> Builder
@@ -172,7 +165,7 @@ atoms table =
 
   where
     encode (name, _) =
-      pack8 (BS.length name) <> name
+      withSize pack8 name
 
     list =
       List.sortOn snd (Map.toList table)
@@ -234,83 +227,77 @@ exports exportTable atomTable =
 
 literals :: [Literal] -> BS.ByteString
 literals table =
-  pack32 (BS.length encoded) <> Zlib.compress encoded
+  pack32 (BS.length terms) <> Zlib.compress terms
 
   where
-    encoded =
-      pack32 (length table) <> pack32 (BS.length packed) <> packed
-
-    packed =
-      formatMarker <> packLiterals table
-
-    formatMarker =
-      pack8 131
+    terms =
+      mconcat $ pack32 (length table) : map
+        (\lit -> withSize pack32 $ pack8 131 <> packLiteral lit)
+        (reverse table)
 
 
-packLiterals :: [Literal] -> BS.ByteString
-packLiterals =
-  foldr (BS.append . singleton) mempty
+packLiteral :: Literal -> BS.ByteString
+packLiteral lit =
+  case lit of
+    EInt value | value < 256 ->
+      pack8 97 <> pack8 value
 
-  where
-    singleton lit =
-      case lit of
-        EInt value | value < 256 ->
-          pack8 97 <> pack8 value
+    EInt value ->
+      pack8 98 <> pack32 value
 
-        EInt value ->
-          pack8 98 <> pack32 value
+    EFloat value ->
+      pack8 70 <> packDouble value
 
-        EFloat value ->
-          pack8 70 <> packDouble value
+    EAtom value ->
+      pack8 119 <> withSize pack8 value
 
-        EAtom value ->
-          pack8 119 <> pack8 (BS.length value) <> value
+    EBinary value ->
+      pack8 109 <> withSize pack32 value
 
-        EBinary value ->
-          pack8 109 <> pack32 (BS.length value) <> value
+    ETuple elements | length elements < 256 ->
+      mconcat
+        [ pack8 104
+        , pack8 (length elements)
+        , mconcat $ map packLiteral elements
+        ]
 
-        ETuple elements | length elements < 256 ->
-          mconcat
-            [ pack8 104
-            , pack8 (length elements)
-            , packLiterals elements
-            ]
+    ETuple elements ->
+      mconcat
+        [ pack8 105
+        , pack32 (length elements)
+        , mconcat $ map packLiteral elements
+        ]
 
-        ETuple elements ->
-          mconcat
-            [ pack8 105
-            , pack32 (length elements)
-            , packLiterals elements
-            ]
+    EList elements ->
+      mconcat
+        [ pack8 108
+        , pack32 (length elements)
+        , mconcat $ map packLiteral elements
+        , pack8 106
+        ]
 
-        EList elements ->
-          mconcat
-            [ pack8 108
-            , pack32 (length elements)
-            , packLiterals elements
-            , pack8 106
-            ]
-
-        EMap pairs ->
-          mconcat
-            [ pack8 116
-            , pack32 (length pairs)
-            , mconcat $ fmap (\(x, y) -> singleton x <> singleton y) pairs
-            ]
+    EMap pairs ->
+      mconcat
+        [ pack8 116
+        , pack32 (length pairs)
+        , mconcat $ fmap (\(x, y) -> packLiteral x <> packLiteral y) pairs
+        ]
 
 
 alignSection :: BS.ByteString -> BS.ByteString
 alignSection bytes =
-  pack32 size <> bytes <> padding
+  withSize pack32 bytes <> padding
 
   where
-    size =
-      BS.length bytes
-
     padding =
-      case mod size 4 of
+      case mod (BS.length bytes) 4 of
         0 -> BS.empty
         r -> BS.replicate (4 - r) 0
+
+
+withSize :: (Int64 -> BS.ByteString) -> BS.ByteString -> BS.ByteString
+withSize f bytes =
+  f (BS.length bytes) <> bytes
 
 
 pack8 :: Integral n => n -> BS.ByteString

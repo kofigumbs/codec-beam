@@ -14,16 +14,9 @@ internal tag n
   | otherwise = manyBytes tag (positive n [])
 
 
-external :: Word8 -> Int -> [Word8]
+external :: Int -> Int -> [Word8]
 external tag n =
-  [ Bits.xor top4 convertedTag, 0 ]
-
-  where
-    convertedTag =
-     Bits.shiftL (tag - 7) 4 .|. 7
-
-    top4 =
-      Bits.shiftL (fromIntegral n) 4
+  internal 7 tag ++ internal 0 n
 
 
 oneByte :: Word8 -> Int -> [Word8]
