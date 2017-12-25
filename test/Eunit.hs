@@ -49,12 +49,6 @@ test_ name body code =
       return $ name <> "_test() ->\n" <> unlines body <> "."
 
 
--- ioFailure :: Exception.IOException -> IO ()
--- ioFailure e =
---   do  putStrLn (show e)
---       exitFailure
-
-
 run :: [Test] -> IO ()
 run tests =
   do  functions <-
