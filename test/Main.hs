@@ -116,6 +116,17 @@ main =
         , Beam.return_
         ]
 
+    , Eunit.test "multiple_literals"
+        [ "?assert(multiple_literals:test())"
+        ]
+        [ Beam.label 1
+        , Beam.func_info Beam.Public "test" 0
+        , Beam.label 2
+        , Beam.move (Beam.Ext (Beam.EAtom "dummy")) (Beam.X 0)
+        , Beam.move (Beam.Ext (Beam.EAtom "true")) (Beam.X 0)
+        , Beam.return_
+        ]
+
     , Eunit.test "call_into_identity"
         [ "?assertEqual(1023, call_into_identity:test())"
         ]
