@@ -92,7 +92,7 @@ genExpr expr =
     Call name args ->
       do  (ops, values) <- unzip <$> mapM genExpr args
           functions <- State.gets _functions
-          let moves = zipWith (\v i -> Genop.move v (Beam.X i)) values [0..]
+          let moves = zipWith Genop.move values (map Beam.X [0..])
               call = Genop.call (length args) (functions ! name)
           return (concat ops ++ moves ++ [call], Beam.Reg (Beam.X 0))
 
