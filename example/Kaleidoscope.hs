@@ -1,9 +1,11 @@
 import Control.Monad.State (State, evalState)
 import Data.Monoid ((<>))
+import Data.Map.Lazy (Map, (!))
 import System.FilePath (takeBaseName)
 import System.Environment (getArgs)
 import qualified Control.Monad.State as State
 import qualified Data.ByteString.Lazy as BS
+import qualified Data.Map.Lazy as Map
 
 import Text.Parsec hiding (State)
 import Text.Parsec.Error (ParseError)
@@ -29,46 +31,86 @@ main =
 
 compile :: String -> Either ParseError [Beam.Op]
 compile code =
-  flip evalState 1
+  flip evalState (Env 1 mempty mempty)
     <$> fmap concat
     <$> mapM generate
     <$> parse (contents topLevel) "KALEIDOSCOPE" code
 
 
-generate :: Def -> State Beam.Label [Beam.Op]
+
+-- CODEGEN
+
+
+data Env =
+  Env
+    { _label :: Beam.Label
+    , _vars :: Map Name Beam.Register
+    , _functions :: Map Name Beam.Label
+    }
+
+
+generate :: Def -> State Env [Beam.Op]
 generate (Def name args body) =
-  do  beamHeader <- genFunction name (length args)
-      (beamBody, beamReturn) <- genExpr body
-      let beamFooter = [Genop.move beamReturn (Beam.X 0), Genop.return_]
-      return $ beamHeader ++ beamBody ++ beamFooter
-
-
-genFunction :: Name -> Int -> State Beam.Label [Beam.Op]
-genFunction (Name rawName) numArgs =
-  do  x <- nextLabel
-      y <- nextLabel
-      return
-        [ Genop.label x
-        , Genop.func_info Beam.Public (fromString rawName) numArgs
-        , Genop.label y
+  do  State.modify $ \e -> e { _vars = mempty }
+      header <- genFunction name args
+      (ops, returnValue) <- genExpr body
+      return $ header ++ ops ++
+        [ Genop.move returnValue (Beam.X 0)
+        , Genop.deallocate (length args)
+        , Genop.return_
         ]
 
 
-genExpr :: Expr -> State Beam.Label ([Beam.Op], Beam.Operand)
+genFunction :: Name -> [Name] -> State Env [Beam.Op]
+genFunction name@(Name rawName) args =
+  do  x <- nextLabel
+      y <- nextLabel
+      State.modify $ \e -> e { _functions = Map.insert name y (_functions e) }
+      allocates <- mapM storeVar args
+      let numLive = length args
+      return
+        $ Genop.label x
+        : Genop.func_info Beam.Public (fromString rawName) numLive
+        : Genop.label y
+        : Genop.allocate numLive numLive -- naive memory allocation
+        : allocates
+
+
+genExpr :: Expr -> State Env ([Beam.Op], Beam.Operand)
 genExpr expr =
   case expr of
     Float f ->
       return ([], Beam.Ext (Beam.EFloat f))
 
-    _ ->
+    BinOp _op _lhs _rhs ->
       error "TODO"
 
+    Var name ->
+      do  vars <- State.gets _vars
+          return ([], Beam.Reg (vars ! name))
 
-nextLabel :: State Beam.Label Int
+    Call name args ->
+      do  (ops, values) <- unzip <$> mapM genExpr args
+          functions <- State.gets _functions
+          let moves = zipWith Genop.move values (map Beam.X [0..])
+              call = Genop.call (length args) (functions ! name)
+          return (concat ops ++ moves ++ [call], Beam.Reg (Beam.X 0))
+
+
+nextLabel :: State Env Int
 nextLabel =
-  do  x <- State.get
-      State.modify (+ 1)
+  do  x <- State.gets _label
+      State.modify $ \e -> e { _label = x + 1 }
       return x
+
+
+storeVar :: Name -> State Env Beam.Op
+storeVar name =
+  do  vars <- State.gets _vars
+      let index = Map.size vars
+          register = Beam.Y index
+      State.modify $ \e -> e { _vars = Map.insert name register vars }
+      return $ Genop.move (Beam.Reg (Beam.X index)) register
 
 
 
@@ -76,7 +118,7 @@ nextLabel =
 
 
 data Def
-  = Def Name [Expr] Expr
+  = Def Name [Name] Expr
 
 
 data Expr
@@ -95,6 +137,7 @@ data Op
 
 newtype Name
   = Name String
+  deriving (Eq, Ord, Show)
 
 
 
@@ -106,7 +149,7 @@ topLevel =
   many $
     do  reserved "def"
         name <- identifier
-        args <- parens $ many variable
+        args <- parens $ many identifier
         body <- expr
         reservedOp ";"
         return $ Def name args body
