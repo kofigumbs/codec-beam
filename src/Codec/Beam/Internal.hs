@@ -1,9 +1,9 @@
 module Codec.Beam.Internal where
 
 import Control.Monad.State.Strict (State)
-import Data.Map (Map)
-import Data.Word (Word8, Word32)
 import Data.ByteString.Lazy (ByteString)
+import Data.Table (Table)
+import Data.Word (Word8, Word32)
 import qualified Data.ByteString.Builder as BS
 
 
@@ -30,15 +30,16 @@ data Literal
   | ETuple [Literal]
   | EList [Literal]
   | EMap [(Literal, Literal)]
+  deriving (Eq, Ord)
 
 
 data Lambda
   = Lambda
-      { _name :: ByteString
-      , _arity :: Int
-      , _label :: Int
-      , _index :: Int
-      , _free :: Int
+      { _l_name :: ByteString
+      , _l_arity :: Int
+      , _l_label :: Int
+      , _l_index :: Int
+      , _l_free :: Int
       }
 
 
@@ -60,14 +61,21 @@ data Access
   | Private
 
 
+data Function
+  = Function
+      { _f_module :: ByteString
+      , _f_name :: ByteString
+      , _f_arity :: Int
+      }
+
 data Builder =
   Builder
     { _moduleName :: Operand
     , _overallLabelCount :: Int
     , _currentLabelCount :: Int
     , _functionCount :: Word32
-    , _atomTable :: Map ByteString Int
-    , _literalTable :: [Literal]
+    , _atomTable :: Table ByteString
+    , _literalTable :: Table Literal
     , _lambdaTable :: [Lambda]
     , _exportNextLabel :: Maybe (ByteString, Int)
     , _toExport :: [Export]
