@@ -14,6 +14,9 @@ main =
   Eunit.run
     [ Eunit.test "loads_empty"
         [ "?assertMatch({module, loads_empty}, code:load_file(loads_empty))"
+        -- TODO: auto-insert module_info
+        -- , "?assertEqual(erlang:get_module_info(loads_empty), loads_empty:module_info()),"
+        -- , "?assertEqual(erlang:get_module_info(loads_empty), loads_empty:module_info())"
         ]
         []
 
