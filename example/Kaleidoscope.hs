@@ -82,8 +82,15 @@ genExpr expr =
     Float f ->
       return ([], Beam.Ext (Beam.EFloat f))
 
-    BinOp _op _lhs _rhs ->
-      error "TODO"
+    BinOp operator lhs rhs ->
+      do  (leftOps, leftValue) <- genExpr lhs
+          (rightOps, rightValue)  <- genExpr rhs
+          let ops =
+                [ Genop.move leftValue (Beam.X 0)
+                , Genop.move rightValue (Beam.X 1)
+                , Genop.call_ext (erlangArithmetic operator)
+                ]
+          return (leftOps ++ rightOps ++ ops, Beam.Reg (Beam.X 0))
 
     Var name ->
       do  vars <- State.gets _vars
@@ -112,6 +119,12 @@ storeVar name =
       State.modify $ \e -> e { _vars = Map.insert name register vars }
       return $ Genop.move (Beam.Reg (Beam.X index)) register
 
+
+erlangArithmetic :: Op -> Beam.Function
+erlangArithmetic Plus   = Beam.Function "erlang" "+" 2
+erlangArithmetic Minus  = Beam.Function "erlang" "-" 2
+erlangArithmetic Times  = Beam.Function "erlang" "*" 2
+erlangArithmetic Divide = Beam.Function "erlang" "/" 2
 
 
 -- SYNTAX

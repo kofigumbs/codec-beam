@@ -10,6 +10,9 @@ def identity(x)
 def always(x y)
   identity(x);
 
+def add_numbers()
+  5 + 3;
+
 # def foo(a b)
 #   a*a + 2*a*b + b*b;
 #
