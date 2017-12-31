@@ -44,6 +44,7 @@ new name =
     , _atomTable = Table.singletonOffset (fromString name)
     , _literalTable = Table.empty
     , _lambdaTable = []
+    , _importTable = Table.empty
     , _exportNextLabel = Nothing
     , _toExport = []
     , _code = mempty
@@ -126,6 +127,7 @@ toLazyByteString
       atomTable
       literalTable
       lambdaTable
+      importTable
       _
       exportTable
       bytes
@@ -140,6 +142,7 @@ toLazyByteString
       <> "LitT" <> alignSection (literals literalTable)
       <> "ImpT" <> alignSection (pack32 0)
       <> "FunT" <> alignSection (lambdas lambdaTable atomTable)
+      <> "ImpT" <> alignSection (imports importTable atomTable)
       <> "ExpT" <> alignSection (exports exportTable atomTable)
       <> "Code" <> alignSection (code bytes (overall + current + 1) functions)
 
@@ -192,6 +195,15 @@ lambdas lambdaTable atomTable =
 
     oldUnique =
       0
+
+
+imports :: Table Function -> Table BS.ByteString -> BS.ByteString
+imports importTable atomTable =
+  pack32 (Table.size importTable) <> Table.encode fromFunction importTable
+
+  where
+    fromFunction (Function m f a) =
+      pack32 (forceIndex m atomTable) <> pack32 (forceIndex f atomTable) <> pack32 a
 
 
 exports :: [Export] -> Table BS.ByteString -> BS.ByteString

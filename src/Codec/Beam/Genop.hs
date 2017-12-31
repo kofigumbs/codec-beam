@@ -9,6 +9,7 @@ module Codec.Beam.Genop where
 
 import Data.ByteString.Lazy (ByteString)
 import qualified Control.Monad.State.Strict as State
+import qualified Data.Table as Table
 
 import Codec.Beam.Internal
 
@@ -60,6 +61,18 @@ call arity label =
 call_only :: Int -> Label -> Op
 call_only arity label =
   Op 6 $ return [ Lit arity, Label label ]
+
+
+call_ext :: Function -> Op
+call_ext function@(Function m f a) =
+  Op 7 $ do
+    builder <- State.get
+    let (index, newTable) = Table.indexOf function (_importTable builder)
+    State.put $ builder
+      { _importTable = newTable
+      , _atomTable = snd $ Table.indexOf m $ snd $ Table.indexOf f $ _atomTable builder
+      }
+    return [ Lit a, Lit index ]
 
 
 allocate :: Int -> Int -> Op
@@ -165,6 +178,18 @@ put value =
 call_fun :: Int -> Op
 call_fun arity =
   Op 75 $ return [ Lit arity ]
+
+
+call_ext_only :: Function -> Op
+call_ext_only function@(Function m f a) =
+  Op 78 $ do
+    builder <- State.get
+    let (index, newTable) = Table.indexOf function (_importTable builder)
+    State.put $ builder
+      { _importTable = newTable
+      , _atomTable = snd $ Table.indexOf m $ snd $ Table.indexOf f $ _atomTable builder
+      }
+    return [ Lit a, Lit index ]
 
 
 make_fun :: ByteString -> Int -> Label -> Int -> Op

@@ -67,6 +67,8 @@ data Function
       , _f_name :: ByteString
       , _f_arity :: Int
       }
+  deriving (Eq, Ord)
+
 
 data Builder =
   Builder
@@ -77,6 +79,7 @@ data Builder =
     , _atomTable :: Table ByteString
     , _literalTable :: Table Literal
     , _lambdaTable :: [Lambda]
+    , _importTable :: Table Function
     , _exportNextLabel :: Maybe (ByteString, Int)
     , _toExport :: [Export]
     , _code :: BS.Builder

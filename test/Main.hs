@@ -286,6 +286,16 @@ main =
         , Beam.label 4
         , Beam.return_
         ]
+
+    , Eunit.test "external_call"
+        [ "?assertEqual(3, external_call:test(1, 2))"
+        ]
+        [ Beam.label 1
+        , Beam.func_info Beam.Public "test" 2
+        , Beam.label 2
+        , Beam.call_ext_only (Beam.Function "erlang" "+" 2)
+        , Beam.return_
+        ]
     ]
 
 
