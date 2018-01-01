@@ -31,7 +31,7 @@ main =
 
 compile :: String -> Either ParseError [Beam.Op]
 compile code =
-  flip evalState (Env 1 mempty mempty)
+  flip evalState (Env 1 0 mempty mempty)
     <$> fmap concat
     <$> mapM generate
     <$> parse (contents topLevel) "KALEIDOSCOPE" code
@@ -44,36 +44,35 @@ compile code =
 data Env =
   Env
     { _label :: Beam.Label
+    , _tmps :: Int
     , _vars :: Map Name Beam.Register
     , _functions :: Map Name Beam.Label
     }
 
 
 generate :: Def -> State Env [Beam.Op]
-generate (Def name args body) =
-  do  State.modify $ \e -> e { _vars = mempty }
-      header <- genFunction name args
-      (ops, returnValue) <- genExpr body
-      return $ header ++ ops ++
-        [ Genop.move returnValue x0
-        , Genop.deallocate (length args)
-        , Genop.return_
-        ]
-
-
-genFunction :: Name -> [Name] -> State Env [Beam.Op]
-genFunction name@(Name rawName) args =
+generate (Def name@(Name rawName) args body) =
   do  x <- nextLabel
       y <- nextLabel
-      State.modify $ \e -> e { _functions = Map.insert name y (_functions e) }
-      allocates <- mapM storeVar args
-      let numLive = length args
-      return
-        $ Genop.label x
-        : Genop.func_info Beam.Public (fromString rawName) numLive
-        : Genop.label y
-        : Genop.allocate numLive numLive -- naive memory allocation
-        : allocates
+      State.modify $ \e -> e
+        { _tmps = 0
+        , _vars = Map.empty
+        , _functions = Map.insert name y (_functions e)
+        }
+      allocates <- mapM storeArg args
+      (ops, returnValue) <- genExpr body
+      let argCount = length args
+          spaceNeeded = argCount + checkSpaceNeeded body
+      return $
+        [ Genop.label x
+        , Genop.func_info Beam.Public (fromString rawName) argCount
+        , Genop.label y
+        , Genop.allocate spaceNeeded argCount
+        ] ++ allocates ++ ops ++
+        [ Genop.move returnValue x0
+        , Genop.deallocate spaceNeeded
+        , Genop.return_
+        ]
 
 
 genExpr :: Expr -> State Env ([Beam.Op], Beam.Operand)
@@ -83,25 +82,35 @@ genExpr expr =
       return ([], Beam.Ext (Beam.EFloat f))
 
     BinOp operator lhs rhs ->
-      do  (leftOps, leftValue) <- genExpr lhs
-          (rightOps, rightValue)  <- genExpr rhs
+      do  tmp <- nextTmp
+          (leftOps, leftValue) <- genExpr lhs
+          (rightOps, rightValue) <- genExpr rhs
           let ops =
-                [ Genop.move leftValue x0
-                , Genop.move rightValue (Beam.X 1)
-                , Genop.call_ext (erlangArithmetic operator)
+                [ leftOps
+                , [ Genop.move leftValue tmp ]
+                , rightOps
+                , [ Genop.move rightValue (Beam.X 1)
+                  , Genop.move (Beam.Reg tmp) x0
+                  , Genop.call_ext (erlangArithmetic operator)
+                  , Genop.move (Beam.Reg x0) tmp
+                  ]
                 ]
-          return (leftOps ++ rightOps ++ ops, Beam.Reg x0)
+          return (concat ops, Beam.Reg tmp)
 
     Var name ->
       do  vars <- State.gets _vars
           return ([], Beam.Reg (vars ! name))
 
     Call name args ->
-      do  (ops, values) <- unzip <$> mapM genExpr args
+      do  tmp <- nextTmp
+          (ops, values) <- unzip <$> mapM genExpr args
           functions <- State.gets _functions
           let moves = zipWith Genop.move values (map Beam.X [0..])
-              call = Genop.call (length args) (functions ! name)
-          return (concat ops ++ moves ++ [call], Beam.Reg x0)
+              tail =
+                 [ Genop.call (length args) (functions ! name)
+                 , Genop.move (Beam.Reg x0) tmp
+                 ]
+          return (concat ops ++ moves ++ tail, Beam.Reg tmp)
 
 
 nextLabel :: State Env Int
@@ -111,13 +120,27 @@ nextLabel =
       return x
 
 
-storeVar :: Name -> State Env Beam.Op
-storeVar name =
+nextTmp :: State Env Beam.Register
+nextTmp =
+  do  n <- State.gets _tmps
+      State.modify $ \e -> e { _tmps = n + 1 }
+      return $ Beam.Y n
+
+
+storeArg :: Name -> State Env Beam.Op
+storeArg name =
   do  vars <- State.gets _vars
       let index = Map.size vars
           register = Beam.Y index
       State.modify $ \e -> e { _vars = Map.insert name register vars }
       return $ Genop.move (Beam.Reg (Beam.X index)) register
+
+
+checkSpaceNeeded :: Expr -> Int
+checkSpaceNeeded (Float _)         = 0
+checkSpaceNeeded (BinOp _ lhs rhs) = 1 + checkSpaceNeeded lhs + checkSpaceNeeded rhs
+checkSpaceNeeded (Var _)           = 0
+checkSpaceNeeded (Call _ args)     = 1 + sum (map checkSpaceNeeded args)
 
 
 erlangArithmetic :: Op -> Beam.Function
