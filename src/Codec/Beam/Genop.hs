@@ -67,10 +67,10 @@ call_ext :: Function -> Op
 call_ext function@(Function m f a) =
   Op 7 $ do
     builder <- State.get
-    let (index, newTable) = Table.indexOf function (_importTable builder)
+    let (index, newTable) = Table.index function (_importTable builder)
     State.put $ builder
       { _importTable = newTable
-      , _atomTable = snd $ Table.indexOf m $ snd $ Table.indexOf f $ _atomTable builder
+      , _atomTable = snd $ Table.index m $ snd $ Table.index f $ _atomTable builder
       }
     return [ Lit a, Lit index ]
 
@@ -184,10 +184,10 @@ call_ext_only :: Function -> Op
 call_ext_only function@(Function m f a) =
   Op 78 $ do
     builder <- State.get
-    let (index, newTable) = Table.indexOf function (_importTable builder)
+    let (index, newTable) = Table.index function (_importTable builder)
     State.put $ builder
       { _importTable = newTable
-      , _atomTable = snd $ Table.indexOf m $ snd $ Table.indexOf f $ _atomTable builder
+      , _atomTable = snd $ Table.index m $ snd $ Table.index f $ _atomTable builder
       }
     return [ Lit a, Lit index ]
 

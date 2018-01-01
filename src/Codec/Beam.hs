@@ -41,7 +41,7 @@ new name =
     , _currentLabelCount = 0
     , _overallLabelCount = 0
     , _functionCount = 0
-    , _atomTable = Table.singletonOffset (fromString name)
+    , _atomTable = Table.singleton (fromString name) 1
     , _literalTable = Table.empty
     , _lambdaTable = []
     , _importTable = Table.empty
@@ -103,11 +103,11 @@ appendOperand builder operand =
       appendCode builder . Builder.lazyByteString . BS.pack . encoder
 
     withAtom name toBuilder =
-      Table.indexOf name (_atomTable builder)
+      Table.index name (_atomTable builder)
         |> \(value, newTable) -> (toBuilder value) { _atomTable = newTable }
 
     withLiteral literal toBuilder =
-      Table.indexOf literal (_literalTable builder)
+      Table.index literal (_literalTable builder)
         |> \(value, newTable) -> (toBuilder value) { _literalTable = newTable }
 
 
@@ -306,7 +306,7 @@ packDouble =
 
 forceIndex :: Ord k => k -> Table k -> Int
 forceIndex k =
-  fst . Table.indexOf k
+  fst . Table.index k
 
 (|>) :: a -> (a -> b) -> b
 {-# INLINE (|>) #-}

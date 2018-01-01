@@ -1,50 +1,43 @@
-module Data.Table (Table, empty, singletonOffset, indexOf, encode, size) where
+module Data.Table (Table, empty, singleton, index, encode, size) where
 
 import qualified Data.Map as Map
 import qualified Data.List as List
 
 
-newtype Table k
-  = Table (Offset, Map.Map k Int)
-
-
-{-| See 'singletonOffset'.
- -}
-data Offset
-  = Zero
-  | One
+data Table k
+  = Table
+      { _offset :: Int
+      , _map :: Map.Map k Int
+      }
 
 
 empty :: Table k
 empty =
-  Table (Zero, Map.empty)
+  Table 0 Map.empty
 
 
 {-| The atom table seems to follow some different rules.
- -  I'm surprised 'Offset' is needed at all, but without it there are
+ -  I\'m surprised '_offset' is needed at all, but without it there are
  -  off-by-one encoding errors.
  -}
-singletonOffset :: Ord k => k -> Table k
-singletonOffset first =
-  Table (One, Map.singleton first 1)
+singleton :: Ord k => k -> Int -> Table k
+singleton key initialValue =
+  Table initialValue (Map.singleton key initialValue)
 
 
-indexOf :: Ord k => k -> Table k -> (Int, Table k)
-indexOf key table@(Table (offset, map)) =
+index :: Ord k => k -> Table k -> (Int, Table k)
+index key table@(Table offset map) =
   case Map.lookup key map of
     Just value ->
       (value, table)
 
     Nothing ->
-      let
-        value =
-          Map.size map + offsetValue offset
-      in
-        (value, Table (offset, Map.insert key value map))
+      let value = Map.size map + offset in
+      (value, table { _map = Map.insert key value map })
 
 
 encode :: Monoid m => (k -> m) -> Table k -> m
-encode func (Table (_, map)) =
+encode func (Table _ map) =
   mconcat
     $ fmap (func . fst)
     $ List.sortOn snd
@@ -52,10 +45,5 @@ encode func (Table (_, map)) =
 
 
 size :: Table k -> Int
-size (Table (_, map)) =
+size (Table _ map) =
   Map.size map
-
-
-offsetValue :: Offset -> Int
-offsetValue Zero = 0
-offsetValue One  = 1
