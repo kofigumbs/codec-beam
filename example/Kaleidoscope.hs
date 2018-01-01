@@ -38,7 +38,7 @@ compile code =
 
   where
     newEnv =
-      Env { _label = 1, _tmps = 0, _vars = Map.empty, _functions = Map.empty }
+      Env { _label = 1, _vars = Map.empty, _functions = Map.empty }
 
 
 
@@ -48,10 +48,23 @@ compile code =
 data Env =
   Env
     { _label :: Beam.Label
-    , _tmps :: Int
-    , _vars :: Map Name Beam.Register
+    , _vars :: Map Variable Beam.Register
     , _functions :: Map Name Beam.Label
     }
+
+
+data Variable
+  = Local Name
+  | Tmp
+
+
+{-| Force 'Tmp' variables to be unique. -}
+instance Ord Variable where
+  compare Tmp _ = LT
+  compare _ Tmp = GT
+  compare (Local left) (Local right) = compare left right
+instance Eq Variable where
+  (==) left right = compare left right == EQ
 
 
 generate :: Def -> State Env [Beam.Op]
@@ -59,11 +72,10 @@ generate (Def name@(Name rawName) args body) =
   do  x <- nextLabel
       y <- nextLabel
       State.modify $ \e -> e
-        { _tmps = 0
-        , _vars = Map.empty
+        { _vars = Map.empty
         , _functions = Map.insert name y (_functions e)
         }
-      headerOps <- mapM storeArg args
+      headerOps <- sequence $ withArgs genLocal args
       (bodyOps, returnValue) <- genExpr body
       return $
         [ Genop.label x
@@ -80,6 +92,11 @@ generate (Def name@(Name rawName) args body) =
     spaceNeeded = argCount + tmpsNeeded body
 
 
+genLocal :: Name -> Beam.Register -> State Env Beam.Op
+genLocal name destination =
+  Genop.move (Beam.Reg destination) <$> nextVar (Local name)
+
+
 genExpr :: Expr -> State Env ([Beam.Op], Beam.Operand)
 genExpr expr =
   case expr of
@@ -91,7 +108,7 @@ genExpr expr =
 
     Var name ->
       do  vars <- State.gets _vars
-          return ([], Beam.Reg (vars ! name))
+          return ([], Beam.Reg (vars ! Local name))
 
     Call name args ->
       do  functions <- State.gets _functions
@@ -100,11 +117,11 @@ genExpr expr =
 
 genCall :: Beam.Op -> [Expr] -> State Env ([Beam.Op], Beam.Operand)
 genCall call args =
-  do  tmp <- nextTmp
+  do  tmp <- nextVar Tmp
       (argOps, argValues) <- unzip <$> mapM genExpr args
       let ops =
             concat argOps
-              ++ zipWith Genop.move argValues (map Beam.X [0..])
+              ++ withArgs Genop.move argValues
               ++ [call, Genop.move (Beam.Reg x0) tmp]
       return (ops, Beam.Reg tmp)
 
@@ -116,20 +133,17 @@ nextLabel =
       return x
 
 
-nextTmp :: State Env Beam.Register
-nextTmp =
-  do  env <- State.get
-      State.modify $ \e -> e { _tmps = _tmps e + 1 }
-      return $ Beam.Y $ _tmps env + Map.size (_vars env)
-
-
-storeArg :: Name -> State Env Beam.Op
-storeArg name =
+nextVar :: Variable -> State Env Beam.Register
+nextVar v =
   do  vars <- State.gets _vars
-      let index = Map.size vars
-          register = Beam.Y index
-      State.modify $ \e -> e { _vars = Map.insert name register vars }
-      return $ Genop.move (Beam.Reg (Beam.X index)) register
+      let register = Beam.Y (Map.size vars)
+      State.modify $ \e -> e { _vars = Map.insert v register vars }
+      return register
+
+
+withArgs :: (a -> Beam.Register -> op) -> [a] -> [op]
+withArgs f list =
+  zipWith f list $ map Beam.X [0..]
 
 
 tmpsNeeded :: Expr -> Int
