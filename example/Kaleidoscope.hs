@@ -101,10 +101,12 @@ genExpr expr =
 genCall :: Beam.Op -> [Expr] -> State Env ([Beam.Op], Beam.Operand)
 genCall call args =
   do  tmp <- nextTmp
-      (ops, values) <- unzip <$> mapM genExpr args
-      let moves = zipWith Genop.move values (map Beam.X [0..])
-          tail = [call, Genop.move (Beam.Reg x0) tmp]
-      return (concat ops ++ moves ++ tail, Beam.Reg tmp)
+      (argOps, argValues) <- unzip <$> mapM genExpr args
+      let ops =
+            concat argOps
+              ++ zipWith Genop.move argValues (map Beam.X [0..])
+              ++ [call, Genop.move (Beam.Reg x0) tmp]
+      return (ops, Beam.Reg tmp)
 
 
 nextLabel :: State Env Int
@@ -116,9 +118,9 @@ nextLabel =
 
 nextTmp :: State Env Beam.Register
 nextTmp =
-  do  n <- State.gets _tmps
-      State.modify $ \e -> e { _tmps = n + 1 }
-      return $ Beam.Y n
+  do  env <- State.get
+      State.modify $ \e -> e { _tmps = _tmps e + 1 }
+      return $ Beam.Y $ _tmps env + Map.size (_vars env)
 
 
 storeArg :: Name -> State Env Beam.Op
