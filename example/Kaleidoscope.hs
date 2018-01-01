@@ -55,7 +55,7 @@ generate (Def name args body) =
       header <- genFunction name args
       (ops, returnValue) <- genExpr body
       return $ header ++ ops ++
-        [ Genop.move returnValue (Beam.X 0)
+        [ Genop.move returnValue x0
         , Genop.deallocate (length args)
         , Genop.return_
         ]
@@ -86,11 +86,11 @@ genExpr expr =
       do  (leftOps, leftValue) <- genExpr lhs
           (rightOps, rightValue)  <- genExpr rhs
           let ops =
-                [ Genop.move leftValue (Beam.X 0)
+                [ Genop.move leftValue x0
                 , Genop.move rightValue (Beam.X 1)
                 , Genop.call_ext (erlangArithmetic operator)
                 ]
-          return (leftOps ++ rightOps ++ ops, Beam.Reg (Beam.X 0))
+          return (leftOps ++ rightOps ++ ops, Beam.Reg x0)
 
     Var name ->
       do  vars <- State.gets _vars
@@ -101,7 +101,7 @@ genExpr expr =
           functions <- State.gets _functions
           let moves = zipWith Genop.move values (map Beam.X [0..])
               call = Genop.call (length args) (functions ! name)
-          return (concat ops ++ moves ++ [call], Beam.Reg (Beam.X 0))
+          return (concat ops ++ moves ++ [call], Beam.Reg x0)
 
 
 nextLabel :: State Env Int
@@ -125,6 +125,12 @@ erlangArithmetic Plus   = Beam.Function "erlang" "+" 2
 erlangArithmetic Minus  = Beam.Function "erlang" "-" 2
 erlangArithmetic Times  = Beam.Function "erlang" "*" 2
 erlangArithmetic Divide = Beam.Function "erlang" "/" 2
+
+
+x0 :: Beam.Register
+x0 =
+  Beam.X 0
+
 
 
 -- SYNTAX
