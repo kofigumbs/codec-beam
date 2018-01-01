@@ -31,10 +31,14 @@ main =
 
 compile :: String -> Either ParseError [Beam.Op]
 compile code =
-  flip evalState (Env 1 0 mempty mempty)
+  flip evalState newEnv
     <$> fmap concat
     <$> mapM generate
     <$> parse (contents topLevel) "KALEIDOSCOPE" code
+
+  where
+    newEnv =
+      Env { _label = 1, _tmps = 0, _vars = Map.empty, _functions = Map.empty }
 
 
 
@@ -59,20 +63,21 @@ generate (Def name@(Name rawName) args body) =
         , _vars = Map.empty
         , _functions = Map.insert name y (_functions e)
         }
-      allocates <- mapM storeArg args
-      (ops, returnValue) <- genExpr body
-      let argCount = length args
-          spaceNeeded = argCount + checkSpaceNeeded body
+      headerOps <- mapM storeArg args
+      (bodyOps, returnValue) <- genExpr body
       return $
         [ Genop.label x
         , Genop.func_info Beam.Public (fromString rawName) argCount
         , Genop.label y
         , Genop.allocate spaceNeeded argCount
-        ] ++ allocates ++ ops ++
+        ] ++ headerOps ++ bodyOps ++
         [ Genop.move returnValue x0
         , Genop.deallocate spaceNeeded
         , Genop.return_
         ]
+  where
+    argCount = length args
+    spaceNeeded = argCount + tmpsNeeded body
 
 
 genExpr :: Expr -> State Env ([Beam.Op], Beam.Operand)
@@ -136,11 +141,11 @@ storeArg name =
       return $ Genop.move (Beam.Reg (Beam.X index)) register
 
 
-checkSpaceNeeded :: Expr -> Int
-checkSpaceNeeded (Float _)         = 0
-checkSpaceNeeded (BinOp _ lhs rhs) = 1 + checkSpaceNeeded lhs + checkSpaceNeeded rhs
-checkSpaceNeeded (Var _)           = 0
-checkSpaceNeeded (Call _ args)     = 1 + sum (map checkSpaceNeeded args)
+tmpsNeeded :: Expr -> Int
+tmpsNeeded (Float _)         = 0
+tmpsNeeded (BinOp _ lhs rhs) = 1 + tmpsNeeded lhs + tmpsNeeded rhs
+tmpsNeeded (Var _)           = 0
+tmpsNeeded (Call _ args)     = 1 + sum (map tmpsNeeded args)
 
 
 erlangArithmetic :: Op -> Beam.Function
