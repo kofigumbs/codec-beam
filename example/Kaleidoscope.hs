@@ -87,35 +87,24 @@ genExpr expr =
       return ([], Beam.Ext (Beam.EFloat f))
 
     BinOp operator lhs rhs ->
-      do  tmp <- nextTmp
-          (leftOps, leftValue) <- genExpr lhs
-          (rightOps, rightValue) <- genExpr rhs
-          let ops =
-                [ leftOps
-                , [ Genop.move leftValue tmp ]
-                , rightOps
-                , [ Genop.move rightValue (Beam.X 1)
-                  , Genop.move (Beam.Reg tmp) x0
-                  , Genop.call_ext (erlangArithmetic operator)
-                  , Genop.move (Beam.Reg x0) tmp
-                  ]
-                ]
-          return (concat ops, Beam.Reg tmp)
+      genCall (Genop.call_ext (erlangArithmetic operator)) [lhs, rhs]
 
     Var name ->
       do  vars <- State.gets _vars
           return ([], Beam.Reg (vars ! name))
 
     Call name args ->
-      do  tmp <- nextTmp
-          (ops, values) <- unzip <$> mapM genExpr args
-          functions <- State.gets _functions
-          let moves = zipWith Genop.move values (map Beam.X [0..])
-              tail =
-                 [ Genop.call (length args) (functions ! name)
-                 , Genop.move (Beam.Reg x0) tmp
-                 ]
-          return (concat ops ++ moves ++ tail, Beam.Reg tmp)
+      do  functions <- State.gets _functions
+          genCall (Genop.call (length args) (functions ! name)) args
+
+
+genCall :: Beam.Op -> [Expr] -> State Env ([Beam.Op], Beam.Operand)
+genCall call args =
+  do  tmp <- nextTmp
+      (ops, values) <- unzip <$> mapM genExpr args
+      let moves = zipWith Genop.move values (map Beam.X [0..])
+          tail = [call, Genop.move (Beam.Reg x0) tmp]
+      return (concat ops ++ moves ++ tail, Beam.Reg tmp)
 
 
 nextLabel :: State Env Int
