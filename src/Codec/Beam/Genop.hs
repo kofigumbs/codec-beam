@@ -12,6 +12,7 @@ import qualified Control.Monad.State.Strict as State
 import qualified Data.Table as Table
 
 import Codec.Beam.Internal
+import Codec.Beam.Genop.Internal
 
 
 label :: Label -> Op
@@ -21,10 +22,8 @@ label uid =
     State.put $ builder
       { _currentLabelCount =
           _currentLabelCount builder + 1
-
       , _exportNextLabel =
           Nothing
-
       , _toExport =
           case _exportNextLabel builder of
             Just (f, a) ->
@@ -42,7 +41,6 @@ func_info access functionName arity =
     State.put $ builder
       { _functionCount =
           _functionCount builder + 1
-
       , _exportNextLabel =
           exportNextLabel access builder
       }
@@ -63,16 +61,9 @@ call_only arity label =
   Op 6 $ return [ Lit arity, Label label ]
 
 
-call_ext :: Function -> Op
-call_ext function@(Function m f a) =
-  Op 7 $ do
-    builder <- State.get
-    let (index, newTable) = Table.index function (_importTable builder)
-    State.put $ builder
-      { _importTable = newTable
-      , _atomTable = snd $ Table.index m $ snd $ Table.index f $ _atomTable builder
-      }
-    return [ Lit a, Lit index ]
+call_ext :: ByteString -> ByteString -> Int -> Op
+call_ext m f a =
+  Op 7 $ addImport m f a
 
 
 allocate :: Int -> Int -> Op
@@ -180,16 +171,9 @@ call_fun arity =
   Op 75 $ return [ Lit arity ]
 
 
-call_ext_only :: Function -> Op
-call_ext_only function@(Function m f a) =
-  Op 78 $ do
-    builder <- State.get
-    let (index, newTable) = Table.index function (_importTable builder)
-    State.put $ builder
-      { _importTable = newTable
-      , _atomTable = snd $ Table.index m $ snd $ Table.index f $ _atomTable builder
-      }
-    return [ Lit a, Lit index ]
+call_ext_only :: ByteString -> ByteString -> Int -> Op
+call_ext_only m f a =
+  Op 78 $ addImport m f a
 
 
 make_fun :: ByteString -> Int -> Label -> Int -> Op

@@ -293,7 +293,7 @@ main =
         [ Genop.label 1
         , Genop.func_info Beam.Public "test" 2
         , Genop.label 2
-        , Genop.call_ext_only (Beam.Function "erlang" "+" 2)
+        , Genop.call_ext_only "erlang" "+" 2
         , Genop.return_
         ]
     ]

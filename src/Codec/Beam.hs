@@ -1,7 +1,7 @@
 module Codec.Beam
   ( -- * Generate BEAM code
     encode
-  , Op, Operand(..), Register(..), Access(..), Function(..), Literal(..), Label
+  , Op, Operand(..), Register(..), Access(..), Literal(..), Label
     -- * Incremental encoding
   , Builder, new, append, toLazyByteString
   ) where

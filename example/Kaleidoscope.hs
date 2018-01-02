@@ -31,14 +31,10 @@ main =
 
 compile :: String -> Either ParseError [Beam.Op]
 compile code =
-  flip evalState newEnv
+  flip evalState (Env 1 Map.empty Map.empty 0)
     <$> fmap concat
     <$> mapM generate
     <$> parse (contents topLevel) "KALEIDOSCOPE" code
-
-  where
-    newEnv =
-      Env { _label = 1, _vars = Map.empty, _functions = Map.empty }
 
 
 
@@ -48,23 +44,10 @@ compile code =
 data Env =
   Env
     { _label :: Beam.Label
-    , _vars :: Map Variable Beam.Register
+    , _locals :: Map Name Beam.Register
     , _functions :: Map Name Beam.Label
+    , _uniqueTmp :: Int
     }
-
-
-data Variable
-  = Local Name
-  | Tmp
-
-
-{-| Force 'Tmp' variables to be unique. -}
-instance Ord Variable where
-  compare Tmp _ = LT
-  compare _ Tmp = GT
-  compare (Local left) (Local right) = compare left right
-instance Eq Variable where
-  (==) left right = compare left right == EQ
 
 
 generate :: Def -> State Env [Beam.Op]
@@ -72,8 +55,9 @@ generate (Def name@(Name rawName) args body) =
   do  x <- nextLabel
       y <- nextLabel
       State.modify $ \e -> e
-        { _vars = Map.empty
+        { _locals = Map.empty
         , _functions = Map.insert name y (_functions e)
+        , _uniqueTmp = 0
         }
       headerOps <- sequence $ withArgs genLocal args
       (bodyOps, returnValue) <- genExpr body
@@ -87,6 +71,7 @@ generate (Def name@(Name rawName) args body) =
         , Genop.deallocate spaceNeeded
         , Genop.return_
         ]
+
   where
     argCount = length args
     spaceNeeded = argCount + tmpsNeeded body
@@ -94,7 +79,10 @@ generate (Def name@(Name rawName) args body) =
 
 genLocal :: Name -> Beam.Register -> State Env Beam.Op
 genLocal name destination =
-  Genop.move (Beam.Reg destination) <$> nextVar (Local name)
+  do  locals <- State.gets _locals
+      let register = Beam.Y (Map.size locals)
+      State.modify $ \e -> e { _locals = Map.insert name register locals }
+      return $ Genop.move (Beam.Reg destination) register
 
 
 genExpr :: Expr -> State Env ([Beam.Op], Beam.Operand)
@@ -104,11 +92,11 @@ genExpr expr =
       return ([], Beam.Ext (Beam.EFloat f))
 
     BinOp operator lhs rhs ->
-      genCall (Genop.call_ext (erlangArithmetic operator)) [lhs, rhs]
+      genCall (Genop.call_ext "erlang" (stdlibMath operator) 2) [lhs, rhs]
 
     Var name ->
-      do  vars <- State.gets _vars
-          return ([], Beam.Reg (vars ! Local name))
+      do  locals <- State.gets _locals
+          return ([], Beam.Reg (locals ! name))
 
     Call name args ->
       do  functions <- State.gets _functions
@@ -117,7 +105,7 @@ genExpr expr =
 
 genCall :: Beam.Op -> [Expr] -> State Env ([Beam.Op], Beam.Operand)
 genCall call args =
-  do  tmp <- nextVar Tmp
+  do  tmp <- nextTmp
       (argOps, argValues) <- unzip <$> mapM genExpr args
       let ops =
             concat argOps
@@ -128,17 +116,16 @@ genCall call args =
 
 nextLabel :: State Env Int
 nextLabel =
-  do  x <- State.gets _label
-      State.modify $ \e -> e { _label = x + 1 }
-      return x
+  do  n <- State.gets _label
+      State.modify $ \e -> e { _label = n + 1 }
+      return n
 
 
-nextVar :: Variable -> State Env Beam.Register
-nextVar v =
-  do  vars <- State.gets _vars
-      let register = Beam.Y (Map.size vars)
-      State.modify $ \e -> e { _vars = Map.insert v register vars }
-      return register
+nextTmp :: State Env Beam.Register
+nextTmp =
+  do  n <- State.gets $ \e -> _uniqueTmp e + Map.size (_locals e)
+      State.modify $ \e -> e { _uniqueTmp = _uniqueTmp e + 1 }
+      return (Beam.Y n)
 
 
 withArgs :: (a -> Beam.Register -> op) -> [a] -> [op]
@@ -153,11 +140,11 @@ tmpsNeeded (Var _)           = 0
 tmpsNeeded (Call _ args)     = 1 + sum (map tmpsNeeded args)
 
 
-erlangArithmetic :: Op -> Beam.Function
-erlangArithmetic Plus   = Beam.Function "erlang" "+" 2
-erlangArithmetic Minus  = Beam.Function "erlang" "-" 2
-erlangArithmetic Times  = Beam.Function "erlang" "*" 2
-erlangArithmetic Divide = Beam.Function "erlang" "/" 2
+stdlibMath :: Op -> BS.ByteString
+stdlibMath Plus   = "+"
+stdlibMath Minus  = "-"
+stdlibMath Times  = "*"
+stdlibMath Divide = "/"
 
 
 x0 :: Beam.Register
