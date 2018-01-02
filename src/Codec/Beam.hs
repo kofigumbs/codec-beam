@@ -8,19 +8,18 @@ module Codec.Beam
 
 import Control.Monad.State.Strict (runState)
 import Data.Int (Int64)
-import Data.Map (Map, (!))
 import Data.Monoid ((<>))
 import Data.Word (Word8, Word32)
 import qualified Codec.Compression.Zlib as Zlib
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as BS
-import qualified Data.List as List
-import qualified Data.Map as Map
 
 import ByteStringConversion (fromString)
 import Codec.Beam.Internal
 import Codec.Beam.Genop
+import Data.Table (Table)
 import qualified Codec.Beam.Bytes as Bytes
+import qualified Data.Table as Table
 
 
 -- | Convenience to create code for a BEAM module all at once
@@ -42,9 +41,10 @@ new name =
     , _currentLabelCount = 0
     , _overallLabelCount = 0
     , _functionCount = 0
-    , _atomTable = Map.singleton (fromString name) 1
-    , _literalTable = []
+    , _atomTable = Table.singleton (fromString name) 1
+    , _literalTable = Table.empty
     , _lambdaTable = []
+    , _importTable = Table.empty
     , _exportNextLabel = Nothing
     , _toExport = []
     , _code = mempty
@@ -103,26 +103,12 @@ appendOperand builder operand =
       appendCode builder . Builder.lazyByteString . BS.pack . encoder
 
     withAtom name toBuilder =
-      case Map.lookup name (_atomTable builder) of
-        Just value ->
-          toBuilder value
-
-        Nothing ->
-          let
-            old =
-              _atomTable builder
-
-            value =
-              Map.size old + 1
-          in
-            (toBuilder value) { _atomTable = Map.insert name value old }
+      Table.index name (_atomTable builder)
+        |> \(value, newTable) -> (toBuilder value) { _atomTable = newTable }
 
     withLiteral literal toBuilder =
-      let
-        old =
-          _literalTable builder
-      in
-        (toBuilder (length old)) { _literalTable = literal : old }
+      Table.index literal (_literalTable builder)
+        |> \(value, newTable) -> (toBuilder value) { _literalTable = newTable }
 
 
 appendCode :: Builder -> Builder.Builder -> Builder
@@ -141,6 +127,7 @@ toLazyByteString
       atomTable
       literalTable
       lambdaTable
+      importTable
       _
       exportTable
       bytes
@@ -155,20 +142,14 @@ toLazyByteString
       <> "LitT" <> alignSection (literals literalTable)
       <> "ImpT" <> alignSection (pack32 0)
       <> "FunT" <> alignSection (lambdas lambdaTable atomTable)
+      <> "ImpT" <> alignSection (imports importTable atomTable)
       <> "ExpT" <> alignSection (exports exportTable atomTable)
       <> "Code" <> alignSection (code bytes (overall + current + 1) functions)
 
 
-atoms :: Map BS.ByteString Int -> BS.ByteString
+atoms :: Table BS.ByteString -> BS.ByteString
 atoms table =
-  pack32 (length list) <> mconcat (map encode list)
-
-  where
-    encode (name, _) =
-      withSize pack8 name
-
-    list =
-      List.sortOn snd (Map.toList table)
+  pack32 (Table.size table) <> Table.encode (withSize pack8) table
 
 
 code :: Builder.Builder -> Int -> Word32 -> BS.ByteString
@@ -197,14 +178,14 @@ code builder labelCount functionCount =
       3
 
 
-lambdas :: [Lambda] -> Map BS.ByteString Int -> BS.ByteString
+lambdas :: [Lambda] -> Table BS.ByteString -> BS.ByteString
 lambdas lambdaTable atomTable =
   pack32 (length lambdaTable) <> mconcat (map fromLambda lambdaTable)
 
   where
     fromLambda (Lambda name arity label index free) =
       mconcat
-        [ pack32 (atomTable ! name)
+        [ pack32 (forceIndex name atomTable)
         , pack32 arity
         , pack32 label
         , pack32 index
@@ -216,24 +197,32 @@ lambdas lambdaTable atomTable =
       0
 
 
-exports :: [Export] -> Map BS.ByteString Int -> BS.ByteString
+imports :: Table Function -> Table BS.ByteString -> BS.ByteString
+imports importTable atomTable =
+  pack32 (Table.size importTable) <> Table.encode fromFunction importTable
+
+  where
+    fromFunction (Function m f a) =
+      pack32 (forceIndex m atomTable) <> pack32 (forceIndex f atomTable) <> pack32 a
+
+
+exports :: [Export] -> Table BS.ByteString -> BS.ByteString
 exports exportTable atomTable =
   pack32 (length exportTable) <> mconcat (map fromTuple exportTable)
 
   where
     fromTuple (name, arity, label) =
-      pack32 (atomTable ! name) <> pack32 arity <> pack32 label
+      pack32 (forceIndex name atomTable) <> pack32 arity <> pack32 label
 
 
-literals :: [Literal] -> BS.ByteString
+literals :: Table Literal -> BS.ByteString
 literals table =
   pack32 (BS.length terms) <> Zlib.compress terms
 
   where
     terms =
-      mconcat $ pack32 (length table) : map
-        (\lit -> withSize pack32 $ pack8 131 <> packLiteral lit)
-        (reverse table)
+      pack32 (Table.size table)
+        <> Table.encode (withSize pack32 . BS.cons 131 . packLiteral) table
 
 
 packLiteral :: Literal -> BS.ByteString
@@ -314,6 +303,10 @@ packDouble :: Double -> BS.ByteString
 packDouble =
   Builder.toLazyByteString . Builder.doubleBE
 
+
+forceIndex :: Ord k => k -> Table k -> Int
+forceIndex k =
+  fst . Table.index k
 
 (|>) :: a -> (a -> b) -> b
 {-# INLINE (|>) #-}

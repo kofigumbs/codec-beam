@@ -33,6 +33,7 @@ Library
         Codec.Beam.Bytes
         Codec.Beam.Internal
         ByteStringConversion
+        Data.Table
 
     Build-depends:
         base,

@@ -5,7 +5,7 @@ import Data.Monoid ((<>))
 
 import ByteStringConversion (toString)
 import qualified Codec.Beam as Beam
-import qualified Codec.Beam.Genop as Beam
+import qualified Codec.Beam.Genop as Genop
 import qualified Eunit
 
 
@@ -14,6 +14,9 @@ main =
   Eunit.run
     [ Eunit.test "loads_empty"
         [ "?assertMatch({module, loads_empty}, code:load_file(loads_empty))"
+        -- TODO: auto-insert module_info
+        -- , "?assertEqual(erlang:get_module_info(loads_empty), loads_empty:module_info()),"
+        -- , "?assertEqual(erlang:get_module_info(loads_empty), loads_empty:module_info())"
         ]
         []
 
@@ -23,15 +26,15 @@ main =
         , "?assert(erlang:function_exported(api, public, 0)),"
         , "?assert(not erlang:function_exported(api, private, 0))"
         ]
-        [ [ Beam.label 1
-          , Beam.func_info Beam.Private "private" 0
-          , Beam.label 2
-          , Beam.return_
+        [ [ Genop.label 1
+          , Genop.func_info Beam.Private "private" 0
+          , Genop.label 2
+          , Genop.return_
           ]
-        , [ Beam.label 1
-          , Beam.func_info Beam.Public "public" 0
-          , Beam.label 2
-          , Beam.return_
+        , [ Genop.label 1
+          , Genop.func_info Beam.Public "public" 0
+          , Genop.label 2
+          , Genop.return_
           ]
         ]
 
@@ -57,42 +60,42 @@ main =
         , "?assert(is_equal:test(2.0, 2)),"
         , "?assert(is_equal:test(2.0, 2.0))"
         ]
-        $ withCmp Beam.is_eq
+        $ withCmp Genop.is_eq
     , Eunit.test "is_not_equal"
         [ "?assert(is_not_equal:test(2, 3)),"
         , "?assert(is_not_equal:test(2.0, 3)),"
         , "?assertNot(is_not_equal:test(2.0, 2)),"
         , "?assertNot(is_not_equal:test(2.0, 2.0))"
         ]
-        $ withCmp Beam.is_ne
+        $ withCmp Genop.is_ne
     , Eunit.test "is_exactly_equal"
         [ "?assertNot(is_exactly_equal:test(2, 3)),"
         , "?assertNot(is_exactly_equal:test(2.0, 3)),"
         , "?assertNot(is_exactly_equal:test(2.0, 2)),"
         , "?assert(is_exactly_equal:test(2.0, 2.0))"
         ]
-        $ withCmp Beam.is_eq_exact
+        $ withCmp Genop.is_eq_exact
     , Eunit.test "is_not_exactly_equal"
         [ "?assert(is_not_exactly_equal:test(2, 3)),"
         , "?assert(is_not_exactly_equal:test(2.0, 3)),"
         , "?assert(is_not_exactly_equal:test(2.0, 2)),"
         , "?assertNot(is_not_exactly_equal:test(2.0, 2.0))"
         ]
-        $ withCmp Beam.is_ne_exact
+        $ withCmp Genop.is_ne_exact
     , Eunit.test "is_less_than"
         [ "?assert(is_less_than:test(5, 6)),"
         , "?assertNot(is_less_than:test(6, 5)),"
         , "?assertNot(is_less_than:test(5.0, 5)),"
         , "?assertNot(is_less_than:test(6.0, 5.0))"
         ]
-        $ withCmp Beam.is_lt
+        $ withCmp Genop.is_lt
     , Eunit.test "is_greater_than_or_equal"
         [ "?assertNot(is_greater_than_or_equal:test(5, 6)),"
         , "?assert(is_greater_than_or_equal:test(6, 5)),"
         , "?assert(is_greater_than_or_equal:test(5.0, 5)),"
         , "?assert(is_greater_than_or_equal:test(6.0, 5.0))"
         ]
-        $ withCmp Beam.is_ge
+        $ withCmp Genop.is_ge
 
     -- Literal table encodings
     , withConstant_ "atom" (Beam.Ext (Beam.EAtom "hiya")) "hiya"
@@ -109,37 +112,37 @@ main =
         [ "?assertEqual(300, tuple_size(large_tuple:test())),"
         , "?assertEqual(300, element(300, large_tuple:test()))"
         ]
-        [ Beam.label 1
-        , Beam.func_info Beam.Public "test" 0
-        , Beam.label 2
-        , Beam.move (Beam.Ext (Beam.ETuple (map Beam.EInt [1..300]))) (Beam.X 0)
-        , Beam.return_
+        [ Genop.label 1
+        , Genop.func_info Beam.Public "test" 0
+        , Genop.label 2
+        , Genop.move (Beam.Ext (Beam.ETuple (map Beam.EInt [1..300]))) (Beam.X 0)
+        , Genop.return_
         ]
 
     , Eunit.test "multiple_literals"
         [ "?assert(multiple_literals:test())"
         ]
-        [ Beam.label 1
-        , Beam.func_info Beam.Public "test" 0
-        , Beam.label 2
-        , Beam.move (Beam.Ext (Beam.EAtom "dummy")) (Beam.X 0)
-        , Beam.move (Beam.Ext (Beam.EAtom "true")) (Beam.X 0)
-        , Beam.return_
+        [ Genop.label 1
+        , Genop.func_info Beam.Public "test" 0
+        , Genop.label 2
+        , Genop.move (Beam.Ext (Beam.EAtom "dummy")) (Beam.X 0)
+        , Genop.move (Beam.Ext (Beam.EAtom "true")) (Beam.X 0)
+        , Genop.return_
         ]
 
     , Eunit.test "call_into_identity"
         [ "?assertEqual(1023, call_into_identity:test())"
         ]
-        [ Beam.label 1
-        , Beam.func_info Beam.Public "test" 0
-        , Beam.label 2
-        , Beam.move (Beam.Int 1023) (Beam.X 0)
-        , Beam.call_only 1 4
-        , Beam.return_
-        , Beam.label 3
-        , Beam.func_info Beam.Private "identity" 1
-        , Beam.label 4
-        , Beam.return_
+        [ Genop.label 1
+        , Genop.func_info Beam.Public "test" 0
+        , Genop.label 2
+        , Genop.move (Beam.Int 1023) (Beam.X 0)
+        , Genop.call_only 1 4
+        , Genop.return_
+        , Genop.label 3
+        , Genop.func_info Beam.Private "identity" 1
+        , Genop.label 4
+        , Genop.return_
         ]
 
     -- Type checks
@@ -148,140 +151,150 @@ main =
         , "?assertNot(is_nil:test(23)),"
         , "?assertNot(is_nil:test([23]))"
         ]
-        $ withType Beam.is_nil
+        $ withType Genop.is_nil
     , Eunit.test "is_list"
         [ "?assert(is_list:test([])),"
         , "?assertNot(is_list:test(23)),"
         , "?assert(is_list:test([23]))"
         ]
-        $ withType Beam.is_list
+        $ withType Genop.is_list
     , Eunit.test "is_nonempty_list"
         [ "?assertNot(is_nonempty_list:test([])),"
         , "?assertNot(is_nonempty_list:test(23)),"
         , "?assert(is_nonempty_list:test([23]))"
         ]
-        $ withType Beam.is_nonempty_list
+        $ withType Genop.is_nonempty_list
     , Eunit.test "is_map"
         [ "?assert(is_map:test(#{})),"
         , "?assertNot(is_map:test(23)),"
         , "?assert(is_map:test(#{a=>23}))"
         ]
-        $ withType Beam.is_map
+        $ withType Genop.is_map
 
     -- Based on https://happi.github.io/theBeamBook/#x_and_y_regs_in_memory
     , Eunit.test "allocate_for_call_fun"
         [ "_add = fun 'erlang':'+'/2,"
         , "?assertEqual(4, allocate_for_call_fun:apply2(2, 2, _add))"
         ]
-        [ Beam.label 1
-        , Beam.func_info Beam.Public "apply2" 3
-        , Beam.label 2
-        , Beam.allocate 2 3
-        , Beam.move (Beam.Reg (Beam.X 2)) (Beam.Y 1)
-        , Beam.move (Beam.Reg (Beam.X 1)) (Beam.Y 0)
-        , Beam.call 1 4
-        , Beam.move (Beam.Reg (Beam.X 0)) (Beam.X 1)
-        , Beam.move (Beam.Reg (Beam.Y 0)) (Beam.X 0)
-        , Beam.move (Beam.Reg (Beam.X 1)) (Beam.Y 0)
-        , Beam.call 1 4
-        , Beam.move (Beam.Reg (Beam.Y 1)) (Beam.X 2)
-        , Beam.move (Beam.Reg (Beam.X 0)) (Beam.X 1)
-        , Beam.move (Beam.Reg (Beam.Y 0)) (Beam.X 0)
-        , Beam.call_fun 2
-        , Beam.deallocate 2
-        , Beam.return_
-        , Beam.label 3
-        , Beam.func_info Beam.Private "identity" 1
-        , Beam.label 4
-        , Beam.return_
+        [ Genop.label 1
+        , Genop.func_info Beam.Public "apply2" 3
+        , Genop.label 2
+        , Genop.allocate 2 3
+        , Genop.move (Beam.Reg (Beam.X 2)) (Beam.Y 1)
+        , Genop.move (Beam.Reg (Beam.X 1)) (Beam.Y 0)
+        , Genop.call 1 4
+        , Genop.move (Beam.Reg (Beam.X 0)) (Beam.X 1)
+        , Genop.move (Beam.Reg (Beam.Y 0)) (Beam.X 0)
+        , Genop.move (Beam.Reg (Beam.X 1)) (Beam.Y 0)
+        , Genop.call 1 4
+        , Genop.move (Beam.Reg (Beam.Y 1)) (Beam.X 2)
+        , Genop.move (Beam.Reg (Beam.X 0)) (Beam.X 1)
+        , Genop.move (Beam.Reg (Beam.Y 0)) (Beam.X 0)
+        , Genop.call_fun 2
+        , Genop.deallocate 2
+        , Genop.return_
+        , Genop.label 3
+        , Genop.func_info Beam.Private "identity" 1
+        , Genop.label 4
+        , Genop.return_
         ]
 
     , Eunit.test "get_tuple_element"
         [ "?assertEqual(2, get_tuple_element:first({2})),"
         , "?assertEqual(hi, get_tuple_element:second({oh, hi, there}))"
         ]
-        [ Beam.label 1
-        , Beam.func_info Beam.Public "first" 1
-        , Beam.label 2
-        , Beam.get_tuple_element (Beam.X 0) 0 (Beam.X 0)
-        , Beam.return_
-        , Beam.label 3
-        , Beam.func_info Beam.Public "second" 1
-        , Beam.label 4
-        , Beam.get_tuple_element (Beam.X 0) 1 (Beam.X 0)
-        , Beam.return_
+        [ Genop.label 1
+        , Genop.func_info Beam.Public "first" 1
+        , Genop.label 2
+        , Genop.get_tuple_element (Beam.X 0) 0 (Beam.X 0)
+        , Genop.return_
+        , Genop.label 3
+        , Genop.func_info Beam.Public "second" 1
+        , Genop.label 4
+        , Genop.get_tuple_element (Beam.X 0) 1 (Beam.X 0)
+        , Genop.return_
         ]
 
     , Eunit.test "set_tuple_element"
         [ "?assertEqual({dream, work}, set_tuple_element:make({team, work}))"
         ]
-        [ Beam.label 1
-        , Beam.func_info Beam.Public "make" 1
-        , Beam.label 2
-        , Beam.set_tuple_element (Beam.Atom "dream") (Beam.X 0) 0
-        , Beam.return_
+        [ Genop.label 1
+        , Genop.func_info Beam.Public "make" 1
+        , Genop.label 2
+        , Genop.set_tuple_element (Beam.Atom "dream") (Beam.X 0) 0
+        , Genop.return_
         ]
 
     , Eunit.test "put_list"
         [ "?assertEqual([one, 2], put_list:test())"
         ]
-        [ Beam.label 1
-        , Beam.func_info Beam.Public "test" 0
-        , Beam.label 2
-        , Beam.put_list (Beam.Int 2) Beam.Nil (Beam.X 0)
-        , Beam.put_list (Beam.Atom "one") (Beam.Reg (Beam.X 0)) (Beam.X 0)
-        , Beam.return_
+        [ Genop.label 1
+        , Genop.func_info Beam.Public "test" 0
+        , Genop.label 2
+        , Genop.put_list (Beam.Int 2) Beam.Nil (Beam.X 0)
+        , Genop.put_list (Beam.Atom "one") (Beam.Reg (Beam.X 0)) (Beam.X 0)
+        , Genop.return_
         ]
 
     , Eunit.test "make_a_tuple"
         [ "?assertEqual({one, 2}, make_a_tuple:test())"
         ]
-        [ Beam.label 1
-        , Beam.func_info Beam.Public "test" 0
-        , Beam.label 2
-        , Beam.put_tuple 2 (Beam.X 0)
-        , Beam.put (Beam.Atom "one")
-        , Beam.put (Beam.Int 2)
-        , Beam.return_
+        [ Genop.label 1
+        , Genop.func_info Beam.Public "test" 0
+        , Genop.label 2
+        , Genop.put_tuple 2 (Beam.X 0)
+        , Genop.put (Beam.Atom "one")
+        , Genop.put (Beam.Int 2)
+        , Genop.return_
         ]
 
     , Eunit.test "get_da_list"
         [ "?assertEqual(2, get_da_list:second([1,2,3]))"
         ]
-        [ Beam.label 1
-        , Beam.func_info Beam.Public "second" 1
-        , Beam.label 2
-        , Beam.get_list (Beam.Reg (Beam.X 0)) (Beam.X 1) (Beam.X 0)
-        , Beam.get_list (Beam.Reg (Beam.X 0)) (Beam.X 0) (Beam.X 1)
-        , Beam.return_
+        [ Genop.label 1
+        , Genop.func_info Beam.Public "second" 1
+        , Genop.label 2
+        , Genop.get_list (Beam.Reg (Beam.X 0)) (Beam.X 1) (Beam.X 0)
+        , Genop.get_list (Beam.Reg (Beam.X 0)) (Beam.X 0) (Beam.X 1)
+        , Genop.return_
         ]
 
     , Eunit.test "jumping_around"
         [ "?assertEqual(yay, jumping_around:test())"
         ]
-        [ Beam.label 1
-        , Beam.func_info Beam.Public "test" 0
-        , Beam.label 2
-        , Beam.jump 4
-        , Beam.label 3
-        , Beam.move (Beam.Atom "yay") (Beam.X 0)
-        , Beam.return_
-        , Beam.label 4
-        , Beam.jump 3
+        [ Genop.label 1
+        , Genop.func_info Beam.Public "test" 0
+        , Genop.label 2
+        , Genop.jump 4
+        , Genop.label 3
+        , Genop.move (Beam.Atom "yay") (Beam.X 0)
+        , Genop.return_
+        , Genop.label 4
+        , Genop.jump 3
         ]
 
     , Eunit.test "simple_lambda"
         [ "?assertEqual(to_capture, (simple_lambda:test(to_capture))())"
         ]
-        [ Beam.label 1
-        , Beam.func_info Beam.Public "test" 1
-        , Beam.label 2
-        , Beam.make_fun "lambda_function" 0 4 1
-        , Beam.return_
-        , Beam.label 3
-        , Beam.func_info Beam.Private "lambda_function" 1
-        , Beam.label 4
-        , Beam.return_
+        [ Genop.label 1
+        , Genop.func_info Beam.Public "test" 1
+        , Genop.label 2
+        , Genop.make_fun "lambda_function" 0 4 1
+        , Genop.return_
+        , Genop.label 3
+        , Genop.func_info Beam.Private "lambda_function" 1
+        , Genop.label 4
+        , Genop.return_
+        ]
+
+    , Eunit.test "external_call"
+        [ "?assertEqual(3, external_call:test(1, 2))"
+        ]
+        [ Genop.label 1
+        , Genop.func_info Beam.Public "test" 2
+        , Genop.label 2
+        , Genop.call_ext_only "erlang" "+" 2
+        , Genop.return_
         ]
     ]
 
@@ -302,11 +315,11 @@ withConstant name toOperand value =
   Eunit.test name
     [ "?assertEqual(" <> erlang value <> ", " <> name <> ":check())"
     ]
-    [ Beam.label 1
-    , Beam.func_info Beam.Public "check" 0
-    , Beam.label 2
-    , Beam.move (toOperand value) (Beam.X 0)
-    , Beam.return_
+    [ Genop.label 1
+    , Genop.func_info Beam.Public "check" 0
+    , Genop.label 2
+    , Genop.move (toOperand value) (Beam.X 0)
+    , Genop.return_
     ]
 
 withCmp :: (Beam.Label -> Beam.Operand -> Beam.Operand -> Beam.Op) -> [Beam.Op]
@@ -321,15 +334,15 @@ withType toOp =
 
 jumpFunction :: Int -> (Beam.Label -> Beam.Op) -> [Beam.Op]
 jumpFunction args decision =
-  [ Beam.label 1
-  , Beam.func_info Beam.Public "test" args
-  , Beam.label 2
+  [ Genop.label 1
+  , Genop.func_info Beam.Public "test" args
+  , Genop.label 2
   , decision 3
-  , Beam.move (Beam.Atom "true") (Beam.X 0)
-  , Beam.return_
-  , Beam.label 3
-  , Beam.move (Beam.Atom "false") (Beam.X 0)
-  , Beam.return_
+  , Genop.move (Beam.Atom "true") (Beam.X 0)
+  , Genop.return_
+  , Genop.label 3
+  , Genop.move (Beam.Atom "false") (Beam.X 0)
+  , Genop.return_
   ]
 
 
