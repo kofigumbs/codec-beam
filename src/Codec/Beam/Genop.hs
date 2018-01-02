@@ -12,7 +12,6 @@ import qualified Control.Monad.State.Strict as State
 import qualified Data.Table as Table
 
 import Codec.Beam.Internal
-import Codec.Beam.Genop.Internal
 
 
 label :: Label -> Op

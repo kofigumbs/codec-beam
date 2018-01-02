@@ -31,7 +31,6 @@ Library
 
     other-modules:
         Codec.Beam.Bytes
-        Codec.Beam.Genop.Internal
         Codec.Beam.Internal
         ByteStringConversion
         Data.Table

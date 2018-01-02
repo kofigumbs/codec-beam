@@ -4,8 +4,12 @@ import Control.Monad.State.Strict (State)
 import Data.ByteString.Lazy (ByteString)
 import Data.Table (Table)
 import Data.Word (Word8, Word32)
+import qualified Control.Monad.State.Strict as State
 import qualified Data.ByteString.Builder as BS
+import qualified Data.Table as Table
 
+
+-- DATA STRUCTURES
 
 -- | You can find implementations in "Codec.Beam.Genop"
 data Op
@@ -84,3 +88,22 @@ data Builder =
     , _toExport :: [Export]
     , _code :: BS.Builder
     }
+
+
+
+-- COMMON HELPERS
+
+
+addImport :: ByteString -> ByteString -> Int -> State.State Builder [Operand]
+addImport module_ function arity =
+  do builder <- State.get
+     let (index, newTable) =
+          Table.index (Function module_ function arity) (_importTable builder)
+     State.put $ builder
+       { _importTable = newTable
+       , _atomTable = insert module_ $ insert function $ _atomTable builder
+       }
+     return [ Lit arity, Lit index ]
+
+  where
+    insert key = snd . Table.index key
