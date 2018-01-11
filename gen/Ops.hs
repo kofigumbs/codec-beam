@@ -23,7 +23,7 @@ data Arg
   | Nil
   | Literal
   | Label
-  -- TODO: include loader only types?
+  -- TODO: include loader-only types?
   deriving Show
 
 
@@ -69,15 +69,13 @@ argument =
 variable :: Parser ()
 variable =
   do  many1 upper
-      char '='
-      return ()
+      ignore char '='
 
 
 constraint :: Parser ()
 constraint =
   do  choice [ ignore char '$', ignore string "==" ]
-      many1 (satisfy (/= ' '))
-      return ()
+      ignore many1 $ satisfy (/= ' ')
 
 
 tag :: Char -> Arg -> Parser Arg
