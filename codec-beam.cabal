@@ -71,3 +71,25 @@ Test-Suite codec-beam-tests
         filepath,
         process,
         text
+
+
+Executable gen
+    ghc-options:
+        -O0 -W -Werror
+
+    extensions:
+        OverloadedStrings
+
+    Hs-Source-Dirs:
+        gen
+
+    Main-is:
+        Main.hs
+
+    other-modules:
+        Ops
+
+    Build-depends:
+        base,
+        parsec,
+        process
