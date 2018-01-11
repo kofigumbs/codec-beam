@@ -62,7 +62,7 @@ argument =
         , tag 'f' Label
         , tag 'p' Label
         ]
-      optional constraint
+      optional constraint <|> ignore char '?'
       return type_
 
 
