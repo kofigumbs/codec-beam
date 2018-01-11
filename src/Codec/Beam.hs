@@ -2,8 +2,6 @@ module Codec.Beam
   ( -- * Generate BEAM code
     encode
   , Op, Operand(..), Register(..), Access(..), Literal(..), Label
-    -- * Incremental encoding
-  , Builder, new, append, toLazyByteString
   ) where
 
 import Control.Monad.State.Strict (runState)
@@ -21,13 +19,13 @@ import qualified Codec.Beam.Bytes as Bytes
 import qualified Data.Table as Table
 
 
--- | Convenience to create code for a BEAM module all at once
+-- | Create code for a BEAM module!
 encode
   :: BS.ByteString -- ^ module name
   -> [Op]          -- ^ instructions
   -> BS.ByteString -- ^ return encoded BEAM
 encode name =
-  toLazyByteString . append (new name)
+  toLazyByteString . foldl collectOp (new name)
 
 
 -- | Create a fresh 'Builder' for a BEAM module
@@ -37,8 +35,7 @@ new
 new name =
   Builder
     { _moduleName = Atom name
-    , _currentLabelCount = 0
-    , _overallLabelCount = 0
+    , _labelCount = 0
     , _functionCount = 0
     , _atomTable = Table.singleton name 1
     , _literalTable = Table.empty
@@ -50,24 +47,11 @@ new name =
     }
 
 
--- | Add instructions to the module being encoded
-append
-  :: Builder -- ^ encoding state
-  -> [Op]    -- ^ instructions
-  -> Builder -- ^ return new encoding state
-append builder =
-  foldl collectOp $ builder
-    { _currentLabelCount =
-        0
-    , _overallLabelCount =
-        _overallLabelCount builder + _currentLabelCount builder
-    }
-
-  where
-    collectOp acc (Op opCode state) =
-      let (args, newBuilder) = runState state acc in
-      appendCode newBuilder (Builder.word8 opCode)
-        |> foldl appendOperand $ args
+collectOp :: Builder -> Op -> Builder
+collectOp acc (Op opCode state) =
+  let (args, newBuilder) = runState state acc in
+  appendCode newBuilder (Builder.word8 opCode)
+    |> foldl appendOperand $ args
 
 
 appendOperand :: Builder -> Operand -> Builder
@@ -92,7 +76,7 @@ appendOperand builder operand =
       tag (Bytes.internal 4) value
 
     Label value ->
-      tag (Bytes.internal 5) $ value + _overallLabelCount builder
+      tag (Bytes.internal 5) $ value
 
     Ext literal ->
       tag (Bytes.external 4) |> withLiteral literal
@@ -120,8 +104,7 @@ toLazyByteString :: Builder -> BS.ByteString
 toLazyByteString
   ( Builder
       _
-      current
-      overall
+      labels
       functions
       atomTable
       literalTable
@@ -143,7 +126,7 @@ toLazyByteString
       <> "FunT" <> alignSection (lambdas lambdaTable atomTable)
       <> "ImpT" <> alignSection (imports importTable atomTable)
       <> "ExpT" <> alignSection (exports exportTable atomTable)
-      <> "Code" <> alignSection (code bytes (overall + current + 1) functions)
+      <> "Code" <> alignSection (code bytes (labels + 1) functions)
 
 
 atoms :: Table BS.ByteString -> BS.ByteString

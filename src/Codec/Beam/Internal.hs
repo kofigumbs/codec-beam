@@ -77,8 +77,7 @@ data Function
 data Builder =
   Builder
     { _moduleName :: Operand
-    , _overallLabelCount :: Int
-    , _currentLabelCount :: Int
+    , _labelCount :: Int
     , _functionCount :: Word32
     , _atomTable :: Table ByteString
     , _literalTable :: Table Literal

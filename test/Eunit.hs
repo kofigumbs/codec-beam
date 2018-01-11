@@ -1,4 +1,4 @@
-module Eunit (Test, run , test , testMany) where
+module Eunit (Test, run, test) where
 
 import Data.Monoid ((<>))
 import System.FilePath ((</>), (<.>))
@@ -28,13 +28,6 @@ erlangModuleName =
 
 type Test =
   IO String
-
-
-testMany :: String -> [String] -> [[Beam.Op]] -> Test
-testMany name body =
-  test_ name body
-    . Beam.toLazyByteString
-    . foldl Beam.append (Beam.new (fromString name))
 
 
 test :: String -> [String] -> [Beam.Op] -> Test
