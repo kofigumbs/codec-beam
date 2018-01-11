@@ -5,6 +5,7 @@ import System.FilePath ((</>), (<.>))
 import System.Process (callProcess)
 import qualified Data.ByteString.Lazy as BS
 
+import ByteStringConversion (fromString)
 import qualified Codec.Beam as Beam
 
 
@@ -31,12 +32,14 @@ type Test =
 
 testMany :: String -> [String] -> [[Beam.Op]] -> Test
 testMany name body =
-  test_ name body . Beam.toLazyByteString . foldl Beam.append (Beam.new name)
+  test_ name body
+    . Beam.toLazyByteString
+    . foldl Beam.append (Beam.new (fromString name))
 
 
 test :: String -> [String] -> [Beam.Op] -> Test
 test name body =
-  test_ name body . Beam.encode name
+  test_ name body . Beam.encode (fromString name)
 
 
 test_ :: String -> [String] -> BS.ByteString -> Test

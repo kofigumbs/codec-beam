@@ -25,7 +25,7 @@ main =
       code <- readFile file
       let name = takeBaseName file
       either print
-        (BS.writeFile (name <> ".beam") . Beam.encode name)
+        (BS.writeFile (name <> ".beam") . Beam.encode (fromString name))
         (compile code)
 
 

@@ -14,7 +14,6 @@ import qualified Codec.Compression.Zlib as Zlib
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as BS
 
-import ByteStringConversion (fromString)
 import Codec.Beam.Internal
 import Codec.Beam.Genop
 import Data.Table (Table)
@@ -24,7 +23,7 @@ import qualified Data.Table as Table
 
 -- | Convenience to create code for a BEAM module all at once
 encode
-  :: String        -- ^ module name
+  :: BS.ByteString -- ^ module name
   -> [Op]          -- ^ instructions
   -> BS.ByteString -- ^ return encoded BEAM
 encode name =
@@ -33,15 +32,15 @@ encode name =
 
 -- | Create a fresh 'Builder' for a BEAM module
 new
-  :: String  -- ^ module name
-  -> Builder -- ^ return encoding state
+  :: BS.ByteString  -- ^ module name
+  -> Builder        -- ^ return encoding state
 new name =
   Builder
-    { _moduleName = Atom (fromString name)
+    { _moduleName = Atom name
     , _currentLabelCount = 0
     , _overallLabelCount = 0
     , _functionCount = 0
-    , _atomTable = Table.singleton (fromString name) 1
+    , _atomTable = Table.singleton name 1
     , _literalTable = Table.empty
     , _lambdaTable = []
     , _importTable = Table.empty
