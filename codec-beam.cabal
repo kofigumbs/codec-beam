@@ -91,5 +91,6 @@ Executable gen
 
     Build-depends:
         base,
+        containers,
         parsec,
         process
