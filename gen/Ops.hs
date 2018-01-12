@@ -1,58 +1,61 @@
 module Ops (Line(..), Type(..), Ops.parse) where
 
-import Data.Either (rights)
+import Data.Functor (($>))
 import Text.Parsec hiding (Line)
 import Text.Parsec.String (Parser)
-import qualified Data.Set as Set
 
 
 data Line
-  = GenericOp Int
+  = GenericOp String Int
   | SpecificOp String [Type]
-  | Match [Pattern] Body
+  | Match [Pattern] [Pattern]
+  deriving Show
 
 
-data Body
+data Pattern
   = C
-  | Ops [Pattern]
-
-
-data Pattern =
-  Pattern
-    { _name :: String
-    , _args :: [Argument]
-    }
+  | Op String [Argument]
+  deriving Show
 
 
 data Argument
-  = Named String Type
-  | Constrained Type
-  | Anonymous String
+  = NameOnly String
+  | TypeOnly Type
+  | Complete String Type
+  deriving Show
 
 
 data Type
   = XRegister
   | YRegister
   | FloatRegister
-  | IntTagged
-  | IntUntagged
+  | Integer
   | WordUntagged
   | Atom
   | Nil
   | Literal
   | Label
+  | Bif
+  | Union [Type]
   -- TODO: include loader-only types?
   deriving (Eq, Ord, Show)
 
 
 parse :: String -> Either ParseError [Line]
 parse =
-  Text.Parsec.parse (sepBy line newline) "ops.tab"
+  Text.Parsec.parse (endBy line newline) "ops.tab"
 
 
 line :: Parser Line
 line =
-  skipLine '#' <|> skipLine '%' <|> genericOp <|> specificOp <|> pattern
+  choice
+    [ skipLine '#'
+    , skipLine '%'
+    , genericOp
+    , match
+    , specificOp
+    , newline >> line
+    ]
 
 
 skipLine :: Char -> Parser Line
@@ -62,65 +65,124 @@ skipLine c =
 
 genericOp :: Parser Line
 genericOp =
-  error "TODO"
+  do  name <- try (opName <* char '/')
+      arity <- digit
+      pure $ GenericOp name $ read [arity]
 
 
 specificOp :: Parser Line
 specificOp =
-  error "TODO"
+  do  name <- opName
+      args <- choice [ oneSpace >> sepBy type_ oneSpace, pure [] ]
+      pure $ SpecificOp name args
 
 
-pattern :: Parser Line
-pattern =
-  error "TODO"
+match :: Parser Line
+match =
+  do  left <- try matchHead
+      optional oneSpace
+      optional breakLine
+      right <- sepBy (pattern sepBy) barSpace
+      pure $ Match left right
 
 
-declaration :: Parser (String, [Set.Set Type])
-declaration =
-  do  name <- many1 (lower <|> digit <|> char '_')
-      args <- many argument
-      pure $ (name, args)
+matchHead :: Parser [Pattern]
+matchHead =
+  sepBy1 (pattern endBy) barSpace <* string "=>"
 
 
-argument :: Parser (Set.Set Type)
+pattern :: (Parser Argument -> Parser () -> Parser [Argument]) -> Parser Pattern
+pattern separator =
+  do  name <- opName
+      choice
+        [ do  char '('
+              manyTill anyChar $ char ')'
+              oneSpace
+              pure C
+        , do  optional oneSpace
+              Op name <$> separator argument oneSpace
+        ]
+
+
+argument :: Parser Argument
 argument =
-  do  firstType <- try (space >> optional variable >> type_)
-      otherTypes <- many type_
-      optional constraint <|> ignore char '?'
-      pure $ Set.fromList (firstType : otherTypes)
+  do  var <- optionMaybe variable
+      case var of
+        Nothing ->
+          TypeOnly <$> type_
+
+        Just name ->
+          choice
+            [ char '=' >> Complete name <$> type_
+            , pure (NameOnly name)
+            ]
 
 
 type_ :: Parser Type
 type_ =
-  choice
-    [ char 'x' >> pure XRegister
-    , char 'y' >> pure YRegister
-    , char 'l' >> pure FloatRegister
-    , char 'i' >> pure IntTagged
-    , char 'q' >> pure IntUntagged
-    , char 'u' >> pure WordUntagged
-    , char 'L' >> pure WordUntagged
-    , char 'a' >> pure Atom
-    , char 'n' >> pure Nil
-    , char 'q' >> pure Literal
-    , char 'c' >> pure Literal
-    , char 'f' >> pure Label
-    , char 'p' >> pure Label
-    , string "Lbl" >> pure Label
-    ]
-
-variable :: Parser ()
-variable =
-  do  many1 upper
-      ignore char '='
+  do  firstType <- try singleType
+      otherTypes <- many singleType
+      optional constraint <|> ignore char '?'
+      pure $ foldl combineTypes firstType otherTypes
+  where
+    singleType =
+      choice
+        [ char 'x'    $> XRegister
+        , char 'y'    $> YRegister
+        , char 'l'    $> FloatRegister
+        , char 'a'    $> Atom
+        , char 'n'    $> Nil
+        , char 'q'    $> Literal
+        , char 'b'    $> Bif
+        , char 'c'    $> Union [Atom, Integer, Nil, Literal]
+        , char 's'    $> Union [XRegister, YRegister, Literal]
+        , oneOf "uL"  $> WordUntagged
+        , oneOf "Sd"  $> Union [XRegister, YRegister]
+        , oneOf "fpj" $> Label
+        , oneOf "Iiq" $> Integer
+        ]
 
 
 constraint :: Parser ()
 constraint =
   do  ignore char '$'<|> try (ignore string "==")
-      ignore many1 $ satisfy (/= ' ')
+      ignore many (alphaNum <|> oneOf "_:/")
+
+
+opName :: Parser String
+opName =
+  many1 (lower <|> digit <|> char '_')
+
+
+variable :: Parser String
+variable =
+  do  start <- upper
+      rest <- many alphaNum
+      pure (start : rest)
+
+
+breakLine :: Parser ()
+breakLine =
+  char '\\' >> spaces
+
+
+barSpace :: Parser ()
+barSpace =
+  char '|' >> oneSpace >> optional breakLine
+
+
+oneSpace :: Parser ()
+oneSpace =
+  ignore char ' '
 
 
 ignore :: (a -> Parser b) -> a -> Parser ()
 ignore toParser a =
-  toParser a >> pure ()
+  toParser a $> ()
+
+
+combineTypes :: Type -> Type -> Type
+combineTypes (Union lefts) (Union rights) = Union (lefts ++ rights)
+combineTypes (Union lefts) right          = Union (right : lefts)
+combineTypes left          (Union rights) = Union (left : rights)
+combineTypes left          right          = Union [left, right]
