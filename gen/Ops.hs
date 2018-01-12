@@ -1,4 +1,4 @@
-module Ops (Line(..), Type(..), Ops.parse) where
+module Ops (Line(..), Instruction(..), Argument(..), Type(..), Ops.parse) where
 
 import Data.Functor (($>))
 import Text.Parsec hiding (Line)
@@ -8,11 +8,11 @@ import Text.Parsec.String (Parser)
 data Line
   = GenericOp String Int
   | SpecificOp String [Type]
-  | Match [Pattern] [Pattern]
+  | Transform [Instruction] [Instruction]
   deriving Show
 
 
-data Pattern
+data Instruction
   = C
   | Op String [Argument]
   deriving Show
@@ -52,7 +52,7 @@ line =
     [ skipLine '#'
     , skipLine '%'
     , genericOp
-    , match
+    , transform
     , specificOp
     , newline >> line
     ]
@@ -77,22 +77,22 @@ specificOp =
       pure $ SpecificOp name args
 
 
-match :: Parser Line
-match =
-  do  left <- try matchHead
+transform :: Parser Line
+transform =
+  do  left <- try pattern
       optional oneSpace
       optional breakLine
-      right <- sepBy (pattern sepBy) barSpace
-      pure $ Match left right
+      right <- sepBy (instruction sepBy) barSpace
+      pure $ Transform left right
 
 
-matchHead :: Parser [Pattern]
-matchHead =
-  sepBy1 (pattern endBy) barSpace <* string "=>"
+pattern :: Parser [Instruction]
+pattern =
+  sepBy1 (instruction endBy) barSpace <* string "=>"
 
 
-pattern :: (Parser Argument -> Parser () -> Parser [Argument]) -> Parser Pattern
-pattern separator =
+instruction :: (Parser Argument -> Parser () -> Parser [Argument]) -> Parser Instruction
+instruction separator =
   do  name <- opName
       choice
         [ do  char '('
