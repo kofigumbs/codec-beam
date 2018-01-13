@@ -30,14 +30,14 @@ data Argument
 
 
 data Type
-  = Bif
+  = Import
+  | Export
   | Atom
   | XRegister
   | YRegister
   | FloatRegister
   | Integer
   | WordUntagged
-  | Export
   | TupleArity
   | TupleByteOffset
   | StackByteOffset
@@ -145,21 +145,20 @@ type_ =
       optional $ choice
         [ do  try (string "==")
               ignore many1 (alphaNum <|> char '_')
-        , ignore char '?'
         , equals <* choice [ ignore many1 digit, atom ]
         ]
       pure $ foldl combineTypes firstType otherTypes
   where
     singleType = choice
-      [ builtIn      $> Bif
-      , char 'b'     $> Bif
+      [ builtIn      $> Import
+      , char 'b'     $> Import
+      , char 'e'     $> Export
       , char 'a'     $> Atom
       , oneOf "rx"   $> XRegister
       , char 'y'     $> YRegister
       , char 'l'     $> FloatRegister
       , oneOf "Iiqt" $> Integer
       , oneOf "uoL"  $> WordUntagged
-      , char 'e'     $> Export
       , char 'A'     $> TupleArity
       , char 'P'     $> TupleByteOffset
       , char 'Q'     $> StackByteOffset
@@ -180,10 +179,7 @@ builtIn =
 
 atom :: Parser ()
 atom =
-  ignore choice
-    [ try $ string "am_undefined"
-    , try $ string "am_true"
-    ]
+  try (string "am_") *> ignore many1 (lower <|> char '_')
 
 
 opName :: Parser String
