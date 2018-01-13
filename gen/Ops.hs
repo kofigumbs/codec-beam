@@ -1,6 +1,10 @@
-module Ops (Line(..), Instruction(..), Argument(..), Type(..), Ops.parse) where
+module Ops
+  ( Line(..), Instruction(..), Argument(..), Type(..)
+  , downloadUrl, Ops.parse
+  ) where
 
 import Data.Functor (($>))
+import Data.Char (isSpace)
 import Text.Parsec hiding (Line)
 import Text.Parsec.String (Parser)
 
@@ -26,24 +30,43 @@ data Argument
 
 
 data Type
-  = XRegister
+  = Bif
+  | Atom
+  | XRegister
   | YRegister
   | FloatRegister
   | Integer
   | WordUntagged
-  | Atom
+  | Export
+  | TupleArity
+  | TupleByteOffset
+  | StackByteOffset
   | Nil
   | Literal
   | Label
-  | Bif
+  | VarArgs
   | Union [Type]
   -- TODO: include loader-only types?
   deriving (Eq, Ord, Show)
 
 
+downloadUrl :: String -> String
+downloadUrl version =
+  "https://raw.githubusercontent.com/erlang/otp/"
+    ++ version
+    ++ "/erts/emulator/beam/ops.tab"
+
+
 parse :: String -> Either ParseError [Line]
 parse =
-  Text.Parsec.parse (endBy line newline) "ops.tab"
+  Text.Parsec.parse (endBy line newline <* eof) "ops.tab" . trimRights
+
+
+trimRights :: String -> String
+trimRights =
+  unlines . fmap dropTrailing . lines
+  where
+    dropTrailing = reverse . dropWhile isSpace . reverse
 
 
 line :: Parser Line
@@ -54,13 +77,13 @@ line =
     , genericOp
     , transform
     , specificOp
-    , newline >> line
+    , newline *> line
     ]
 
 
 skipLine :: Char -> Parser Line
 skipLine c =
-  char c >> manyTill anyChar newline >> line
+  char c *> manyTill anyChar newline *> line
 
 
 genericOp :: Parser Line
@@ -72,81 +95,95 @@ genericOp =
 
 specificOp :: Parser Line
 specificOp =
-  do  name <- opName
-      args <- choice [ oneSpace >> sepBy type_ oneSpace, pure [] ]
-      pure $ SpecificOp name args
+  try $ SpecificOp <$> opName <*> many (spaceChar *> type_)
 
 
 transform :: Parser Line
 transform =
-  do  left <- try pattern
-      optional oneSpace
-      optional breakLine
-      right <- sepBy (instruction sepBy) barSpace
-      pure $ Transform left right
+  Transform <$> try pattern <*> choice
+    [ do  many1 spaceChar
+          optional breakLine
+          sepBy instruction barSpace
+    , pure []
+    ]
 
 
 pattern :: Parser [Instruction]
 pattern =
-  sepBy1 (instruction endBy) barSpace <* string "=>"
+  sepBy1 instruction barSpace <* many1 spaceChar <* string "=>"
 
 
-instruction :: (Parser Argument -> Parser () -> Parser [Argument]) -> Parser Instruction
-instruction separator =
+instruction :: Parser Instruction
+instruction =
   do  name <- opName
       choice
         [ do  char '('
               manyTill anyChar $ char ')'
-              oneSpace
               pure C
-        , do  optional oneSpace
-              Op name <$> separator argument oneSpace
+        , Op name <$> many (try (many1 spaceChar *> argument))
         ]
 
 
 argument :: Parser Argument
 argument =
-  do  var <- optionMaybe variable
-      case var of
-        Nothing ->
-          TypeOnly <$> type_
-
-        Just name ->
+  choice
+    [ try $ TypeOnly <$> type_ <* notFollowedBy badTypeEnd
+    , do  name <- variable
           choice
-            [ char '=' >> Complete name <$> type_
+            [ fmap (Complete name) (equals *> type_)
             , pure (NameOnly name)
             ]
+    ]
+  where
+    badTypeEnd = equals <|> ignore id alphaNum
 
 
 type_ :: Parser Type
 type_ =
   do  firstType <- try singleType
       otherTypes <- many singleType
-      optional constraint <|> ignore char '?'
+      optional $ choice
+        [ do  try (string "==")
+              ignore many1 (alphaNum <|> char '_')
+        , ignore char '?'
+        , equals <* choice [ ignore many1 digit, atom ]
+        ]
       pure $ foldl combineTypes firstType otherTypes
   where
-    singleType =
-      choice
-        [ char 'x'    $> XRegister
-        , char 'y'    $> YRegister
-        , char 'l'    $> FloatRegister
-        , char 'a'    $> Atom
-        , char 'n'    $> Nil
-        , char 'q'    $> Literal
-        , char 'b'    $> Bif
-        , char 'c'    $> Union [Atom, Integer, Nil, Literal]
-        , char 's'    $> Union [XRegister, YRegister, Literal]
-        , oneOf "uL"  $> WordUntagged
-        , oneOf "Sd"  $> Union [XRegister, YRegister]
-        , oneOf "fpj" $> Label
-        , oneOf "Iiq" $> Integer
-        ]
+    singleType = choice
+      [ builtIn      $> Bif
+      , char 'b'     $> Bif
+      , char 'a'     $> Atom
+      , oneOf "rx"   $> XRegister
+      , char 'y'     $> YRegister
+      , char 'l'     $> FloatRegister
+      , oneOf "Iiqt" $> Integer
+      , oneOf "uoL"  $> WordUntagged
+      , char 'e'     $> Export
+      , char 'A'     $> TupleArity
+      , char 'P'     $> TupleByteOffset
+      , char 'Q'     $> StackByteOffset
+      , char 'n'     $> Nil
+      , char 'q'     $> Literal
+      , oneOf "fpj"  $> Label
+      , char '*'     $> VarArgs
+      , char 'c'     $> Union [Atom, Integer, Nil, Literal]
+      , char 's'     $> Union [XRegister, YRegister, Literal]
+      , oneOf "Sd"   $> Union [XRegister, YRegister]
+      ]
 
 
-constraint :: Parser ()
-constraint =
-  do  ignore char '$'<|> try (ignore string "==")
-      ignore many (alphaNum <|> oneOf "_:/")
+builtIn :: Parser ()
+builtIn =
+  try (string "u$") *> ignore many (alphaNum <|> oneOf "_:/")
+
+
+atom :: Parser ()
+atom =
+  ignore choice
+    [ try $ string "am_undefined"
+    , try $ string "am_true"
+    ]
 
 
 opName :: Parser String
@@ -163,17 +200,22 @@ variable =
 
 breakLine :: Parser ()
 breakLine =
-  char '\\' >> spaces
+  char '\\' *> spaces
 
 
 barSpace :: Parser ()
 barSpace =
-  char '|' >> oneSpace >> optional breakLine
+  try (string " | ") *> optional breakLine
 
 
-oneSpace :: Parser ()
-oneSpace =
+spaceChar :: Parser ()
+spaceChar =
   ignore char ' '
+
+
+equals :: Parser ()
+equals =
+  ignore char '='
 
 
 ignore :: (a -> Parser b) -> a -> Parser ()
