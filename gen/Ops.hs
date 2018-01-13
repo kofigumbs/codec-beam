@@ -36,17 +36,11 @@ data Type
   | XRegister
   | YRegister
   | FloatRegister
-  | Integer
-  | WordUntagged
-  | TupleArity
-  | TupleByteOffset
-  | StackByteOffset
-  | Nil
+  | Untagged
   | Literal
   | Label
   | VarArgs
   | Union [Type]
-  -- TODO: include loader-only types?
   deriving (Eq, Ord, Show)
 
 
@@ -72,18 +66,18 @@ trimRights =
 line :: Parser Line
 line =
   choice
-    [ skipLine '#'
-    , skipLine '%'
-    , genericOp
+    [ genericOp
     , transform
     , specificOp
-    , newline *> line
+    , skipLine '#' *> line
+    , skipLine '%' *> line
+    , newline      *> line
     ]
 
 
-skipLine :: Char -> Parser Line
+skipLine :: Char -> Parser ()
 skipLine c =
-  char c *> manyTill anyChar newline *> line
+  ignore char c <* manyTill anyChar newline
 
 
 genericOp :: Parser Line
@@ -150,25 +144,20 @@ type_ =
       pure $ foldl combineTypes firstType otherTypes
   where
     singleType = choice
-      [ builtIn      $> Import
-      , char 'b'     $> Import
-      , char 'e'     $> Export
-      , char 'a'     $> Atom
-      , oneOf "rx"   $> XRegister
-      , char 'y'     $> YRegister
-      , char 'l'     $> FloatRegister
-      , oneOf "Iiqt" $> Integer
-      , oneOf "uoL"  $> WordUntagged
-      , char 'A'     $> TupleArity
-      , char 'P'     $> TupleByteOffset
-      , char 'Q'     $> StackByteOffset
-      , char 'n'     $> Nil
-      , char 'q'     $> Literal
-      , oneOf "fpj"  $> Label
-      , char '*'     $> VarArgs
-      , char 'c'     $> Union [Atom, Integer, Nil, Literal]
-      , char 's'     $> Union [XRegister, YRegister, Literal]
-      , oneOf "Sd"   $> Union [XRegister, YRegister]
+      [ builtIn          $> Import
+      , char 'b'         $> Import
+      , char 'e'         $> Export
+      , char 'a'         $> Atom
+      , oneOf "rx"       $> XRegister
+      , char 'y'         $> YRegister
+      , char 'l'         $> FloatRegister
+      , oneOf "touAILPQ" $> Untagged
+      , oneOf "inq"      $> Literal
+      , oneOf "fjp"      $> Label
+      , char '*'         $> VarArgs
+      , char 'c'         $> Union [Atom, Literal]
+      , char 's'         $> Union [XRegister, YRegister, Atom, Literal]
+      , oneOf "dS"       $> Union [XRegister, YRegister]
       ]
 
 
