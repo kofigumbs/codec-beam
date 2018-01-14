@@ -58,7 +58,7 @@ parse =
 
 trimRights :: String -> String
 trimRights =
-  unlines . fmap dropTrailing . lines
+  unlines . map dropTrailing . lines
   where
     dropTrailing = reverse . dropWhile isSpace . reverse
 
@@ -96,17 +96,17 @@ transform =
     [ pure [] <* newline
     , do  many1 spaceChar
           optional breakLine
-          sepBy instruction barSpace <* newline
+          sepBy (instruction rightArg) barSpace <* newline
     ]
 
 
 pattern :: Parser [Instruction]
 pattern =
-  sepBy1 instruction barSpace <* many1 spaceChar <* string "=>"
+  sepBy1 (instruction leftArg) barSpace <* many1 spaceChar <* string "=>"
 
 
-instruction :: Parser Instruction
-instruction =
+instruction :: Parser Argument -> Parser Instruction
+instruction argument =
   do  name <- opName
       choice
         [ do  char '('
@@ -116,30 +116,33 @@ instruction =
         ]
 
 
-argument :: Parser Argument
-argument =
+leftArg :: Parser Argument
+leftArg =
   choice
-    [ try $ TypeOnly <$> type_ <* notFollowedBy badTypeEnd
+    [ fmap TypeOnly (lookAhead lower *> type_)
     , do  name <- variable
           choice
             [ fmap (Complete name) (equals *> type_)
             , pure (NameOnly name)
             ]
+    ] <* optional constraint
+  where
+    constraint = string "==" *> many1 (alphaNum <|> char '_')
+
+
+rightArg :: Parser Argument
+rightArg =
+  choice
+    [ fmap TypeOnly (lookAhead lower *> type_ <* optional default_)
+    , fmap NameOnly variable
     ]
   where
-    badTypeEnd = equals <|> ignore id alphaNum
+    default_ = equals <* choice [ ignore many1 digit, atom ]
 
 
 type_ :: Parser Type
 type_ =
-  do  firstType <- try singleType
-      otherTypes <- many singleType
-      optional $ choice
-        [ do  try (string "==")
-              ignore many1 (alphaNum <|> char '_')
-        , equals <* choice [ ignore many1 digit, atom ]
-        ]
-      pure $ foldl combineTypes firstType otherTypes
+  foldl combineTypes <$> try singleType <*> many singleType
   where
     singleType = choice
       [ builtIn          $> Import
