@@ -87,10 +87,13 @@ Executable gen
         Main.hs
 
     other-modules:
-        Ops
+        Code,
+        Ops,
+        Parse
 
     Build-depends:
         base,
         containers,
+        haskell-src-exts,
         parsec,
         process
