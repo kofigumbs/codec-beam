@@ -10,7 +10,7 @@ import Text.Parsec.String (Parser)
 
 
 data Line
-  = GenericOp String Int
+  = GenericOp String
   | SpecificOp String [Type]
   | Transform [Instruction] [Instruction]
   deriving Show
@@ -53,7 +53,7 @@ downloadUrl version =
 
 parse :: String -> Either ParseError [Line]
 parse =
-  Text.Parsec.parse (endBy line newline <* eof) "ops.tab" . trimRights
+  Text.Parsec.parse (many line <* eof) "ops.tab" . trimRights
 
 
 trimRights :: String -> String
@@ -82,23 +82,21 @@ skipLine c =
 
 genericOp :: Parser Line
 genericOp =
-  do  name <- try (opName <* char '/')
-      arity <- digit
-      pure $ GenericOp name $ read [arity]
+  GenericOp <$> try (opName <* char '/') <* digit <* newline
 
 
 specificOp :: Parser Line
 specificOp =
-  try $ SpecificOp <$> opName <*> many (spaceChar *> type_)
+  SpecificOp <$> opName <*> many (spaceChar *> type_) <* newline
 
 
 transform :: Parser Line
 transform =
   Transform <$> try pattern <*> choice
-    [ do  many1 spaceChar
+    [ pure [] <* newline
+    , do  many1 spaceChar
           optional breakLine
-          sepBy instruction barSpace
-    , pure []
+          sepBy instruction barSpace <* newline
     ]
 
 
