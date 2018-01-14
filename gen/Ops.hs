@@ -87,7 +87,7 @@ genericOp =
 
 specificOp :: Parser Line
 specificOp =
-  SpecificOp <$> opName <*> many (spaceChar *> type_) <* newline
+  SpecificOp <$> opName <*> many (spaceChar *> anyType) <* newline
 
 
 transform :: Parser Line
@@ -119,10 +119,10 @@ instruction argument =
 leftArg :: Parser Argument
 leftArg =
   choice
-    [ fmap TypeOnly (lookAhead lower *> type_)
+    [ TypeOnly <$> patternType
     , do  name <- variable
           choice
-            [ fmap (Complete name) (equals *> type_)
+            [ fmap (Complete name) (equals *> patternType)
             , pure (NameOnly name)
             ]
     ] <* optional constraint
@@ -133,15 +133,20 @@ leftArg =
 rightArg :: Parser Argument
 rightArg =
   choice
-    [ fmap TypeOnly (lookAhead lower *> type_ <* optional default_)
+    [ fmap TypeOnly (patternType <* optional default_)
     , fmap NameOnly variable
     ]
   where
     default_ = equals <* choice [ ignore many1 digit, atom ]
 
 
-type_ :: Parser Type
-type_ =
+patternType :: Parser Type
+patternType =
+  lookAhead (lower <|> char '*') *> anyType
+
+
+anyType :: Parser Type
+anyType =
   foldl combineTypes <$> try singleType <*> many singleType
   where
     singleType = choice
