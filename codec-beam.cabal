@@ -88,8 +88,8 @@ Executable gen
 
     other-modules:
         Code,
-        Ops,
-        Parse
+        Parse,
+        Types
 
     Build-depends:
         base,

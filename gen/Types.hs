@@ -1,6 +1,5 @@
-module Ops where
+module Types where
 
--- TYPES ONLY
 
 data OpCode = OpCode
   { _deprecated :: Bool
@@ -9,22 +8,26 @@ data OpCode = OpCode
   }
   deriving Show
 
+
 data Line
   = GenericOp String
   | SpecificOp String [Type]
   | Transform [Instruction] [Instruction]
   deriving Show
 
+
 data Instruction
   = C
   | Op String [Argument]
   deriving Show
+
 
 data Argument
   = NameOnly String
   | TypeOnly Type
   | Complete String Type
   deriving Show
+
 
 data Type
   = Import
@@ -33,9 +36,9 @@ data Type
   | XRegister
   | YRegister
   | FloatRegister
-  | Untagged
   | Literal
   | Label
   | VarArgs
+  | Untagged
   | Union [Type]
   deriving (Eq, Ord, Show)

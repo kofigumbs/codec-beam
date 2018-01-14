@@ -5,17 +5,17 @@ import Data.Char (isSpace)
 import Text.Parsec hiding (Line)
 import Text.Parsec.String (Parser)
 
-import Ops
+import Types
 
 
 genop :: String -> Either ParseError [OpCode]
 genop =
-  Text.Parsec.parse (many opCode <* eof) "genop.tab" . trimRights
+  parse (many opCode <* eof) "genop.tab" . trimRights
 
 
 ops :: String -> Either ParseError [Line]
 ops =
-  Text.Parsec.parse (many line <* eof) "ops.tab" . trimRights
+  parse (many line <* eof) "ops.tab" . trimRights
 
 
 trimRights :: String -> String
@@ -31,7 +31,7 @@ opCode =
     [ string "BEAM_FORMAT_NUMBER=0" *> newline *> opCode
     , do  code <- read <$> many1 digit
           char ':'
-          spaceChar
+          whitespace
           deprecated <- choice [ char '-' $> True, pure False ]
           name <- opName
           char '/'
@@ -57,8 +57,8 @@ skipEmptys parser =
 
 
 skipLine :: Char -> Parser ()
-skipLine c =
-  ignore char c <* manyTill anyChar newline
+skipLine character =
+  ignore char character <* manyTill anyChar newline
 
 
 genericOp :: Parser Line
@@ -68,22 +68,20 @@ genericOp =
 
 specificOp :: Parser Line
 specificOp =
-  SpecificOp <$> opName <*> many (spaceChar *> anyType) <* newline
+  SpecificOp <$> opName <*> many (whitespace *> specificType) <* newline
 
 
 transform :: Parser Line
 transform =
   Transform <$> try pattern <*> choice
-    [ pure [] <* newline
-    , do  many1 spaceChar
-          optional breakLine
-          sepBy (instruction rightArg) barSpace <* newline
+    [ newline *> pure []
+    , whitespace *> sepBy (instruction rightArg) barSep <* newline
     ]
 
 
 pattern :: Parser [Instruction]
 pattern =
-  sepBy1 (instruction leftArg) barSpace <* many1 spaceChar <* string "=>"
+  sepBy1 (instruction leftArg) barSep <* whitespace <* string "=>"
 
 
 instruction :: Parser Argument -> Parser Instruction
@@ -93,7 +91,7 @@ instruction argument =
         [ do  char '('
               manyTill anyChar $ char ')'
               pure C
-        , Op name <$> many (try (many1 spaceChar *> argument))
+        , Op name <$> many (try (whitespace *> argument))
         ]
 
 
@@ -103,7 +101,7 @@ leftArg =
     [ TypeOnly <$> patternType
     , do  name <- variable
           choice
-            [ fmap (Complete name) (equals *> patternType)
+            [ fmap (Complete name) (char '=' *> patternType)
             , pure (NameOnly name)
             ]
     ] <* optional constraint
@@ -118,30 +116,32 @@ rightArg =
     , fmap NameOnly variable
     ]
   where
-    default_ = equals <* choice [ ignore many1 digit, atom ]
+    default_ = char '=' *> choice [ ignore many1 digit, atom ]
 
 
 patternType :: Parser Type
 patternType =
-  lookAhead (lower <|> char '*') *> anyType
+  choice
+    [ char '*' $> VarArgs
+    , builtIn  $> Import
+    , lookAhead lower *> specificType
+    ]
 
 
-anyType :: Parser Type
-anyType =
+specificType :: Parser Type
+specificType =
   foldl combineTypes <$> try singleType <*> many singleType
   where
     singleType = choice
-      [ builtIn          $> Import
-      , char 'b'         $> Import
+      [ char 'b'         $> Import
       , char 'e'         $> Export
       , char 'a'         $> Atom
       , oneOf "rx"       $> XRegister
       , char 'y'         $> YRegister
       , char 'l'         $> FloatRegister
-      , oneOf "touAILPQ" $> Untagged
       , oneOf "inq"      $> Literal
       , oneOf "fjp"      $> Label
-      , char '*'         $> VarArgs
+      , oneOf "touAILPQ" $> Untagged
       , char 'c'         $> Union [Atom, Literal]
       , char 's'         $> Union [XRegister, YRegister, Atom, Literal]
       , oneOf "dS"       $> Union [XRegister, YRegister]
@@ -165,29 +165,17 @@ opName =
 
 variable :: Parser String
 variable =
-  do  start <- upper
-      rest <- many alphaNum
-      pure (start : rest)
+  (:) <$> upper <*> many alphaNum
 
 
-breakLine :: Parser ()
-breakLine =
-  char '\\' *> spaces
+barSep :: Parser ()
+barSep =
+  try (whitespace *> char '|') *> whitespace
 
 
-barSpace :: Parser ()
-barSpace =
-  try (string " | ") *> optional breakLine
-
-
-spaceChar :: Parser ()
-spaceChar =
-  ignore char ' '
-
-
-equals :: Parser ()
-equals =
-  ignore char '='
+whitespace :: Parser ()
+whitespace =
+  many1 (char ' ') *> optional (char '\\' <* spaces)
 
 
 ignore :: (a -> Parser b) -> a -> Parser ()

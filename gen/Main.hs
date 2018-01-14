@@ -7,8 +7,8 @@ import qualified Parse
 
 main :: IO ()
 main =
-  getArgs >>= \commandLineArguments ->
-    case commandLineArguments of
+  getArgs >>= \args ->
+    case args of
       [] ->
         error "Missing erlang version command-line argument!"
       version : _ ->
