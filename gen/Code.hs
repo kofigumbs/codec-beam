@@ -5,4 +5,4 @@ import Language.Haskell.Exts.Syntax (Module)
 
 generate :: [Line] -> [OpCode] -> Module ()
 generate =
-  error "TODO"
+  undefined

@@ -1,5 +1,7 @@
-import System.Process (readProcess)
+import Data.Bifunctor (first)
+import Network.Curl.Download (openURIString)
 import System.Environment (getArgs)
+import qualified Language.Haskell.Exts as Haskell
 
 import qualified Code
 import qualified Parse
@@ -7,20 +9,31 @@ import qualified Parse
 
 main :: IO ()
 main =
-  getArgs >>= \args ->
-    case args of
-      [] ->
-        error "Missing erlang version command-line argument!"
-      version : _ ->
-        do  opsTab <- download version "/erts/emulator/beam/ops.tab"
-            genopTab <- download version "/lib/compiler/src/genop.tab"
-            case Code.generate <$> Parse.ops opsTab <*> Parse.genop genopTab of
-              Left parseError -> error $ show parseError
-              Right haskell -> print haskell -- TODO: write to src/
+  do  version <- getVersion <$> getArgs
+      rawOps <- download version "/erts/emulator/beam/ops.tab"
+      rawGenop <- download version "/lib/compiler/src/genop.tab"
+      either errorWithoutStackTrace writeOutput $
+        do  ops <- first show <$> Parse.ops =<< rawOps
+            genop <- first show <$> Parse.genop =<< rawGenop
+            pure $ Code.generate ops genop
 
 
-download :: String -> String -> IO String
+getVersion :: [String] -> String
+getVersion args =
+  let context = " erlang version/branch command-line argument!" in
+  case args of
+    [version]  -> version
+    []         -> errorWithoutStackTrace $ "Missing" ++ context
+    _          -> errorWithoutStackTrace $ "Ambigious" ++ context
+
+
+download :: String -> String -> IO (Either String String)
 download version path =
-  readProcess "curl" [ rootUrl ++ version ++ path ] ""
+  openURIString (rootUrl ++ version ++ path)
   where
     rootUrl = "https://raw.githubusercontent.com/erlang/otp/"
+
+
+writeOutput :: Haskell.Module () -> IO ()
+writeOutput =
+  writeFile "src/Codec/Beam/Generated.hs" . Haskell.prettyPrint

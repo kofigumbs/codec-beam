@@ -94,6 +94,6 @@ Executable gen
     Build-depends:
         base,
         containers,
+        download-curl,
         haskell-src-exts,
-        parsec,
-        process
+        parsec
