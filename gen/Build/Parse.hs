@@ -1,4 +1,4 @@
-module Parse (genop, ops) where
+module Build.Parse (genop, ops) where
 
 import Data.Functor (($>))
 import Data.Char (isSpace)
@@ -119,32 +119,32 @@ rightArg =
     default_ = char '=' *> choice [ ignore many1 digit, atom ]
 
 
-patternType :: Parser Type
+patternType :: Parser [Type]
 patternType =
   choice
-    [ char '*' $> VarArgs
-    , builtIn  $> Import
+    [ char '*' $> [VarArgs]
+    , builtIn  $> [Import]
     , lookAhead lower *> specificType
     ]
 
 
-specificType :: Parser Type
+specificType :: Parser [Type]
 specificType =
-  foldl combineTypes <$> try singleType <*> many singleType
+  foldl (++) <$> try singleType <*> many singleType
   where
     singleType = choice
-      [ char 'b'         $> Import
-      , char 'e'         $> Export
-      , char 'a'         $> Atom
-      , oneOf "rx"       $> XRegister
-      , char 'y'         $> YRegister
-      , char 'l'         $> FloatRegister
-      , oneOf "inq"      $> Literal
-      , oneOf "fjp"      $> Label
-      , oneOf "touAILPQ" $> Untagged
-      , char 'c'         $> Union [Atom, Literal]
-      , char 's'         $> Union [XRegister, YRegister, Atom, Literal]
-      , oneOf "dS"       $> Union [XRegister, YRegister]
+      [ char 'b'         $> [Import]
+      , char 'e'         $> [Export]
+      , char 'a'         $> [Atom]
+      , oneOf "rx"       $> [XRegister]
+      , char 'y'         $> [YRegister]
+      , char 'l'         $> [FloatRegister]
+      , oneOf "inq"      $> [Literal]
+      , oneOf "fjp"      $> [Label]
+      , oneOf "touAILPQ" $> [Untagged]
+      , char 'c'         $> [Atom, Literal]
+      , char 's'         $> [XRegister, YRegister, Atom, Literal]
+      , oneOf "dS"       $> [XRegister, YRegister]
       ]
 
 
@@ -181,10 +181,3 @@ whitespace =
 ignore :: (a -> Parser b) -> a -> Parser ()
 ignore toParser a =
   toParser a $> ()
-
-
-combineTypes :: Type -> Type -> Type
-combineTypes (Union lefts) (Union rights) = Union (lefts ++ rights)
-combineTypes (Union lefts) right          = Union (right : lefts)
-combineTypes left          (Union rights) = Union (left : rights)
-combineTypes left          right          = Union [left, right]

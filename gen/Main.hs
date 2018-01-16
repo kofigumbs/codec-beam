@@ -1,10 +1,10 @@
 import Data.Bifunctor (first)
 import Network.Curl.Download (openURIString)
 import System.Environment (getArgs)
-import qualified Language.Haskell.Exts as Haskell
 
-import qualified Code
-import qualified Parse
+import qualified Build.Generate
+import qualified Build.Parse
+import qualified Build.Inference
 
 
 main :: IO ()
@@ -12,10 +12,13 @@ main =
   do  version <- getVersion <$> getArgs
       rawOps <- download version "/erts/emulator/beam/ops.tab"
       rawGenop <- download version "/lib/compiler/src/genop.tab"
-      either errorWithoutStackTrace writeOutput $
-        do  ops <- first show <$> Parse.ops =<< rawOps
-            genop <- first show <$> Parse.genop =<< rawGenop
-            pure $ Code.generate ops genop
+      either errorWithoutStackTrace id $
+        do  ops <- first show <$> Build.Parse.ops =<< rawOps
+            genop <- first show <$> Build.Parse.genop =<< rawGenop
+            pure
+              $ writeFile "src/Codec/Beam/Generated.hs"
+              $ Build.Generate.code "Codec.Beam.Generated"
+              $ Build.Inference.run ops genop
 
 
 getVersion :: [String] -> String
@@ -32,8 +35,3 @@ download version path =
   openURIString (rootUrl ++ version ++ path)
   where
     rootUrl = "https://raw.githubusercontent.com/erlang/otp/"
-
-
-writeOutput :: Haskell.Module () -> IO ()
-writeOutput =
-  writeFile "src/Codec/Beam/Generated.hs" . Haskell.prettyPrint

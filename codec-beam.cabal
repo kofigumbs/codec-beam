@@ -87,8 +87,9 @@ Executable gen
         Main.hs
 
     other-modules:
-        Code,
-        Parse,
+        Build.Generate,
+        Build.Inference,
+        Build.Parse,
         Types
 
     Build-depends:

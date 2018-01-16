@@ -1,17 +1,19 @@
 module Types where
 
+import Data.Set (Set)
+
 
 data OpCode = OpCode
-  { _deprecated :: Bool
-  , _code :: Int
-  , _name :: String
+  { _o_deprecated :: Bool
+  , _o_code :: Int
+  , _o_name :: String
   }
   deriving Show
 
 
 data Line
   = GenericOp String
-  | SpecificOp String [Type]
+  | SpecificOp String [[Type]]
   | Transform [Instruction] [Instruction]
   deriving Show
 
@@ -24,8 +26,8 @@ data Instruction
 
 data Argument
   = NameOnly String
-  | TypeOnly Type
-  | Complete String Type
+  | TypeOnly [Type]
+  | Complete String [Type]
   deriving Show
 
 
@@ -40,5 +42,10 @@ data Type
   | Label
   | VarArgs
   | Untagged
-  | Union [Type]
   deriving (Eq, Ord, Show)
+
+
+data Definition = Definition
+  { _d_title :: String
+  , _d_args :: [Set Type]
+  }
