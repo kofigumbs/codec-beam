@@ -30,8 +30,9 @@ Library
         Codec.Beam.Genop
 
     other-modules:
-        Codec.Beam.Bytes
-        Codec.Beam.Internal
+        Codec.Beam.Internal.Bytes
+        Codec.Beam.Internal.Encode
+        Codec.Beam.Internal.Types
         Data.Table
 
     Build-depends:

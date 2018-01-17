@@ -33,7 +33,6 @@ data Argument
 
 data Type
   = Import
-  | Export
   | Atom
   | XRegister
   | YRegister

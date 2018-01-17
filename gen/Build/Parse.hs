@@ -133,8 +133,7 @@ specificType =
   foldl (++) <$> try singleType <*> many singleType
   where
     singleType = choice
-      [ char 'b'         $> [Import]
-      , char 'e'         $> [Export]
+      [ oneOf "be"       $> [Import]
       , char 'a'         $> [Atom]
       , oneOf "rx"       $> [XRegister]
       , char 'y'         $> [YRegister]

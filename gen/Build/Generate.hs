@@ -14,24 +14,18 @@ code module_ defs =
     Module ()
       (Just (ModuleHead () (ModuleName () module_) Nothing (Just (exports defs))))
       []
-      [ import_ $ ModuleName () "Codec.Beam.Internal.Types"
-      , import_ $ ModuleName () "Codec.Beam.Internal.Encode"
+      [ ImportDecl
+          { importAnn = ()
+          , importModule = ModuleName () "Codec.Beam.Internal.Types"
+          , importQualified = False
+          , importSrc = False
+          , importSafe = False
+          , importPkg = Nothing
+          , importAs = Nothing
+          , importSpecs = Nothing
+          }
       ]
       (concatMap definition defs)
-
-
-import_ :: ModuleName () -> ImportDecl ()
-import_ moduleName =
-  ImportDecl
-    { importAnn = ()
-    , importModule = moduleName
-    , importQualified = False
-    , importSrc = False
-    , importSafe = False
-    , importPkg = Nothing
-    , importAs = Nothing
-    , importSpecs = Nothing
-    }
 
 
 exports :: [Definition] -> ExportSpecList ()
@@ -43,7 +37,7 @@ definition :: Definition -> [Decl ()]
 definition def@(Definition beamName beamCode beamArgs) =
   TypeSig () [definitionName def] (signature beamName beamArgs)
     : H.sfun (definitionName def) argNames body Nothing
-    : concatMap id (imap (typeClass beamName) beamArgs)
+    : concat (imap (typeClass beamName) beamArgs)
   where
     argNames =
       H.genNames "x" (length beamArgs)
@@ -136,7 +130,6 @@ typeInstance beamName index type_ =
 
 srcType :: Types.Type -> String
 srcType Import        = "Import"
-srcType Export        = "Export"
 srcType Atom          = "ByteString"
 srcType XRegister     = "X"
 srcType YRegister     = "Y"
@@ -168,7 +161,7 @@ methodName index beamName =
 
 encoderName :: Types.Type -> Name ()
 encoderName type_ =
-  H.name ("from" ++ srcType type_)
+  H.name ("From" ++ srcType type_)
 
 
 opName :: Name ()
