@@ -46,6 +46,7 @@ data Type
 
 
 data Definition = Definition
-  { _d_title :: String
+  { _d_name :: String
+  , _d_code :: Int
   , _d_args :: [Set Type]
   }

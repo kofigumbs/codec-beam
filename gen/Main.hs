@@ -15,10 +15,9 @@ main =
       either errorWithoutStackTrace id $
         do  ops <- first show <$> Build.Parse.ops =<< rawOps
             genop <- first show <$> Build.Parse.genop =<< rawGenop
-            pure
-              $ writeFile "src/Codec/Beam/Generated.hs"
-              $ Build.Generate.code "Codec.Beam.Generated"
-              $ Build.Inference.run ops genop
+            pure $ writeFile "src/Codec/Beam/Internal/Generated.hs" $
+              Build.Generate.code "Codec.Beam.Internal.Generated" $
+              Build.Inference.run ops genop
 
 
 getVersion :: [String] -> String

@@ -1,99 +1,190 @@
 module Build.Generate (code) where
 
--- import Data.Char (toUpper)
-import Language.Haskell.Exts
+import Data.Maybe (mapMaybe)
+import Language.Haskell.Exts.Syntax
 import qualified Data.Set as Set
-import qualified Language.Haskell.Exts as Haskell
+import qualified Language.Haskell.Exts as H
 
 import Types
 
 
 code :: String -> [Definition] -> String
 code module_ defs =
-  prettyPrint $
+  H.prettyPrint $
     Module ()
       (Just (ModuleHead () (ModuleName () module_) Nothing (Just (exports defs))))
       []
-      [ ImportDecl
-          { importAnn = ()
-          , importModule = ModuleName () "Codec.Beam.Internal"
-          , importQualified = False
-          , importSrc = False
-          , importSafe = False
-          , importPkg = Nothing
-          , importAs = Nothing
-          , importSpecs = Nothing
-          }
+      [ import_ $ ModuleName () "Codec.Beam.Internal.Types"
+      , import_ $ ModuleName () "Codec.Beam.Internal.Encode"
       ]
       (concatMap definition defs)
 
 
+import_ :: ModuleName () -> ImportDecl ()
+import_ moduleName =
+  ImportDecl
+    { importAnn = ()
+    , importModule = moduleName
+    , importQualified = False
+    , importSrc = False
+    , importSafe = False
+    , importPkg = Nothing
+    , importAs = Nothing
+    , importSpecs = Nothing
+    }
+
+
 exports :: [Definition] -> ExportSpecList ()
 exports =
-  ExportSpecList () . map (EVar () . UnQual () . name . _d_title)
+  ExportSpecList () . map (EVar () . UnQual () . definitionName)
 
 
 definition :: Definition -> [Decl ()]
-definition (Definition title args) =
-  [ TypeSig () [name title] (opSignature title args)
-  , sfun (name title) argNames
-      (appRhs (var (name "Op")) (indexedMap (opArgument title) argNames))
-      Nothing
-  ]
+definition def@(Definition beamName beamCode beamArgs) =
+  TypeSig () [definitionName def] (signature beamName beamArgs)
+    : H.sfun (definitionName def) argNames body Nothing
+    : concatMap id (imap (typeClass beamName) beamArgs)
   where
-    argNames = genNames "x" (length args)
+    argNames =
+      H.genNames "x" (length beamArgs)
+
+    body =
+      UnGuardedRhs () $ applyOp beamCode $
+        zipWith H.app (imap (extractor beamName) beamArgs) (map H.var argNames)
 
 
-opSignature :: String -> [Set.Set Types.Type] -> Haskell.Type ()
-opSignature title args =
-  let
-    (constraints, concretes) =
-      unzip $ indexedMap (\index types ->
-        case Set.toList types of
-          [singleType] ->
-            (Nothing, typeType singleType)
-          _ ->
-            let varName = iName index "t" in
-            (Just (opConstraint title varName), TyVar () varName)
-      ) args
-  in
-  foldr (TyForall () Nothing) (foldl1 (TyFun ()) concretes) constraints
+signature :: String -> [Set.Set Types.Type] -> H.Type ()
+signature beamName =
+   uncurry applyConstraints . unzip . imap (argument beamName)
 
 
-opConstraint :: String -> Name () -> Context ()
-opConstraint title varName =
-  CxSingle () (ClassA () (UnQual () (name ("T_" ++ title))) [TyVar () varName])
+applyOp :: Int -> [Exp ()] -> Exp ()
+applyOp opCode args =
+  H.appFun (H.var opName) [H.intE (fromIntegral opCode), H.listE args]
 
 
-opArgument :: String -> Int -> Name () -> Exp ()
-opArgument defName index argName =
-  app (var (name (defName ++ "__" ++ show index))) (var argName)
+argument :: String -> Int -> Set.Set Types.Type -> (Maybe (Asst ()), H.Type ())
+argument beamName index beamArg =
+  case Set.toList beamArg of
+    [type_] ->
+      (Nothing, TyVar () (H.name (srcType type_)))
+
+    _ ->
+      ( Just $
+          ClassA () (UnQual () (constraintName index beamName)) [TyVar () generic]
+      , TyVar () generic
+      )
+  where
+    generic = iname "t" index ""
 
 
-typeType :: Types.Type -> Haskell.Type ()
-typeType Import = TyVar () (name "Import")
-typeType Export = TyVar () (name "Export")
-typeType Atom = TyVar () (name "ByteString")
-typeType XRegister = TyVar () (name "X")
-typeType YRegister = TyVar () (name "Y")
-typeType FloatRegister = TyVar () (name "FloatRegister")
-typeType Literal = TyVar () (name "Literal")
-typeType Label = TyVar () (name "Label")
-typeType Untagged = TyVar () (name "Int")
-typeType VarArgs =
-  error "VarArgs should never make it to this point!"
+applyConstraints :: [Maybe (Asst ())] -> [H.Type ()] -> H.Type ()
+applyConstraints maybeAssertions types =
+  case mapMaybe id maybeAssertions of
+    [] ->
+      concrete
+
+    assertions ->
+      TyForall () Nothing (Just (CxTuple () assertions)) concrete
+  where
+    concrete = foldr (TyFun ()) (TyVar () opName) types
 
 
-appRhs :: Exp () -> [Exp ()] -> Rhs ()
-appRhs f args =
-  UnGuardedRhs () (appFun f args)
+extractor :: String -> Int -> Set.Set Types.Type -> Exp ()
+extractor beamName index beamArg =
+  case Set.toList beamArg of
+    [type_] ->
+      Var () $ UnQual () (encoderName type_)
+
+    _ ->
+      Var () $ UnQual () (methodName index beamName)
 
 
-indexedMap :: (Int -> a -> b) -> [a] -> [b]
-indexedMap f =
+typeClass :: String -> Int -> Set.Set Types.Type -> [Decl ()]
+typeClass beamName index beamArg =
+  if Set.size beamArg <= 1 then
+    []
+  else
+    ClassDecl () Nothing
+      (DHApp ()
+        (DHead () (constraintName index beamName))
+        (UnkindedVar () generic))
+      []
+      (Just
+        [ ClsDecl () $ TypeSig () [methodName index beamName] $
+            TyFun () (TyVar () generic) (TyVar () (H.name "Operand"))
+        ])
+      : map (typeInstance beamName index) (Set.toList beamArg)
+  where
+    generic = H.name "t"
+
+
+typeInstance :: String -> Int -> Types.Type -> Decl ()
+typeInstance beamName index type_ =
+  InstDecl () Nothing
+    (IRule () Nothing Nothing $
+      IHApp ()
+        (IHCon () (UnQual () (constraintName index beamName)))
+        (TyVar () (H.name (srcType type_)))) $
+    Just
+      [ InsDecl () $
+          H.sfun (methodName index beamName) []
+            (UnGuardedRhs () (H.var (encoderName type_)))
+            Nothing
+      ]
+
+
+srcType :: Types.Type -> String
+srcType Import        = "Import"
+srcType Export        = "Export"
+srcType Atom          = "ByteString"
+srcType XRegister     = "X"
+srcType YRegister     = "Y"
+srcType FloatRegister = "F"
+srcType Literal       = "Literal"
+srcType Label         = "Label"
+srcType Untagged      = "Int"
+srcType VarArgs       = error "VarArgs should never make it to this point!"
+
+
+
+-- NAMES
+
+
+definitionName :: Definition -> Name ()
+definitionName =
+  H.name . _d_name
+
+
+constraintName :: Int -> String -> Name ()
+constraintName index beamName =
+  iname "T" index ("__" ++ beamName)
+
+
+methodName :: Int -> String -> Name ()
+methodName index beamName =
+  iname "fromT" index ("__" ++ beamName)
+
+
+encoderName :: Types.Type -> Name ()
+encoderName type_ =
+  H.name ("from" ++ srcType type_)
+
+
+opName :: Name ()
+opName =
+  H.name "Op"
+
+
+
+-- INDEX UTILITIES
+
+
+iname :: String -> Int -> String -> Name ()
+iname prefix index suffix =
+  H.name (prefix ++ show index ++ suffix)
+
+
+imap :: (Int -> a -> b) -> [a] -> [b]
+imap f =
   zipWith f [1..]
-
-
-iName :: Int -> String -> Name ()
-iName index string =
-  name (string ++ show index)
