@@ -1,8 +1,7 @@
 [![Build Status](https://travis-ci.org/hkgumbs/codec-beam.svg?branch=master)](https://travis-ci.org/hkgumbs/codec-beam)
 
 BEAM (Erlang Virtual Machine) byte code syntax tree and encoder, for implementing compile-to-beam languages.
-Goal is to a provide delightful API for generating BEAM instructions from pure Haskell.
-
+Goal is to a provide delightful API for generating BEAM instructions from pure Haskell.  
 
 ### Usage
 
@@ -42,8 +41,9 @@ and you can find a more complete [`./example` project here](example).
 
 Using [Stack](https://www.haskellstack.org)
 
-```
-stack test
+```bash
+stack exec template target-erlang-sha # i.e. `master` or `maint-20`
+stack test --file-watch
 ```
 
 

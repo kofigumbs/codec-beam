@@ -1,0 +1,33 @@
+
+Name: template
+Version: 0.1.0
+
+Cabal-version: >=1.9
+Build-type: Simple
+
+
+Executable template
+    ghc-options:
+        -O0 -W -Werror
+
+    extensions:
+        OverloadedStrings
+
+    Hs-Source-Dirs:
+        .
+
+    Main-is:
+        Main.hs
+
+    other-modules:
+        Build.Generate,
+        Build.Inference,
+        Build.Parse,
+        Types
+
+    Build-depends:
+        base,
+        containers,
+        download-curl,
+        haskell-src-exts,
+        parsec
