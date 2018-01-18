@@ -1,10 +1,11 @@
-module Eunit (Test, run , test , testMany) where
+module Eunit (Test, run, test) where
 
 import Data.Monoid ((<>))
 import System.FilePath ((</>), (<.>))
 import System.Process (callProcess)
 import qualified Data.ByteString.Lazy as BS
 
+import ByteStringConversion (fromString)
 import qualified Codec.Beam as Beam
 
 
@@ -29,14 +30,9 @@ type Test =
   IO String
 
 
-testMany :: String -> [String] -> [[Beam.Op]] -> Test
-testMany name body =
-  test_ name body . Beam.toLazyByteString . foldl Beam.append (Beam.new name)
-
-
 test :: String -> [String] -> [Beam.Op] -> Test
 test name body =
-  test_ name body . Beam.encode name
+  test_ name body . Beam.encode (fromString name)
 
 
 test_ :: String -> [String] -> BS.ByteString -> Test

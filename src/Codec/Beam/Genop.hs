@@ -19,18 +19,18 @@ label uid =
   Op 1 $ do
     builder <- State.get
     State.put $ builder
-      { _currentLabelCount =
-          _currentLabelCount builder + 1
+      { _labelCount =
+          _labelCount builder + 1
       , _exportNextLabel =
           Nothing
       , _toExport =
           case _exportNextLabel builder of
             Just (f, a) ->
-              (f, a, uid + _overallLabelCount builder) : _toExport builder
+              (f, a, uid) : _toExport builder
             Nothing ->
               _toExport builder
       }
-    return [ Lit (uid + _overallLabelCount builder) ]
+    return [ Lit uid ]
 
 
 func_info :: Access -> ByteString -> Int -> Op

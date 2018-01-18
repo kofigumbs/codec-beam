@@ -20,24 +20,6 @@ main =
         ]
         []
 
-    -- Builder.append API
-    , Eunit.testMany "api"
-        [ "code:load_file(api),"
-        , "?assert(erlang:function_exported(api, public, 0)),"
-        , "?assert(not erlang:function_exported(api, private, 0))"
-        ]
-        [ [ Genop.label 1
-          , Genop.func_info Beam.Private "private" 0
-          , Genop.label 2
-          , Genop.return_
-          ]
-        , [ Genop.label 1
-          , Genop.func_info Beam.Public "public" 0
-          , Genop.label 2
-          , Genop.return_
-          ]
-        ]
-
     -- From beam_asm: https://git.io/vHTBY
     , withConstant "number_five" Beam.Int 5
     , withConstant "number_one_thousand" Beam.Int 5

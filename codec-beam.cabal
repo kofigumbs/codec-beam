@@ -23,7 +23,7 @@ Library
         OverloadedStrings
 
     Hs-Source-Dirs:
-        src, lib
+        src
 
     exposed-modules:
         Codec.Beam
@@ -32,7 +32,6 @@ Library
     other-modules:
         Codec.Beam.Bytes
         Codec.Beam.Internal
-        ByteStringConversion
         Data.Table
 
     Build-depends:
@@ -53,7 +52,7 @@ Test-Suite codec-beam-tests
         OverloadedStrings
 
     Hs-Source-Dirs:
-        test, lib
+        test
 
     Type:
         exitcode-stdio-1.0
@@ -71,31 +70,4 @@ Test-Suite codec-beam-tests
         bytestring,
         filepath,
         process,
-        text
-
-
-Executable kaleidoscope
-    ghc-options:
-        -O0 -W -Werror
-
-    extensions:
-        OverloadedStrings
-
-    Hs-Source-Dirs:
-        example, lib
-
-    Main-is:
-        Kaleidoscope.hs
-
-    other-modules:
-        ByteStringConversion
-
-    Build-depends:
-        codec-beam,
-        base,
-        bytestring,
-        containers,
-        filepath,
-        mtl,
-        parsec,
         text

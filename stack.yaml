@@ -2,4 +2,5 @@ flags: {}
 extra-package-dbs: []
 packages:
 - location: '.'
+- location: './example'
 resolver: lts-8.23
