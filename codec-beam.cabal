@@ -31,7 +31,6 @@ Library
 
     other-modules:
         Codec.Beam.Internal.Bytes
-        Codec.Beam.Internal.Encode
         Codec.Beam.Internal.Types
         Data.Table
 

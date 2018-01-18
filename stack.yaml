@@ -7,3 +7,4 @@ packages:
 extra-deps:
 - download-curl-0.1.4
 resolver: lts-8.23
+pvp-bounds: both

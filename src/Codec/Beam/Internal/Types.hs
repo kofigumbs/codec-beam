@@ -1,4 +1,4 @@
-module Codec.Beam.Internal where
+module Codec.Beam.Internal.Types where
 
 import Data.ByteString.Lazy (ByteString)
 import Data.Word (Word8)
