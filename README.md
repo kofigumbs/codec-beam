@@ -30,13 +30,12 @@ After you run that program, you can load the resulting module from the Erlang sh
 
 ```
 $ erl
-1> l(test_module).
-{module,test_module}
-2> test_module:tuple_of_one().
+1> test_module:tuple_of_one().
 {1}
 ```
 
-The full documentation lives at https://kofi.sexy/codec-beam.
+The full documentation lives at https://kofi.sexy/codec-beam,
+and you can find a more complete [`./example` project here](example).
 
 
 ### Build

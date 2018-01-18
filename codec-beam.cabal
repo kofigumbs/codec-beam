@@ -71,30 +71,3 @@ Test-Suite codec-beam-tests
         filepath,
         process,
         text
-
-
-Executable kaleidoscope
-    ghc-options:
-        -O0 -W -Werror
-
-    extensions:
-        OverloadedStrings
-
-    Hs-Source-Dirs:
-        example
-
-    Main-is:
-        Kaleidoscope.hs
-
-    other-modules:
-        ByteStringConversion
-
-    Build-depends:
-        codec-beam,
-        base,
-        bytestring,
-        containers,
-        filepath,
-        mtl,
-        parsec,
-        text

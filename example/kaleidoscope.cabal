@@ -1,0 +1,29 @@
+
+Name: kaleidoscope
+Version: 0.1.0
+
+Cabal-version: >=1.9
+Build-type: Simple
+
+Executable kaleidoscope
+    ghc-options:
+        -W -Werror
+
+    extensions:
+        OverloadedStrings
+
+    Hs-Source-Dirs:
+        .
+
+    Main-is:
+        Kaleidoscope.hs
+
+    Build-depends:
+        codec-beam,
+        base,
+        bytestring,
+        containers,
+        filepath,
+        mtl,
+        parsec,
+        text

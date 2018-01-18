@@ -1,4 +1,6 @@
 import Control.Monad.State (State, evalState)
+import Data.Text.Lazy (pack)
+import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Monoid ((<>))
 import Data.Map.Lazy (Map, (!))
 import System.FilePath (takeBaseName)
@@ -14,7 +16,6 @@ import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Expr as Expr
 import qualified Text.Parsec.Token as Token
 
-import ByteStringConversion (fromString)
 import qualified Codec.Beam as Beam
 import qualified Codec.Beam.Genop as Genop
 
@@ -150,6 +151,11 @@ stdlibMath Divide = "/"
 x0 :: Beam.Register
 x0 =
   Beam.X 0
+
+
+fromString :: String -> BS.ByteString
+fromString =
+  encodeUtf8 . pack
 
 
 
