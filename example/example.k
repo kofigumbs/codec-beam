@@ -1,8 +1,10 @@
+# Welcome, I am a line comment!
+
 def identity(x)
   x;
 
-def zero()
+def zero(ignored)
   identity;
 
-def call(f)
-  f(12345);
+def meaning_of_life()
+  identity(40 + 2.0);
