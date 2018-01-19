@@ -34,7 +34,7 @@ compile file code =
   flip evalState (Env 1 Map.empty Map.empty 0)
     <$> fmap concat
     <$> mapM generate
-    <$> parse (contents topLevel) file code
+    <$> parse (contents (many def)) file code
 
 
 
@@ -216,15 +216,14 @@ newtype Name
 -- PARSE
 
 
-topLevel :: Parser [Def]
-topLevel =
-  many $
-    do  reserved "def"
-        name <- identifier
-        args <- parens $ many identifier
-        body <- expr
-        reservedOp ";"
-        return $ Def name args body
+def :: Parser Def
+def =
+  do  Token.reserved lexer "def"
+      name <- identifier
+      args <- parens $ many identifier
+      body <- expr
+      reservedOp ";"
+      return $ Def name args body
 
 
 contents :: Parser a -> Parser a
@@ -252,32 +251,12 @@ expr =
 factor :: Parser Expr
 factor =
   choice
-    [ try float
-    , try integer
-    , try call
-    , variable
-    , parens expr
+    [ parens expr
+    , Float . either fromInteger id <$> Token.naturalOrFloat lexer
+    , do  name <- identifier
+          arguments <- optionMaybe $ parens (Token.commaSep lexer expr)
+          return $ maybe (Var name) (Call name) arguments
     ]
-
-
-call :: Parser Expr
-call =
-  Call <$> identifier <*> parens (commaSep expr)
-
-
-integer :: Parser Expr
-integer =
-  Float . fromInteger <$> Token.integer lexer
-
-
-float :: Parser Expr
-float =
-  Float <$> Token.float lexer
-
-
-variable :: Parser Expr
-variable =
-  Var <$> identifier
 
 
 identifier :: Parser Name
@@ -288,16 +267,6 @@ identifier =
 parens :: Parser a -> Parser a
 parens =
   Token.parens lexer
-
-
-commaSep :: Parser a -> Parser [a]
-commaSep =
-  Token.commaSep lexer
-
-
-reserved :: String -> Parser ()
-reserved =
-  Token.reserved lexer
 
 
 reservedOp :: String -> Parser ()
