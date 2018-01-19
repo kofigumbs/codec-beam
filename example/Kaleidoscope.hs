@@ -59,38 +59,31 @@ data Env =
 
 generate :: Def -> State Env [Beam.Op]
 generate (Def name args body) =
+  do  header <- genHeader stack name args
+      locals <- sequence $ withArgs genLocal args
+      (body, value) <- genExpr body
+      let tail = [ Genop.move value x0, Genop.deallocate stack, Genop.return_ ]
+      return $ concat [ header, locals, body, displayMain name value, tail ]
+  where
+    stack =
+      length args + tmpsNeeded body
+
+
+genHeader :: Int -> Name -> [Name] -> State Env [Beam.Op]
+genHeader stack name args =
   do  x <- nextLabel
       y <- nextLabel
       State.modify $ \e -> e
         { _locals = Map.empty
-        , _functions = Map.insert name (y, argCount) (_functions e)
+        , _functions = Map.insert name (y, length args) (_functions e)
         , _uniqueTmp = 0
         }
-      headerOps <- sequence $ withArgs genLocal args
-      (bodyOps, returnValue) <- genExpr body
-      return $
+      return
         [ Genop.label x
-        , Genop.func_info Beam.Public (fromString (toRaw name)) argCount
+        , Genop.func_info Beam.Public (fromString (toRaw name)) (length args)
         , Genop.label y
-        , Genop.allocate spaceNeeded argCount
-        ] ++ headerOps ++ bodyOps ++ mainOps name returnValue ++
-        [ Genop.move returnValue x0
-        , Genop.deallocate spaceNeeded
-        , Genop.return_
+        , Genop.allocate stack (length args)
         ]
-  where
-    argCount = length args
-    spaceNeeded = argCount + tmpsNeeded body
-
-
-mainOps :: Name -> Beam.Operand -> [Beam.Op]
-mainOps name value =
-  if toRaw name == "main" then
-    [ Genop.move value x0
-    , Genop.call_ext "erlang" "display" 1
-    ]
-  else
-    []
 
 
 genLocal :: Name -> Beam.Register -> State Env Beam.Op
@@ -177,6 +170,14 @@ tmpsNeeded (Float _)         = 0
 tmpsNeeded (BinOp _ lhs rhs) = 1 + tmpsNeeded lhs + tmpsNeeded rhs
 tmpsNeeded (Var _)           = 0
 tmpsNeeded (Call _ args)     = 1 + sum (map tmpsNeeded args)
+
+
+displayMain :: Name -> Beam.Operand -> [Beam.Op]
+displayMain name value =
+  if toRaw name == "main" then
+    [ Genop.move value x0, Genop.call_ext "erlang" "display" 1 ]
+  else
+    []
 
 
 stdlibMath :: Op -> BS.ByteString
