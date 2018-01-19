@@ -2,7 +2,6 @@ import Control.Monad.State (State, evalState)
 import Data.Text.Lazy (pack)
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Monoid ((<>))
-import Data.Map.Lazy (Map, (!))
 import System.FilePath (takeBaseName)
 import System.Environment (getArgs)
 import qualified Control.Monad.State as State
@@ -27,15 +26,15 @@ main =
       let name = takeBaseName file
       either print
         (BS.writeFile (name <> ".beam") . Beam.encode (fromString name))
-        (compile code)
+        (compile file code)
 
 
-compile :: String -> Either ParseError [Beam.Op]
-compile code =
+compile :: FilePath -> String -> Either ParseError [Beam.Op]
+compile file code =
   flip evalState (Env 1 Map.empty Map.empty 0)
     <$> fmap concat
     <$> mapM generate
-    <$> parse (contents topLevel) "KALEIDOSCOPE" code
+    <$> parse (contents topLevel) file code
 
 
 
@@ -45,26 +44,26 @@ compile code =
 data Env =
   Env
     { _label :: Beam.Label
-    , _locals :: Map Name Beam.Register
-    , _functions :: Map Name Beam.Label
+    , _locals :: Map.Map Name Beam.Register
+    , _functions :: Map.Map Name (Beam.Label, Int)
     , _uniqueTmp :: Int
     }
 
 
 generate :: Def -> State Env [Beam.Op]
-generate (Def name@(Name rawName) args body) =
+generate (Def name args body) =
   do  x <- nextLabel
       y <- nextLabel
       State.modify $ \e -> e
         { _locals = Map.empty
-        , _functions = Map.insert name y (_functions e)
+        , _functions = Map.insert name (y, argCount) (_functions e)
         , _uniqueTmp = 0
         }
       headerOps <- sequence $ withArgs genLocal args
       (bodyOps, returnValue) <- genExpr body
       return $
         [ Genop.label x
-        , Genop.func_info Beam.Public (fromString rawName) argCount
+        , Genop.func_info Beam.Public (fromString (toRaw name)) argCount
         , Genop.label y
         , Genop.allocate spaceNeeded argCount
         ] ++ headerOps ++ bodyOps ++
@@ -96,12 +95,25 @@ genExpr expr =
       genCall (Genop.call_ext "erlang" (stdlibMath operator) 2) [lhs, rhs]
 
     Var name ->
-      do  locals <- State.gets _locals
-          return ([], Beam.Reg (locals ! name))
+      lookupVar name >>= \result ->
+        return $ case result of
+          Left register ->
+            ([], Beam.Reg register)
+
+          Right (label, arity) ->
+            let bs = fromString (toRaw name) in
+            ([Genop.make_fun bs arity label 0], Beam.Reg x0)
 
     Call name args ->
-      do  functions <- State.gets _functions
-          genCall (Genop.call (length args) (functions ! name)) args
+      lookupVar name >>= \result ->
+        case result of
+          Left register ->
+            do  let fun = Genop.move (Beam.Reg register) (Beam.X (length args))
+                (ops, value) <- genCall (Genop.call_fun (length args)) args
+                return (fun : ops, value)
+
+          Right (label, _) ->
+            genCall (Genop.call (length args) label) args
 
 
 genCall :: Beam.Op -> [Expr] -> State Env ([Beam.Op], Beam.Operand)
@@ -129,6 +141,16 @@ nextTmp =
       return (Beam.Y n)
 
 
+lookupVar :: Name -> State Env (Either Beam.Register (Beam.Label, Int))
+lookupVar name =
+  do  locals <- State.gets _locals
+      functions <- State.gets _functions
+      case (Map.lookup name locals, Map.lookup name functions) of
+        (Just register, _) -> return $ Left register
+        (_, Just funcInfo) -> return $ Right funcInfo
+        (Nothing, Nothing) -> error  $ "`" ++ toRaw name ++ "` is undefined!"
+
+
 withArgs :: (a -> Beam.Register -> op) -> [a] -> [op]
 withArgs f list =
   zipWith f list $ map Beam.X [0..]
@@ -151,6 +173,11 @@ stdlibMath Divide = "/"
 x0 :: Beam.Register
 x0 =
   Beam.X 0
+
+
+toRaw :: Name -> String
+toRaw (Name raw) =
+  raw
 
 
 fromString :: String -> BS.ByteString
