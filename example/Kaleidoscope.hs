@@ -24,8 +24,7 @@ main :: IO ()
 main =
   do  file <- head <$> getArgs
       code <- readFile file
-      let name = takeBaseName file
-      either print (makeExecutable name) $ compile file code
+      either print (makeExecutable (takeBaseName file)) (compile file code)
 
 
 compile :: FilePath -> String -> Either ParseError [Beam.Op]
@@ -62,11 +61,10 @@ generate (Def name args body) =
   do  header <- genHeader stack name args
       locals <- sequence $ withArgs genLocal args
       (body, value) <- genExpr body
-      let tail = [ Genop.move value x0, Genop.deallocate stack, Genop.return_ ]
-      return $ concat [ header, locals, body, displayMain name value, tail ]
+      let footer = [ Genop.move value x0, Genop.deallocate stack, Genop.return_ ]
+      return $ concat [ header, locals, body, displayMain name value, footer ]
   where
-    stack =
-      length args + tmpsNeeded body
+    stack = length args + tmpsNeeded body
 
 
 genHeader :: Int -> Name -> [Name] -> State Env [Beam.Op]
@@ -259,7 +257,6 @@ expr =
       [ [binary "*" Times Expr.AssocLeft, binary "/" Divide Expr.AssocLeft]
       , [binary "+" Plus  Expr.AssocLeft, binary "-" Minus  Expr.AssocLeft]
       ]
-
     binary s f assoc =
       Expr.Infix (reservedOp s >> return (BinOp f)) assoc
 
