@@ -42,7 +42,7 @@ and you can find a more complete [`./example` project here](example).
 Using [Stack](https://www.haskellstack.org)
 
 ```bash
-stack exec template target-erlang-sha # i.e. `master` or `maint-20`
+stack exec bootstrap TARGET_ERLANG_SHA # i.e. `master` or `maint-20`
 stack test --file-watch
 ```
 

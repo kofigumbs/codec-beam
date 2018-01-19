@@ -1,12 +1,12 @@
 
-Name: template
+Name: bootstrap
 Version: 0.1.0
 
 Cabal-version: >=1.9
 Build-type: Simple
 
 
-Executable template
+Executable bootstrap
     ghc-options:
         -O0 -W -Werror
 
