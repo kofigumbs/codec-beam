@@ -4,6 +4,7 @@ import Data.Text.Lazy.Encoding (encodeUtf8)
 import Data.Monoid ((<>))
 import System.FilePath (takeBaseName)
 import System.Environment (getArgs)
+import System.Posix.Files (accessModes, setFileMode)
 import qualified Control.Monad.State as State
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Map.Lazy as Map
@@ -23,10 +24,7 @@ main :: IO ()
 main =
   do  file <- head <$> getArgs
       code <- readFile file
-      let name = takeBaseName file
-      either print
-        (BS.writeFile (name <> ".beam") . Beam.encode (fromString name))
-        (compile file code)
+      either print (makeExecutable (takeBaseName file)) (compile file code)
 
 
 compile :: FilePath -> String -> Either ParseError [Beam.Op]
@@ -35,6 +33,14 @@ compile file code =
     <$> fmap concat
     <$> mapM generate
     <$> parse (contents (many def)) file code
+
+
+makeExecutable :: String -> [Beam.Op] -> IO ()
+makeExecutable name ops =
+  do  let output = name <> ".beam"
+      writeFile output "#!/usr/bin/env escript\n"
+      BS.appendFile output $ Beam.encode (fromString name) ops
+      setFileMode output accessModes
 
 
 
@@ -52,29 +58,30 @@ data Env =
 
 generate :: Def -> State Env [Beam.Op]
 generate (Def name args body) =
+  do  header <- genHeader stack name args
+      locals <- sequence $ withArgs genLocal args
+      (body, value) <- genExpr body
+      let footer = [ Genop.move value x0, Genop.deallocate stack, Genop.return_ ]
+      return $ concat [ header, locals, body, displayMain name value, footer ]
+  where
+    stack = length args + tmpsNeeded body
+
+
+genHeader :: Int -> Name -> [Name] -> State Env [Beam.Op]
+genHeader stack name args =
   do  x <- nextLabel
       y <- nextLabel
       State.modify $ \e -> e
         { _locals = Map.empty
-        , _functions = Map.insert name (y, argCount) (_functions e)
+        , _functions = Map.insert name (y, length args) (_functions e)
         , _uniqueTmp = 0
         }
-      headerOps <- sequence $ withArgs genLocal args
-      (bodyOps, returnValue) <- genExpr body
-      return $
+      return
         [ Genop.label x
-        , Genop.func_info Beam.Public (fromString (toRaw name)) argCount
+        , Genop.func_info Beam.Public (fromString (toRaw name)) (length args)
         , Genop.label y
-        , Genop.allocate spaceNeeded argCount
-        ] ++ headerOps ++ bodyOps ++
-        [ Genop.move returnValue x0
-        , Genop.deallocate spaceNeeded
-        , Genop.return_
+        , Genop.allocate stack (length args)
         ]
-
-  where
-    argCount = length args
-    spaceNeeded = argCount + tmpsNeeded body
 
 
 genLocal :: Name -> Beam.Register -> State Env Beam.Op
@@ -163,6 +170,14 @@ tmpsNeeded (Var _)           = 0
 tmpsNeeded (Call _ args)     = 1 + sum (map tmpsNeeded args)
 
 
+displayMain :: Name -> Beam.Operand -> [Beam.Op]
+displayMain name value =
+  if toRaw name == "main" then
+    [ Genop.move value x0, Genop.call_ext "erlang" "display" 1 ]
+  else
+    []
+
+
 stdlibMath :: Op -> BS.ByteString
 stdlibMath Plus   = "+"
 stdlibMath Minus  = "-"
@@ -237,13 +252,11 @@ contents inner =
 expr :: Parser Expr
 expr =
   Expr.buildExpressionParser table factor
-
   where
     table =
       [ [binary "*" Times Expr.AssocLeft, binary "/" Divide Expr.AssocLeft]
       , [binary "+" Plus  Expr.AssocLeft, binary "-" Minus  Expr.AssocLeft]
       ]
-
     binary s f assoc =
       Expr.Infix (reservedOp s >> return (BinOp f)) assoc
 
