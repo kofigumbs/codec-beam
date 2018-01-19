@@ -3,8 +3,8 @@
 def identity(x)
   x;
 
-def zero(ignored)
-  identity;
-
 def meaning_of_life()
-  identity(40 + 2.0);
+  40 + 2.0;
+
+def main(args)
+  identity(meaning_of_life());

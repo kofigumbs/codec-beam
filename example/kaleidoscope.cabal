@@ -26,4 +26,5 @@ Executable kaleidoscope
         filepath,
         mtl,
         parsec,
-        text
+        text,
+        unix
