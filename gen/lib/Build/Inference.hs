@@ -6,27 +6,40 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 
--- OpCode NUMBER NAME
--- Line
---  = Specific TYPES
---  | Transform [Instr] [Instr]...
---  | Generic NAME ..
-
-
 run :: [Line] -> [OpCode] -> [Definition]
 run lines opCodes =
-  map (toDef (foldr inferType Map.empty lines)) opCodes
+  map (toDef (foldr inferLine Map.empty lines)) opCodes
 
 
 type Env =
   Map.Map String [(Set.Set Type)]
 
 
-inferType :: Line -> Env -> Env
-inferType (SpecificOp name types) =
-  Map.insertWith (zipWith Set.union) name (Set.fromList <$> types)
-inferType _ =
-  undefined
+inferLine :: Line -> Env -> Env
+inferLine line =
+  case line of
+    SpecificOp name types ->
+      insertTypes name (Set.fromList <$> types)
+
+    Transform patterns _body ->
+      flip (foldr inferLeft) patterns
+
+    _ ->
+      undefined
+
+inferLeft :: Instruction -> Env -> Env
+inferLeft instruction =
+  case instruction of
+    Op name args ->
+      insertTypes name (Set.fromList . _arg_type <$> args)
+
+    C ->
+      undefined
+
+
+insertTypes :: String -> [Set.Set Type] -> Env -> Env
+insertTypes =
+  Map.insertWith (zipWith Set.union)
 
 
 toDef :: Env -> OpCode -> Definition

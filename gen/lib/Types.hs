@@ -22,8 +22,10 @@ data Instruction
   deriving Show
 
 
-data Argument
-  = Argument (Maybe String) [Type]
+data Argument = Argument
+  { _arg_name :: Maybe String
+  , _arg_type :: [Type]
+  }
   deriving Show
 
 
