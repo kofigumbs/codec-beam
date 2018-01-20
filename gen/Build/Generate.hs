@@ -106,7 +106,7 @@ typeClass beamName index beamArg =
       []
       (Just
         [ ClsDecl () $ TypeSig () [methodName index beamName] $
-            TyFun () (TyVar () generic) (TyVar () (H.name "Operand"))
+            TyFun () (TyVar () generic) (TyVar () encodingName)
         ])
       : map (typeInstance beamName index) (Set.toList beamArg)
   where
@@ -162,6 +162,11 @@ methodName index beamName =
 encoderName :: Types.Type -> Name ()
 encoderName type_ =
   H.name ("From" ++ srcType type_)
+
+
+encodingName :: Name ()
+encodingName =
+  H.name "Encoding"
 
 
 opName :: Name ()

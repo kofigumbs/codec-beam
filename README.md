@@ -42,8 +42,8 @@ and you can find a more complete [`./example` project here](example).
 Using [Stack](https://www.haskellstack.org)
 
 ```bash
-stack exec bootstrap TARGET_ERLANG_SHA # i.e. `master` or `maint-20`
-stack test --file-watch
+stack build gen/ --exec 'bootstrap TARGET_ERLANG_SHA'
+stack test
 ```
 
 

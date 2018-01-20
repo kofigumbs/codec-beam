@@ -27,10 +27,10 @@ Library
 
     exposed-modules:
         Codec.Beam
-        Codec.Beam.Genop
 
     other-modules:
-        Codec.Beam.Internal.Bytes
+        Codec.Beam.Internal.Assembler
+        Codec.Beam.Internal.Generated
         Codec.Beam.Internal.Types
         Data.Table
 

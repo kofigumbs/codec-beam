@@ -14,7 +14,7 @@ import qualified Data.ByteString.Lazy as BS
 
 import Codec.Beam.Internal.Types
 import Data.Table (Table)
-import qualified Codec.Beam.Bytes as Bytes
+import qualified Codec.Beam.Assembler as Asm
 import qualified Data.Table as Table
 
 
@@ -57,28 +57,28 @@ appendOperand :: Builder -> Operand -> Builder
 appendOperand builder operand =
   case operand of
     Lit value ->
-      tag (Bytes.internal 0) value
+      tag (Asm.internal 0) value
 
     Int value ->
-      tag (Bytes.internal 1) value
+      tag (Asm.internal 1) value
 
     Nil ->
-      tag (Bytes.internal 2) 0
+      tag (Asm.internal 2) 0
 
     Atom name ->
-      tag (Bytes.internal 2) |> withAtom name
+      tag (Asm.internal 2) |> withAtom name
 
     Reg (X value) ->
-      tag (Bytes.internal 3) value
+      tag (Asm.internal 3) value
 
     Reg (Y value) ->
-      tag (Bytes.internal 4) value
+      tag (Asm.internal 4) value
 
     Label value ->
-      tag (Bytes.internal 5) $ value
+      tag (Asm.internal 5) $ value
 
     Ext literal ->
-      tag (Bytes.external 4) |> withLiteral literal
+      tag (Asm.external 4) |> withLiteral literal
 
   where
     tag encoder =

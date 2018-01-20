@@ -5,7 +5,7 @@ import Data.Word (Word8)
 
 
 -- | You can find implementations in "Codec.Beam.Genop"
-data Op = Op Word8 [Operand]
+data Op = Op Word8 [Encoding]
 
 
 -- | Reference a function from another module
@@ -34,7 +34,7 @@ data Literal
   | Map [(Literal, Literal)]
 
 
-data Encode
+data Encoding
   = FromImport Import
   | FromX X
   | FromY Y

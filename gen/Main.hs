@@ -22,7 +22,7 @@ main =
 
 getVersion :: [String] -> String
 getVersion args =
-  let context = " erlang version/branch command-line argument!" in
+  let context = " Erlang SHA|VERSION|BRANCH command-line argument!" in
   case args of
     [version]  -> version
     []         -> errorWithoutStackTrace $ "Missing" ++ context
