@@ -98,12 +98,8 @@ instruction argument =
 leftArg :: Parser Argument
 leftArg =
   choice
-    [ TypeOnly <$> patternType
-    , do  name <- variable
-          choice
-            [ fmap (Complete name) (char '=' *> patternType)
-            , pure (NameOnly name)
-            ]
+    [ Argument Nothing <$> patternType
+    , Argument . Just <$> variable <*> choice [ char '=' *> patternType, pure [] ]
     ] <* optional constraint
   where
     constraint = string "==" *> many1 (alphaNum <|> char '_')
@@ -112,8 +108,8 @@ leftArg =
 rightArg :: Parser Argument
 rightArg =
   choice
-    [ fmap TypeOnly (patternType <* optional default_)
-    , fmap NameOnly variable
+    [ fmap (Argument Nothing) (patternType <* optional default_)
+    , fmap (\name -> Argument (Just name) []) variable
     ]
   where
     default_ = char '=' *> choice [ ignore many1 digit, atom ]
@@ -122,7 +118,7 @@ rightArg =
 patternType :: Parser [Type]
 patternType =
   choice
-    [ char '*' $> [VarArgs]
+    [ char '*' $> []
     , builtIn  $> [Import]
     , lookAhead lower *> specificType
     ]

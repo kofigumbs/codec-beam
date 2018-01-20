@@ -1,12 +1,10 @@
 module Types where
 
-import Data.Set (Set)
-
 
 data OpCode = OpCode
-  { _o_deprecated :: Bool
-  , _o_code :: Int
-  , _o_name :: String
+  { _op_deprecated :: Bool
+  , _op_code :: Int
+  , _op_name :: String
   }
   deriving Show
 
@@ -25,9 +23,7 @@ data Instruction
 
 
 data Argument
-  = NameOnly String
-  | TypeOnly [Type]
-  | Complete String [Type]
+  = Argument (Maybe String) [Type]
   deriving Show
 
 
@@ -39,13 +35,12 @@ data Type
   | FloatRegister
   | Literal
   | Label
-  | VarArgs
   | Untagged
   deriving (Eq, Ord, Show)
 
 
 data Definition = Definition
-  { _d_name :: String
-  , _d_code :: Int
-  , _d_args :: [Set Type]
+  { _def_name :: String
+  , _def_code :: Int
+  , _def_args :: [[Type]]
   }
