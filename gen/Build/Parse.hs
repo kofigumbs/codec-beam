@@ -129,17 +129,18 @@ specificType =
   foldl (++) <$> try singleType <*> many singleType
   where
     singleType = choice
-      [ oneOf "be"       $> [Import]
-      , char 'a'         $> [Atom]
-      , oneOf "rx"       $> [XRegister]
-      , char 'y'         $> [YRegister]
-      , char 'l'         $> [FloatRegister]
-      , oneOf "inq"      $> [Literal]
-      , oneOf "fjp"      $> [Label]
-      , oneOf "touAILPQ" $> [Untagged]
-      , char 'c'         $> [Atom, Literal]
-      , char 's'         $> [XRegister, YRegister, Atom, Literal]
-      , oneOf "dS"       $> [XRegister, YRegister]
+      [ char '?'          $> []
+      , oneOf "be"        $> [Import]
+      , char 'a'          $> [Atom]
+      , oneOf "rx"        $> [XRegister]
+      , char 'y'          $> [YRegister]
+      , char 'l'          $> [FloatRegister]
+      , oneOf "inq"       $> [Literal]
+      , oneOf "fjp"       $> [Label]
+      , oneOf "touAILPQW" $> [Untagged]
+      , char 'c'          $> [Atom, Literal]
+      , char 's'          $> [XRegister, YRegister, Atom, Literal]
+      , oneOf "dS"        $> [XRegister, YRegister]
       ]
 
 
