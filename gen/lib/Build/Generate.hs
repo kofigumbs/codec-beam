@@ -1,126 +1,87 @@
 module Build.Generate (code) where
 
-import Data.Maybe (mapMaybe)
-import Language.Haskell.Exts.Syntax
-import qualified Language.Haskell.Exts as H
+import Data.List (intercalate)
+import Data.Either (rights)
 
 import Types
 
 
 code :: String -> [Definition] -> String
-code module_ defs =
-  H.prettyPrint $
-    Module ()
-      (Just (ModuleHead () (ModuleName () module_) Nothing (Just (exports defs))))
-      []
-      [ ImportDecl
-          { importAnn = ()
-          , importModule = ModuleName () "Codec.Beam.Internal.Types"
-          , importQualified = False
-          , importSrc = False
-          , importSafe = False
-          , importPkg = Nothing
-          , importAs = Nothing
-          , importSpecs = Nothing
-          }
-      ]
-      (concatMap definition defs)
+code moduleName defs =
+  "module " ++ moduleName ++ " (" ++ sepBy comma _def_name defs ++ ") where\n"
+    ++ "import Codec.Beam.Internal.Types\n\n"
+    ++ sepBy "\n\n" pp (concatMap definition defs)
 
 
-exports :: [Definition] -> ExportSpecList ()
-exports =
-  ExportSpecList () . map (EVar () . UnQual () . definitionName)
+-- AST
 
 
-definition :: Definition -> [Decl ()]
-definition def@(Definition beamName beamCode beamArgs) =
-  TypeSig () [definitionName def] (signature beamName beamArgs)
-    : H.sfun (definitionName def) argNames body Nothing
-    : concat (imap (typeClass beamName) beamArgs)
+data TopLevel
+  = Class Int String
+  | Instance Int String Type
+  | Function String Int [Either (Int, Type) Int]
+
+
+definition :: Definition -> [TopLevel]
+definition (Definition name code args) =
+  let arguments = indexMap (argument name) args in
+  Function name code (fmap fst <$> arguments) : (concatMap snd $ rights arguments)
+
+
+argument :: String -> Int -> [Type] -> Either (Int, Type) (Int, [TopLevel])
+argument _ index [type_]        = Left (index, type_)
+argument baseName index types   = Right (index, constraint)
   where
-    argNames =
-      H.genNames "a" (length beamArgs)
-
-    body =
-      UnGuardedRhs () $ applyOp beamCode $
-        zipWith H.app (imap (extractor beamName) beamArgs) (map H.var argNames)
+    constraint = Class index baseName : map (Instance index baseName) types
 
 
-signature :: String -> [[Types.Type]] -> H.Type ()
-signature beamName =
-   uncurry applyConstraints . unzip . imap (argument beamName)
+indexMap :: (Int -> a -> b) -> [a] -> [b]
+indexMap f =
+  zipWith f [1..]
 
 
-applyOp :: Int -> [Exp ()] -> Exp ()
-applyOp opCode args =
-  H.appFun (H.var opName) [H.intE (fromIntegral opCode), H.listE args]
+
+-- PRETTY PRINTING
 
 
-argument :: String -> Int -> [Types.Type] -> (Maybe (Asst ()), H.Type ())
-argument beamName index beamArg =
-  case beamArg of
-    [ type_ ] ->
-      (Nothing, TyVar () (H.name (srcType type_)))
+pp :: TopLevel -> String
+pp topLevel =
+  case topLevel of
+    Class index baseName ->
+      "class " ++ className index baseName ++ space
+        ++ genericArgumentName index ++ " where\n"
+        ++ indent ++ methodName index baseName ++ " :: "
+        ++ genericArgumentName index ++ " -> " ++ encodingName
 
-    _ ->
-      ( Just $
-          ClassA ()
-            (UnQual () (constraintName index beamName))
-            [TyVar () (genericArgumentName index)]
-      , TyVar () (genericArgumentName index)
-      )
+    Instance index baseName type_ ->
+      "instance " ++ className index baseName ++ space
+        ++ srcType type_ ++ " where\n"
+        ++ indent ++ methodName index baseName ++ " = "
+        ++ encoderName type_
+
+    Function name opCode args ->
+      name ++ " :: " ++ constraints name (rights args)
+        ++ sepBy " -> " (either (srcType . snd) genericArgumentName) args
+        ++ " -> " ++ opName ++ "\n"
+        ++ name ++ space
+        ++ sepBy space (either (genericArgumentName . fst) genericArgumentName) args
+        ++ " = " ++ opName ++ space ++ show opCode ++ " ["
+        ++ sepBy comma (encoding name) args ++ "]"
 
 
-applyConstraints :: [Maybe (Asst ())] -> [H.Type ()] -> H.Type ()
-applyConstraints maybeAssertions types =
-  case mapMaybe id maybeAssertions of
-    [] ->
-      concrete
-
-    assertions ->
-      TyForall () Nothing (Just (CxTuple () assertions)) concrete
+constraints :: String -> [Int] -> String
+constraints _ []             = ""
+constraints baseName indexes = "(" ++ sepBy comma class_ indexes ++ ") => "
   where
-    concrete = foldr (TyFun ()) (TyVar () opName) types
+    class_ i = className i baseName ++ space ++ genericArgumentName i
 
 
-extractor :: String -> Int -> [Types.Type] -> Exp ()
-extractor _ _ [type_]      = Var () $ UnQual () (encoderName type_)
-extractor beamName index _ = Var () $ UnQual () (methodName index beamName)
+encoding :: String -> Either (Int, Type) Int -> String
+encoding _ (Left (index, type_)) = encoderName type_ ++ nextArgumentName index
+encoding baseName (Right index)  = methodName index baseName ++ nextArgumentName index
 
 
-typeClass :: String -> Int -> [Types.Type] -> [Decl ()]
-typeClass beamName index beamArg =
-  if length beamArg <= 1 then
-    []
-  else
-    ClassDecl () Nothing
-      (DHApp ()
-        (DHead () (constraintName index beamName))
-        (UnkindedVar () (genericArgumentName index)))
-      []
-      (Just
-        [ ClsDecl () $ TypeSig () [methodName index beamName] $
-            TyFun () (TyVar () (genericArgumentName index)) (TyVar () encodingName)
-        ])
-      : map (typeInstance beamName index) beamArg
-
-
-typeInstance :: String -> Int -> Types.Type -> Decl ()
-typeInstance beamName index type_ =
-  InstDecl () Nothing
-    (IRule () Nothing Nothing $
-      IHApp ()
-        (IHCon () (UnQual () (constraintName index beamName)))
-        (TyVar () (H.name (srcType type_)))) $
-    Just
-      [ InsDecl () $
-          H.sfun (methodName index beamName) []
-            (UnGuardedRhs () (H.var (encoderName type_)))
-            Nothing
-      ]
-
-
-srcType :: Types.Type -> String
+srcType :: Type -> String
 srcType Import        = "Import"
 srcType Atom          = "ByteString"
 srcType XRegister     = "X"
@@ -131,54 +92,60 @@ srcType Label         = "Label"
 srcType Untagged      = "Int"
 
 
+indent :: String
+indent =
+  replicate 8 ' '
+
+
+space :: String
+space =
+  " "
+
+
+comma :: String
+comma =
+  ", "
+
+
+sepBy :: String -> (a -> String) -> [a] -> String
+sepBy separator function =
+  intercalate separator . map function
+
+
 
 -- NAMES
 
 
-definitionName :: Definition -> Name ()
-definitionName =
-  H.name . _def_name
+className :: Int -> String -> String
+className index beamName =
+  "T" ++ show index ++ "__" ++ beamName
 
 
-constraintName :: Int -> String -> Name ()
-constraintName index beamName =
-  iname "T" index ("__" ++ beamName)
+nextArgumentName :: Int -> String
+nextArgumentName index =
+  space ++ genericArgumentName index
 
 
-genericArgumentName :: Int -> Name ()
+genericArgumentName :: Int -> String
 genericArgumentName index =
-  iname "a" index ""
+  "a" ++ show index
 
 
-methodName :: Int -> String -> Name ()
+methodName :: Int -> String -> String
 methodName index beamName =
-  iname "fromT" index ("__" ++ beamName)
+  "fromT" ++ show index ++ "__" ++ beamName
 
 
-encoderName :: Types.Type -> Name ()
+encoderName :: Type -> String
 encoderName type_ =
-  H.name ("From" ++ srcType type_)
+  "From" ++ srcType type_
 
 
-encodingName :: Name ()
+encodingName :: String
 encodingName =
-  H.name "Encoding"
+ "Encoding"
 
 
-opName :: Name ()
+opName :: String
 opName =
-  H.name "Op"
-
-
-
--- INDEX UTILITIES
-
-
-iname :: String -> Int -> String -> Name ()
-iname prefix index suffix =
-  H.name (prefix ++ show index ++ suffix)
-
-
-imap :: (Int -> a -> b) -> [a] -> [b]
-imap f =
-  zipWith f [1..]
+  "Op"
