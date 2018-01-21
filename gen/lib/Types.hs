@@ -10,23 +10,23 @@ data OpCode = OpCode
 
 
 data Line
-  = GenericOp String
+  = Transform [Instruction] [Instruction]
   | SpecificOp String [[Type]]
-  | Transform [Instruction] [Instruction]
-  deriving Show
+  | GenericOp String
+  deriving (Eq, Ord, Show)
 
 
 data Instruction
   = C
   | Op String [Argument]
-  deriving Show
+  deriving (Eq, Ord, Show)
 
 
 data Argument = Argument
   { _arg_name :: Maybe String
   , _arg_type :: [Type]
   }
-  deriving Show
+  deriving (Eq, Ord, Show)
 
 
 data Type

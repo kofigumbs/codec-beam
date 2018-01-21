@@ -2,13 +2,14 @@ module Build.Inference (run) where
 
 import Types
 
+import Data.List (sort)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 
 run :: [Line] -> [OpCode] -> [Definition]
 run lines opCodes =
-  map (toDef (foldr inferLine mempty lines)) opCodes
+  map (toDef (foldr inferLine mempty (sort lines))) opCodes
 
 
 

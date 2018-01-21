@@ -42,8 +42,8 @@ and you can find a more complete [`./example` project here](example).
 Using [Stack](https://www.haskellstack.org)
 
 ```bash
-stack build gen/ --exec 'bootstrap TARGET_ERLANG_SHA'
-stack test
+stack build ./gen --exec 'bootstrap TARGET_ERLANG_SHA'
+stack build
 ```
 
 
