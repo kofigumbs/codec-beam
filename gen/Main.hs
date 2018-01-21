@@ -13,11 +13,9 @@ main =
       rawOps <- download version "/erts/emulator/beam/ops.tab"
       rawGenop <- download version "/lib/compiler/src/genop.tab"
       either errorWithoutStackTrace id $
-        do  ops <- first show <$> Build.Parse.ops =<< rawOps
-            genop <- first show <$> Build.Parse.genop =<< rawGenop
-            pure $ writeFile "src/Codec/Beam/Internal/Generated.hs" $
-              Build.Generate.code "Codec.Beam.Internal.Generated" $
-              Build.Inference.run ops genop
+        writeFile "src/Codec/Beam/Internal/Generated.hs" <$>
+          Build.Generate.code "Codec.Beam.Internal.Generated" <$>
+            do Build.Inference.run <$> run Build.Parse.ops rawOps <*> run Build.Parse.genop rawGenop
 
 
 getVersion :: [String] -> String
@@ -34,3 +32,8 @@ download version path =
   openURIString (rootUrl ++ version ++ path)
   where
     rootUrl = "https://raw.githubusercontent.com/erlang/otp/"
+
+
+run :: Show e => (a -> Either e b) -> Either String a -> Either String b
+run parse rawInput =
+  first show <$> parse =<< rawInput

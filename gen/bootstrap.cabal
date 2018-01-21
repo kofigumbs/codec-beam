@@ -36,5 +36,4 @@ Test-Suite bootstrap-tests
     build-depends: bootstrap,
                    base,
                    directory,
-                   hspec,
-                   hspec-expectations
+                   hspec
