@@ -59,7 +59,7 @@ applyOp opCode args =
 argument :: String -> Int -> [Types.Type] -> (Maybe (Asst ()), H.Type ())
 argument beamName index beamArg =
   case beamArg of
-    [type_] ->
+    [ type_ ] ->
       (Nothing, TyVar () (H.name (srcType type_)))
 
     _ ->
@@ -84,13 +84,8 @@ applyConstraints maybeAssertions types =
 
 
 extractor :: String -> Int -> [Types.Type] -> Exp ()
-extractor beamName index beamArg =
-  case beamArg of
-    [type_] ->
-      Var () $ UnQual () (encoderName type_)
-
-    _ ->
-      Var () $ UnQual () (methodName index beamName)
+extractor _ _ [type_]      = Var () $ UnQual () (encoderName type_)
+extractor beamName index _ = Var () $ UnQual () (methodName index beamName)
 
 
 typeClass :: String -> Int -> [Types.Type] -> [Decl ()]
