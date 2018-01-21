@@ -11,7 +11,7 @@ import Data.ByteString.Lazy (ByteString)
 import qualified Control.Monad.State.Strict as State
 import qualified Data.Table as Table
 
-import Codec.Beam.Internal.Types
+import Codec.Beam.Internal
 
 
 label :: Label -> Op

@@ -18,8 +18,9 @@ Library
     extensions: OverloadedStrings
     hs-source-dirs: src
     exposed-modules: Codec.Beam
-    other-modules: Codec.Beam.Internal.Assembler
-                   Codec.Beam.Internal.Generated
+                     Codec.Beam.Genop
+    other-modules: Codec.Beam.Internal
+                   Codec.Beam.Internal.Assembler
                    Codec.Beam.Internal.Types
                    Data.Table
     build-depends: base,

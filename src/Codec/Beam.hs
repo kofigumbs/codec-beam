@@ -12,9 +12,9 @@ import qualified Codec.Compression.Zlib as Zlib
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as BS
 
-import Codec.Beam.Internal.Types
+import Codec.Beam.Internal
 import Data.Table (Table)
-import qualified Codec.Beam.Assembler as Asm
+import qualified Codec.Beam.Internal.Assembler as Asm
 import qualified Data.Table as Table
 
 
