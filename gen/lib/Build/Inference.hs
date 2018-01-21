@@ -9,7 +9,9 @@ import qualified Data.Set as Set
 
 run :: [Line] -> [OpCode] -> [Definition]
 run lines opCodes =
-  map (toDef (foldr inferLine mempty (sort lines))) opCodes
+  toDef env <$> filter (not . _op_deprecated) opCodes
+  where
+    env = foldr inferLine mempty (sort lines)
 
 
 
