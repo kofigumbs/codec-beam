@@ -39,7 +39,7 @@ definition def@(Definition beamName beamCode beamArgs) =
     : concat (imap (typeClass beamName) beamArgs)
   where
     argNames =
-      H.genNames "x" (length beamArgs)
+      H.genNames "a" (length beamArgs)
 
     body =
       UnGuardedRhs () $ applyOp beamCode $
@@ -64,11 +64,11 @@ argument beamName index beamArg =
 
     _ ->
       ( Just $
-          ClassA () (UnQual () (constraintName index beamName)) [TyVar () generic]
-      , TyVar () generic
+          ClassA ()
+            (UnQual () (constraintName index beamName))
+            [TyVar () (genericArgumentName index)]
+      , TyVar () (genericArgumentName index)
       )
-  where
-    generic = iname "t" index ""
 
 
 applyConstraints :: [Maybe (Asst ())] -> [H.Type ()] -> H.Type ()
@@ -101,15 +101,13 @@ typeClass beamName index beamArg =
     ClassDecl () Nothing
       (DHApp ()
         (DHead () (constraintName index beamName))
-        (UnkindedVar () generic))
+        (UnkindedVar () (genericArgumentName index)))
       []
       (Just
         [ ClsDecl () $ TypeSig () [methodName index beamName] $
-            TyFun () (TyVar () generic) (TyVar () encodingName)
+            TyFun () (TyVar () (genericArgumentName index)) (TyVar () encodingName)
         ])
       : map (typeInstance beamName index) beamArg
-  where
-    generic = H.name "t"
 
 
 typeInstance :: String -> Int -> Types.Type -> Decl ()
@@ -150,6 +148,11 @@ definitionName =
 constraintName :: Int -> String -> Name ()
 constraintName index beamName =
   iname "T" index ("__" ++ beamName)
+
+
+genericArgumentName :: Int -> Name ()
+genericArgumentName index =
+  iname "a" index ""
 
 
 methodName :: Int -> String -> Name ()

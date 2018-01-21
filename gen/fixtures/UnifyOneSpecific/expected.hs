@@ -1,11 +1,11 @@
 module UnifyOneSpecific (foo) where
 import Codec.Beam.Internal.Types
 
-foo :: (T1__foo t1) => t1 -> Op
-foo x1 = Op 1 [fromT1__foo x1]
+foo :: (T1__foo a1) => a1 -> Op
+foo a1 = Op 1 [fromT1__foo a1]
 
-class T1__foo t where
-        fromT1__foo :: t -> Encoding
+class T1__foo a1 where
+        fromT1__foo :: a1 -> Encoding
 
 instance T1__foo X where
         fromT1__foo = FromX
