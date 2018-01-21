@@ -41,7 +41,7 @@ exhaustArgument body env (Argument name types) =
 exhaustUse :: Env -> String -> Instruction -> Union
 exhaustUse env needle instruction =
   whenOp instruction mempty $ \name args ->
-    mconcat . zipWith (exhaustDef needle) args $ getTypes name env
+    mconcat $ zipWith (exhaustDef needle) args $ Map.findWithDefault [] name env
 
 
 exhaustDef :: String -> Argument -> Union -> Union
@@ -61,10 +61,4 @@ trackDef =
 
 toDef :: Env -> OpCode -> Definition
 toDef env (OpCode _ code name) =
-  Definition name code . fmap Set.toList $ getTypes name env
-
-
-getTypes :: String -> Env -> [Union]
-getTypes name =
-  maybe crash id . Map.lookup name
-    where crash = errorWithoutStackTrace $ "`" ++ name ++ "` is unbound!"
+  Definition name code $ Set.toList <$> Map.findWithDefault [] name env
