@@ -1,4 +1,4 @@
-module TransientGenop (generic_op) where
+module TransientSpecific (generic_op) where
 import Codec.Beam.Internal.Types
 
 generic_op :: ByteString -> Literal -> Op

@@ -39,7 +39,7 @@ data Encoding
   | FromX X
   | FromY Y
   | FromF F
-  | FromInteger Int
+  | FromInt Int
   | FromByteString ByteString
   | FromLabel Label
   | FromLiteral Literal

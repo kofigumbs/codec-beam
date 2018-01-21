@@ -20,16 +20,9 @@ type Union = Set.Set Type
 
 
 inferLine :: Line -> Env -> Env
-inferLine line env =
-  case line of
-    GenericOp _name ->
-      undefined
-
-    SpecificOp name types ->
-      trackDef name (fmap Set.fromList types) env
-
-    Transform patterns body ->
-      foldr (inferPattern body) env patterns
+inferLine (GenericOp _)             = id
+inferLine (SpecificOp name types)   = trackDef name (fmap Set.fromList types)
+inferLine (Transform patterns body) = flip (foldr (inferPattern body)) patterns
 
 
 inferPattern :: [Instruction] -> Instruction -> Env -> Env
@@ -56,7 +49,7 @@ exhaustDef needle (Argument haystack _) types =
 
 
 whenOp :: Instruction -> a -> (String -> [Argument] -> a) -> a
-whenOp C default_ _ = default_
+whenOp C default_ _              = default_
 whenOp (Op name args) _ callback = callback name args
 
 
@@ -66,7 +59,7 @@ trackDef =
 
 
 toDef :: Env -> OpCode -> Definition
-toDef env (OpCode _ code name)=
+toDef env (OpCode _ code name) =
   Definition name code . fmap Set.toList $ getTypes name env
 
 

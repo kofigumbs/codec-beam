@@ -1,4 +1,4 @@
-module TypedGenopTransformation (foo, unfoo) where
+module TypedGenericTransformation (foo, unfoo) where
 import Codec.Beam.Internal.Types
 
 foo :: X -> Op

@@ -9,18 +9,21 @@ import qualified Build.Inference
 
 main :: IO ()
 main =
-  hspec $ mapM_ runBuild =<< runIO (listDirectory "fixtures")
+  hspec $ mapM_ runBuild =<< runIO (listDirectory fixtureDir)
 
 
-runBuild :: FilePath -> Spec
+runBuild :: FilePath -> SpecWith (Arg Expectation)
 runBuild dir =
-  runIO (getFixtures dir) >>= \(ops, genop, expected) ->
-    it dir $ (`shouldBe` Right expected) $
-      Build.Generate.code dir <$>
-        do Build.Inference.run <$> Build.Parse.ops ops <*> Build.Parse.genop genop
+  do  ops      <- get "ops.tab"
+      genop    <- get "genop.tab"
+      expected <- get "expected.hs"
+      it dir $ (`shouldBe` Right expected) $
+        Build.Generate.code dir <$>
+          do Build.Inference.run <$> Build.Parse.ops ops <*> Build.Parse.genop genop
+  where
+    get file = runIO $ readFile $ fixtureDir ++ dir ++ "/" ++ file
 
 
-getFixtures :: FilePath -> IO (String, String, String)
-getFixtures dir =
-  let get f = readFile $ "fixtures/" ++ dir ++ f in
-  (,,) <$> get "/ops.tab" <*> get "/genop.tab" <*> get "/expected.hs"
+fixtureDir :: FilePath
+fixtureDir =
+  "fixtures/"

@@ -1,4 +1,4 @@
-module OneGenopToSpecific (foo) where
+module OneGenericToSpecific (foo) where
 import Codec.Beam.Internal.Types
 
 foo :: X -> Y -> Op

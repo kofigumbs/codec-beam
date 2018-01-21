@@ -1,0 +1,4 @@
+external_generic_op Ambiguous => internal_generic_op Ambiguous
+internal_generic_op Something => specific_op Something
+internal_generic_op/1
+specific_op W
