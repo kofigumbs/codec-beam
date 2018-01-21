@@ -1,4 +1,4 @@
-module Codec.Beam.Bytes (internal, external) where
+module Codec.Beam.Internal.Assembler (internal, external) where
 
 
 import Data.Bits ((.|.), (.&.))

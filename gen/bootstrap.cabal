@@ -1,0 +1,39 @@
+Name: bootstrap
+Version: 0.1.0
+
+Cabal-Version: >=1.9
+Build-Type: Simple
+
+Library
+    ghc-options: -W -Werror
+    extensions: OverloadedStrings
+    hs-source-dirs: lib
+    exposed-modules: Build.Generate,
+                     Build.Inference,
+                     Build.Parse
+    other-modules: Types
+    build-depends: base,
+                   bytestring,
+                   containers,
+                   haskell-src-exts,
+                   parsec
+
+Executable bootstrap
+    ghc-options: -W -Werror
+    extensions: OverloadedStrings
+    hs-source-dirs: .
+    main-is: Main.hs
+    build-depends: bootstrap,
+                   base,
+                   download-curl
+
+Test-Suite bootstrap-tests
+    ghc-options: -W -Werror
+    extensions: OverloadedStrings
+    hs-source-dirs: .
+    type: exitcode-stdio-1.0
+    main-is: Test.hs
+    build-depends: bootstrap,
+                   base,
+                   directory,
+                   hspec
