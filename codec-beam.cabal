@@ -2,12 +2,12 @@ Name: codec-beam
 Version: 0.1.0
 
 License: BSD3
-License-file: LICENSE
+License-File: LICENSE
 
 Category: Codec
 
-Cabal-version: >=1.9
-Build-type: Simple
+Cabal-Version: >=1.9
+Build-Type: Simple
 
 Source-Repository head
     type:     git

@@ -22,6 +22,7 @@ install:
 - stack --no-terminal --install-ghc build --only-dependencies
 
 script:
+# TODO: make sure we build the correct GEN.hs, it should probably be based on `otp_release` above
 - stack build --no-terminal --test --haddock --no-haddock-deps --haddock-arguments "--odir=./docs"
 
 deploy:
