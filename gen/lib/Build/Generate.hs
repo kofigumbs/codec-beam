@@ -25,7 +25,7 @@ data TopLevel
 definition :: Definition -> [TopLevel]
 definition (Definition name code args) =
   let arguments = indexMap (argument name) args in
-  Function name code (fmap fst <$> arguments) : (concatMap snd $ rights arguments)
+  Function name code (fmap fst <$> arguments) : concatMap snd (rights arguments)
 
 
 argument :: String -> Int -> [Type] -> Either (Int, Type) (Int, [TopLevel])
@@ -36,8 +36,8 @@ argument baseName index types   = Right (index, constraint)
 
 
 indexMap :: (Int -> a -> b) -> [a] -> [b]
-indexMap f =
-  zipWith f [1..]
+indexMap =
+  flip zipWith [1..]
 
 
 
@@ -49,9 +49,9 @@ pp topLevel =
   case topLevel of
     Class index baseName ->
       "class " ++ className index baseName ++ space
-        ++ genericArgumentName index ++ " where\n"
+        ++ argumentName index ++ " where\n"
         ++ indent ++ methodName index baseName ++ " :: "
-        ++ genericArgumentName index ++ " -> " ++ encodingName
+        ++ argumentName index ++ " -> " ++ encodingName
 
     Instance index baseName type_ ->
       "instance " ++ className index baseName ++ space
@@ -61,24 +61,24 @@ pp topLevel =
 
     Function name opCode args ->
       name ++ " :: " ++ constraints name (rights args)
-        ++ sepBy " -> " (either (srcType . snd) genericArgumentName) args
+        ++ sepBy " -> " (either (srcType . snd) argumentName) args
         ++ " -> " ++ opName ++ "\n"
         ++ name ++ space
-        ++ sepBy space (either (genericArgumentName . fst) genericArgumentName) args
-        ++ " = " ++ opName ++ space ++ show opCode ++ " ["
-        ++ sepBy comma (encoding name) args ++ "]"
+        ++ sepBy space (argumentName . either fst id) args
+        ++ " = " ++ opName ++ space ++ show opCode
+        ++ " [" ++ sepBy comma (encoding name) args ++ "]"
 
 
 constraints :: String -> [Int] -> String
 constraints _ []             = ""
 constraints baseName indexes = "(" ++ sepBy comma class_ indexes ++ ") => "
   where
-    class_ i = className i baseName ++ space ++ genericArgumentName i
+    class_ i = className i baseName ++ space ++ argumentName i
 
 
 encoding :: String -> Either (Int, Type) Int -> String
-encoding _ (Left (index, type_)) = encoderName type_ ++ nextArgumentName index
-encoding baseName (Right index)  = methodName index baseName ++ nextArgumentName index
+encoding _ (Left (i, type_)) = encoderName type_ ++ space ++ argumentName i
+encoding baseName (Right i)  = methodName i baseName ++ space ++ argumentName i
 
 
 srcType :: Type -> String
@@ -108,8 +108,8 @@ comma =
 
 
 sepBy :: String -> (a -> String) -> [a] -> String
-sepBy separator function =
-  intercalate separator . map function
+sepBy separator transform =
+  intercalate separator . map transform
 
 
 
@@ -121,13 +121,8 @@ className index beamName =
   "T" ++ show index ++ "__" ++ beamName
 
 
-nextArgumentName :: Int -> String
-nextArgumentName index =
-  space ++ genericArgumentName index
-
-
-genericArgumentName :: Int -> String
-genericArgumentName index =
+argumentName :: Int -> String
+argumentName index =
   "a" ++ show index
 
 
