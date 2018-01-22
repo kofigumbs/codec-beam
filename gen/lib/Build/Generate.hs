@@ -61,10 +61,9 @@ pp topLevel =
 
     Function name opCode args ->
       name ++ " :: " ++ constraints name (rights args)
-        ++ sepBy " -> " (either (srcType . snd) argumentName) args
-        ++ " -> " ++ opName ++ "\n"
-        ++ name ++ space
-        ++ sepBy space (argumentName . either fst id) args
+        ++ sepBy "" ((++ " -> ") . either (srcType . snd) argumentName) args
+        ++ opName ++ "\n"
+        ++ name ++ space ++ sepBy space (argumentName . either fst id) args
         ++ " = " ++ opName ++ space ++ show opCode
         ++ " [" ++ sepBy comma (encoding name) args ++ "]"
 
