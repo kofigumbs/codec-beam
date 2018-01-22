@@ -13,8 +13,8 @@ main =
       rawOps <- download version "/erts/emulator/beam/ops.tab"
       rawGenop <- download version "/lib/compiler/src/genop.tab"
       either errorWithoutStackTrace id $
-        writeFile "src/Codec/Beam/Internal/Generated.hs" <$>
-          Build.Generate.code "Codec.Beam.Internal.Generated" <$>
+        writeFile "src/Codec/Beam/Internal/GEN.hs" <$>
+          Build.Generate.code "Codec.Beam.Internal.GEN" <$>
             do Build.Inference.run <$> run Build.Parse.ops rawOps <*> run Build.Parse.genop rawGenop
 
 
