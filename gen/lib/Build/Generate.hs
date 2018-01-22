@@ -25,7 +25,7 @@ data TopLevel
 definition :: Definition -> [TopLevel]
 definition (Definition name code args) =
   let arguments = indexMap (argument name) args in
-  Function name code (fmap fst <$> arguments) : (concatMap snd $ rights arguments)
+  Function name code (fmap fst <$> arguments) : concatMap snd (rights arguments)
 
 
 argument :: String -> Int -> [Type] -> Either (Int, Type) (Int, [TopLevel])
@@ -77,8 +77,8 @@ constraints baseName indexes = "(" ++ sepBy comma class_ indexes ++ ") => "
 
 
 encoding :: String -> Either (Int, Type) Int -> String
-encoding _ (Left (index, type_)) = encoderName type_ ++ space ++ argumentName index
-encoding baseName (Right index)  = methodName index baseName ++ space ++ argumentName index
+encoding _ (Left (i, type_)) = encoderName type_ ++ space ++ argumentName i
+encoding baseName (Right i)  = methodName i baseName ++ space ++ argumentName i
 
 
 srcType :: Type -> String
