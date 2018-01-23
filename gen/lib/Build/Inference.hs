@@ -2,16 +2,13 @@ module Build.Inference (run) where
 
 import Types
 
-import Data.List (sort)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 
 run :: [Line] -> [OpCode] -> [Definition]
 run lines opCodes =
-  toDef env <$> filter (not . _op_deprecated) opCodes
-  where
-    env = foldr inferLine mempty (sort lines)
+  toDef (foldr inferLine mempty lines) <$> opCodes
 
 
 
@@ -62,7 +59,7 @@ trackDef =
 
 
 toDef :: Env -> OpCode -> Definition
-toDef env (OpCode _ code name) =
+toDef env (OpCode code name) =
   Definition name code $ Set.toList <$> getTypes name env
 
 

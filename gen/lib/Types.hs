@@ -2,31 +2,26 @@ module Types where
 
 
 data OpCode = OpCode
-  { _op_deprecated :: Bool
-  , _op_code :: Int
+  { _op_code :: Int
   , _op_name :: String
   }
-  deriving Show
 
 
 data Line
-  = Transform [Instruction] [Instruction]
+  = GenericOp String
   | SpecificOp String [[Type]]
-  | GenericOp String
-  deriving (Eq, Ord, Show)
+  | Transform [Instruction] [Instruction]
 
 
 data Instruction
   = C
   | Op String [Argument]
-  deriving (Eq, Ord, Show)
 
 
 data Argument = Argument
   { _arg_name :: Maybe String
   , _arg_type :: [Type]
   }
-  deriving (Eq, Ord, Show)
 
 
 data Type

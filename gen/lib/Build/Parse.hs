@@ -32,12 +32,10 @@ opCode =
     , do  code <- read <$> many1 digit
           char ':'
           whitespace
-          deprecated <- choice [ char '-' $> True, pure False ]
-          name <- opName
-          char '/'
-          digit
-          newline
-          pure $ OpCode deprecated code name
+          choice
+            [ skipLine '-' *> opCode
+            , OpCode code <$> opName <* char '/' <* digit <* newline
+            ]
     ]
 
 
