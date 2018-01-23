@@ -1,0 +1,18 @@
+# From maint-20
+
+# LINE 33-34
+too_old_compiler/0
+too_old_compiler | never() =>
+
+# LINE 42-43
+func_info M=a a==am_module_info A=u==0 | label L | move n x==0 => too_old_compiler
+func_info M=a a==am_module_info A=u==1 | label L | move n x==0 => too_old_compiler
+
+# LINE 63
+i_func_info I a a I
+
+# LINE 95
+line Loc | func_info M F A => func_info M F A | line Loc
+
+# LINE 1136
+func_info M F A => i_func_info u M F A
