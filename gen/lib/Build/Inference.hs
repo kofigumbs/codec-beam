@@ -40,19 +40,23 @@ inferLine (SpecificOp name types)   = trackDef name (fmap specificUnion types)
 inferPattern :: [Instruction] -> Instruction -> Env -> Env
 inferPattern body pattern env =
   whenOp pattern env $ \name args ->
-    trackDef name (exhaustArgument body <$> args) env
+    trackDef name (exhaustLeft body name <$> args) env
 
 
-exhaustArgument :: [Instruction] -> Argument -> Union
-exhaustArgument body (Argument name types) =
-  Union (Set.fromList types) $
-    maybe mempty (Set.fromList . flip concatMap body . exhaustUse) name
+exhaustLeft :: [Instruction] -> String -> Argument -> Union
+exhaustLeft body op (Argument name types) =
+  Union (Set.fromList types) $ maybe mempty usage name
+  where
+    usage target = Set.fromList $ concatMap (exhaustRight op target) body
 
 
-exhaustUse :: String -> Instruction -> [(String, Int)]
-exhaustUse needle instruction =
-  whenOp instruction mempty $ \haystack ->
-    map ((,) haystack) . findIndices ((== Just needle) . _arg_name)
+exhaustRight :: String -> String -> Instruction -> [(String, Int)]
+exhaustRight leftOp target instruction =
+  whenOp instruction mempty $ \rightOp ->
+    if leftOp == rightOp then
+      const []
+    else
+      map ((,) rightOp) . findIndices ((== Just target) . _arg_name)
 
 
 whenOp :: Instruction -> a -> (String -> [Argument] -> a) -> a
