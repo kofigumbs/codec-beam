@@ -1,4 +1,4 @@
-module FuncInfo (func_info) where
+module MultiArityGeneric (move) where
 import Codec.Beam.Internal.Types
 
 move :: X -> Y -> Op

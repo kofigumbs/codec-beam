@@ -1,14 +1,14 @@
 module Build.Parse (genop, ops) where
 
 import Data.Functor (($>))
-import Data.Char (isSpace)
+import Data.Char (digitToInt, isSpace)
 import Text.Parsec hiding (Line)
 import Text.Parsec.String (Parser)
 
 import Types
 
 
-genop :: String -> Either ParseError [OpCode]
+genop :: String -> Either ParseError [OpCode Int]
 genop =
   parse (many opCode <* eof) "genop.tab" . trimRights
 
@@ -25,7 +25,7 @@ trimRights =
     dropTrailing = reverse . dropWhile isSpace . reverse
 
 
-opCode :: Parser OpCode
+opCode :: Parser (OpCode Int)
 opCode =
   skipEmptys $ choice
     [ string "BEAM_FORMAT_NUMBER=0" *> newline *> opCode
@@ -34,7 +34,7 @@ opCode =
           whitespace
           choice
             [ skipLine '-' *> opCode
-            , OpCode code <$> opName <* char '/' <* digit <* newline
+            , OpCode code <$> opName <* char '/' <*> fmap digitToInt digit <* newline
             ]
     ]
 

@@ -6,11 +6,11 @@ import Data.Either (rights)
 import Types
 
 
-code :: String -> [Definition] -> String
-code moduleName defs =
-  "module " ++ moduleName ++ " (" ++ sepBy comma _def_name defs ++ ") where\n"
+code :: String -> [OpCode [[Type]]] -> String
+code moduleName ops =
+  "module " ++ moduleName ++ " (" ++ sepBy comma _op_name ops ++ ") where\n"
     ++ "import Codec.Beam.Internal.Types\n\n"
-    ++ sepBy "\n\n" pp (concatMap definition defs)
+    ++ sepBy "\n\n" pp (concatMap topLevels ops)
 
 
 -- AST
@@ -22,10 +22,10 @@ data TopLevel
   | Function String Int [Either (Int, Type) Int]
 
 
-definition :: Definition -> [TopLevel]
-definition (Definition name code args) =
-  let arguments = indexMap (argument name) args in
-  Function name code (fmap fst <$> arguments) : concatMap snd (rights arguments)
+topLevels :: OpCode [[Type]] -> [TopLevel]
+topLevels (OpCode code name args) =
+  let arguments = zipWith (argument name) [1..] args in
+  Function name code (map (fmap fst) arguments) : concatMap snd (rights arguments)
 
 
 argument :: String -> Int -> [Type] -> Either (Int, Type) (Int, [TopLevel])
@@ -33,11 +33,6 @@ argument _ index [type_]        = Left (index, type_)
 argument baseName index types   = Right (index, constraint)
   where
     constraint = Class index baseName : map (Instance index baseName) types
-
-
-indexMap :: (Int -> a -> b) -> [a] -> [b]
-indexMap =
-  flip zipWith [1..]
 
 
 

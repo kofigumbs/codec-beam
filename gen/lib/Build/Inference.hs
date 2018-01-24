@@ -1,88 +1,66 @@
 module Build.Inference (run) where
 
-import Types
-
 import Data.List (findIndices)
-import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-
-run :: [Line] -> [OpCode] -> [Definition]
-run lines opCodes =
-  toDef (foldr inferLine mempty lines) <$> opCodes
+import Types
 
 
-
--- PRIVATE STUFF
-
-
-type Env =
-  Map.Map String [Union]
-
-data Union = Union
-  { _types :: Set.Set Type
-  , _references :: Set.Set (String, Int)
-  }
-
-instance Monoid Union where
-  mempty = Union Set.empty Set.empty
-  mappend (Union t1 r1) (Union t2 r2) = Union (mappend t1 t2) (mappend r1 r2)
+run :: [Line] -> [OpCode Int] -> [OpCode [[Type]]]
+run lines =
+  map $ \op@(OpCode _ name arity) ->
+    op { _op_args = map Set.toList $ findTypes name arity lines }
 
 
-inferLine :: Line -> Env -> Env
-inferLine (GenericOp _)             = id
-inferLine (Transform patterns body) = flip (foldr (inferPattern body)) patterns
-inferLine (SpecificOp name types)   = trackDef name (fmap specificUnion types)
+findTypes :: String -> Int -> [Line] -> [Set.Set Type]
+findTypes target arity lines =
+  foldTypes findType arity lines
   where
-    specificUnion = flip Union Set.empty . Set.fromList
+    findType line =
+      case line of
+        SpecificOp name args | match name args ->
+          map Set.fromList args
+
+        Transform pattern body ->
+          let
+            findUses (Op name args) | match name args = map findUse args
+            findUses _                                = unknown arity
+
+            findUse (Argument (Just name) []) = trackUses target arity name body lines
+            findUse (Argument _ types)        = Set.fromList types
+          in
+          foldTypes findUses arity pattern
+
+        _ ->
+          unknown arity
+
+    match name args =
+      name == target && length args == arity
 
 
-inferPattern :: [Instruction] -> Instruction -> Env -> Env
-inferPattern body pattern env =
-  whenOp pattern env $ \name args ->
-    trackDef name (exhaustLeft body name <$> args) env
-
-
-exhaustLeft :: [Instruction] -> String -> Argument -> Union
-exhaustLeft body op (Argument name types) =
-  Union (Set.fromList types) $ maybe mempty usage name
+trackUses :: String -> Int -> String -> [Instruction] -> [Line] -> Set.Set Type
+trackUses target arity name body lines =
+  Set.unions $ concatMap trackUse body
   where
-    usage target = Set.fromList $ concatMap (exhaustRight op target) body
+    trackUse instruction =
+      case instruction of
+        Op op args | not (match op args) ->
+          map
+            (\index -> findTypes op (length args) lines !! index)
+            (findIndices ((== Just name) . _arg_name) args)
+
+        _ ->
+          []
+
+    match name args =
+      name == target && length args == arity
 
 
-exhaustRight :: String -> String -> Instruction -> [(String, Int)]
-exhaustRight leftOp target instruction =
-  whenOp instruction mempty $ \rightOp ->
-    if leftOp == rightOp then
-      const []
-    else
-      map ((,) rightOp) . findIndices ((== Just target) . _arg_name)
+foldTypes :: (a -> [Set.Set Type]) -> Int -> [a] -> [Set.Set Type]
+foldTypes f arity =
+  foldr (zipWith Set.union . f) (unknown arity)
 
 
-whenOp :: Instruction -> a -> (String -> [Argument] -> a) -> a
-whenOp C default_ _              = default_
-whenOp (Op name args) _ callback = callback name args
-
-
-trackDef :: String -> [Union] -> Env -> Env
-trackDef =
-  Map.insertWith (zipWith mappend)
-
-
-toDef :: Env -> OpCode -> Definition
-toDef env (OpCode code name) =
-  Definition name code $ map Set.toList $ getTypes name env
-
-
-getTypes :: String -> Env -> [Set.Set Type]
-getTypes name env =
-  unwrapUnion env <$> Map.findWithDefault crash name env
-  where
-    crash = errorWithoutStackTrace $ "`" ++ name ++ "` is unbound!"
-
-
-unwrapUnion :: Env -> Union -> Set.Set Type
-unwrapUnion env (Union types references) =
-  mconcat $ types : map unwrapReference (Set.toList references)
-  where
-    unwrapReference (name, index) = getTypes name env !! index
+unknown :: Int -> [Set.Set Type]
+unknown arity =
+  replicate arity Set.empty

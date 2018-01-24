@@ -1,9 +1,10 @@
 module Types where
 
 
-data OpCode = OpCode
+data OpCode a = OpCode
   { _op_code :: Int
   , _op_name :: String
+  , _op_args :: a
   }
 
 
@@ -34,10 +35,3 @@ data Type
   | Label
   | Untagged
   deriving (Eq, Ord, Show)
-
-
-data Definition = Definition
-  { _def_name :: String
-  , _def_code :: Int
-  , _def_args :: [[Type]]
-  }
