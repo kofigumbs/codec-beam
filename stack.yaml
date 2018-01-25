@@ -3,7 +3,6 @@ extra-package-dbs: []
 packages:
 - location: '.'
 - location: './example'
-- location: './gen'
 extra-deps:
 - download-curl-0.1.4
 resolver: lts-8.23

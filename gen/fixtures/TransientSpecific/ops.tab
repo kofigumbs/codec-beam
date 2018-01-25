@@ -1,2 +1,0 @@
-generic_op Ambiguous1 Ambiguous2 => specific_op Ambiguous1 Ambiguous2
-specific_op a i
