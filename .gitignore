@@ -2,3 +2,4 @@
 *.erl
 *.beam
 *.dump
+GEN.hs

@@ -1,66 +1,66 @@
 module Build.Inference (run) where
 
-import Types
-
-import Data.List (sort)
-import qualified Data.Map as Map
+import Data.List (findIndices)
 import qualified Data.Set as Set
 
+import Types
 
-run :: [Line] -> [OpCode] -> [Definition]
-run lines opCodes =
-  toDef env <$> filter (not . _op_deprecated) opCodes
+
+run :: [Line] -> [OpCode Int] -> [OpCode [[Type]]]
+run lines =
+  map $ \op@(OpCode _ name arity) ->
+    op { _op_args = map Set.toList $ findTypes name arity lines }
+
+
+findTypes :: String -> Int -> [Line] -> [Set.Set Type]
+findTypes target arity lines =
+  foldTypes findType arity lines
   where
-    env = foldr inferLine mempty (sort lines)
+    findType line =
+      case line of
+        SpecificOp name args | match name args ->
+          map Set.fromList args
+
+        Transform pattern body ->
+          let
+            findUses (Op name args) | match name args = map findUse args
+            findUses _                                = unknown arity
+
+            findUse (Argument (Just name) []) = trackUses target arity name body lines
+            findUse (Argument _ types)        = Set.fromList types
+          in
+          foldTypes findUses arity pattern
+
+        _ ->
+          unknown arity
+
+    match name args =
+      name == target && length args == arity
 
 
+trackUses :: String -> Int -> String -> [Instruction] -> [Line] -> Set.Set Type
+trackUses target arity name body lines =
+  Set.unions $ concatMap trackUse body
+  where
+    trackUse instruction =
+      case instruction of
+        Op op args | not (match op args) ->
+          map
+            (\index -> findTypes op (length args) lines !! index)
+            (findIndices ((== Just name) . _arg_name) args)
 
--- PRIVATE STUFF
+        _ ->
+          []
 
-
-type Env = Map.Map String [Union]
-type Union = Set.Set Type
-
-
-inferLine :: Line -> Env -> Env
-inferLine (GenericOp _)             = id
-inferLine (SpecificOp name types)   = trackDef name (fmap Set.fromList types)
-inferLine (Transform patterns body) = flip (foldr (inferPattern body)) patterns
-
-
-inferPattern :: [Instruction] -> Instruction -> Env -> Env
-inferPattern body pattern env =
-  whenOp pattern env $ \name args ->
-    trackDef name (exhaustArgument body env <$> args) env
+    match name args =
+      name == target && length args == arity
 
 
-exhaustArgument :: [Instruction] -> Env -> Argument -> Union
-exhaustArgument body env (Argument name types) =
-  mconcat $ Set.fromList types :
-    maybe mempty (flip map body . exhaustUse env) name
+foldTypes :: (a -> [Set.Set Type]) -> Int -> [a] -> [Set.Set Type]
+foldTypes f arity =
+  foldr (zipWith Set.union . f) (unknown arity)
 
 
-exhaustUse :: Env -> String -> Instruction -> Union
-exhaustUse env needle instruction =
-  whenOp instruction mempty $ \name args ->
-    mconcat $ zipWith (exhaustDef needle) args $ Map.findWithDefault [] name env
-
-
-exhaustDef :: String -> Argument -> Union -> Union
-exhaustDef needle (Argument haystack _) types =
-  if Just needle == haystack then types else mempty
-
-
-whenOp :: Instruction -> a -> (String -> [Argument] -> a) -> a
-whenOp C default_ _              = default_
-whenOp (Op name args) _ callback = callback name args
-
-
-trackDef :: String -> [Union] -> Env -> Env
-trackDef =
-  Map.insertWith (zipWith Set.union)
-
-
-toDef :: Env -> OpCode -> Definition
-toDef env (OpCode _ code name) =
-  Definition name code $ Set.toList <$> Map.findWithDefault [] name env
+unknown :: Int -> [Set.Set Type]
+unknown arity =
+  replicate arity Set.empty
