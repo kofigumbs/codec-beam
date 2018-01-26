@@ -96,17 +96,17 @@ call_ext_last a1 a2 = Op 8 [FromInt (_arity a1), FromImport a1, FromInt a2]
 
 -- | Call the bif and store the result in register.
 bif0 :: (Register a2) => Import -> a2 -> Op
-bif0 a1 a2 = Op 9 [FromImport a1, fromRegister a2]
+bif0 a1 a2 = Op 9 [FromImport a1, erase fromRegister a2]
 
 -- | Call the bif with the source, and store the result in register.
 -- | On failure jump to label.
 bif1 :: (Source a3, Register a4) => Label -> Import -> a3 -> a4 -> Op
-bif1 a1 a2 a3 a4 = Op 10 [FromLabel a1, FromImport a2, fromSource a3, fromRegister a4]
+bif1 a1 a2 a3 a4 = Op 10 [FromLabel a1, FromImport a2, erase fromSource a3, erase fromRegister a4]
 
 -- | Call the bif with the sources, and store the result in register.
 -- | On failure jump to label.
 bif2 :: (Source a3, Source a4, Regsiter a5) => Label -> Import -> a3 -> a4 -> a5 -> Op
-bif2 a1 a2 a3 a4 a5 = Op 11 [FromLabel a1, FromImport a2, fromSource a3, fromSource a4, fromRegister a5]
+bif2 a1 a2 a3 a4 a5 = Op 11 [FromLabel a1, FromImport a2, erase fromSource a3, erase fromSource a4, erase fromRegister a5]
 
 -- | Allocate space for some words on the stack. If a GC is needed
 -- | during allocation there are a number of live X registers.
@@ -201,86 +201,86 @@ wait a1 = Op 25 [FromLabel a1]
 -- | Sets up a timeout of source milliseconds and saves the address of the
 -- | following instruction as the entry point if the timeout triggers.
 wait_timeout :: (Source a2) => Label -> a2 -> Op
-wait_timeout a1 a2 = Op 26 [FromLabel a1, fromSource a2]
+wait_timeout a1 a2 = Op 26 [FromLabel a1, erase fromSource a2]
 
 -- | Compare two terms and jump to label if first is not less than second.
 is_lt :: (Source a2, Source a3) => Label -> a2 -> a3 -> Op
-is_lt a1 a2 a3 = Op 39 [FromLabel a1, fromSource a2, fromSource a3]
+is_lt a1 a2 a3 = Op 39 [FromLabel a1, erase fromSource a2, erase fromSource a3]
 
 -- | Compare two terms and jump to label if first is less than second.
 is_ge :: (Source a2, Source a3) => Label -> a2 -> a3 -> Op
-is_ge a1 a2 a3 = Op 40 [FromLabel a1, fromSource a2, fromSource a3]
+is_ge a1 a2 a3 = Op 40 [FromLabel a1, erase fromSource a2, erase fromSource a3]
 
 -- | Compare two terms and jump to label if first is not (numerically) equal to second.
 is_eq :: (Source a2, Source a3) => Label -> a2 -> a3 -> Op
-is_eq a1 a2 a3 = Op 41 [FromLabel a1, fromSource a2, fromSource a3]
+is_eq a1 a2 a3 = Op 41 [FromLabel a1, erase fromSource a2, erase fromSource a3]
 
 -- | Compare two terms and jump to label if first is (numerically) equal to second.
 is_ne :: (Source a2, Source a3) => Label -> a2 -> a3 -> Op
-is_ne a1 a2 a3 = Op 42 [FromLabel a1, fromSource a2, fromSource a3]
+is_ne a1 a2 a3 = Op 42 [FromLabel a1, erase fromSource a2, erase fromSource a3]
 
 -- | Compare two terms and jump to label if first is not exactly equal to second.
 is_eq_exact :: (Source a2, Source a3) => Label -> a2 -> a3 -> Op
-is_eq_exact a1 a2 a3 = Op 43 [FromLabel a1, fromSource a2, fromSource a3]
+is_eq_exact a1 a2 a3 = Op 43 [FromLabel a1, erase fromSource a2, erase fromSource a3]
 
 -- | Compare two terms and jump to label if first is exactly equal to second.
 is_ne_exact :: (Source a2, Source a3) => Label -> a2 -> a3 -> Op
-is_ne_exact a1 a2 a3 = Op 44 [FromLabel a1, fromSource a2, fromSource a3]
+is_ne_exact a1 a2 a3 = Op 44 [FromLabel a1, erase fromSource a2, erase fromSource a3]
 
 -- | Test the type of source and jump to label if it is not an integer.
 is_integer :: (Source a2) => Label -> a2 -> Op
-is_integer a1 a2 = Op 45 [FromLabel a1, fromSource a2]
+is_integer a1 a2 = Op 45 [FromLabel a1, erase fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a float.
 is_float :: (Source a2) => Label -> a2 -> Op
-is_float a1 a2 = Op 46 [FromLabel a1, fromSource a2]
+is_float a1 a2 = Op 46 [FromLabel a1, erase fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a number.
 is_number :: (Source a2) => Label -> a2 -> Op
-is_number a1 a2 = Op 47 [FromLabel a1, fromSource a2]
+is_number a1 a2 = Op 47 [FromLabel a1, erase fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a atom.
 is_atom :: (Source a2) => Label -> a2 -> Op
-is_atom a1 a2 = Op 48 [FromLabel a1, fromSource a2]
+is_atom a1 a2 = Op 48 [FromLabel a1, erase fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a pid.
 is_pid :: (Source a2) => Label -> a2 -> Op
-is_pid a1 a2 = Op 49 [FromLabel a1, fromSource a2]
+is_pid a1 a2 = Op 49 [FromLabel a1, erase fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a reference.
 is_reference :: (Source a2) => Label -> a2 -> Op
-is_reference a1 a2 = Op 50 [FromLabel a1, fromSource a2]
+is_reference a1 a2 = Op 50 [FromLabel a1, erase fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a port.
 is_port :: (Source a2) => Label -> a2 -> Op
-is_port a1 a2 = Op 51 [FromLabel a1, fromSource a2]
+is_port a1 a2 = Op 51 [FromLabel a1, erase fromSource a2]
 
 -- | Test the type of source and jump to label if it is not nil.
 is_nil :: (Source a2) => Label -> a2 -> Op
-is_nil a1 a2 = Op 52 [FromLabel a1, fromSource a2]
+is_nil a1 a2 = Op 52 [FromLabel a1, erase fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a binary.
 is_binary :: (Source a2) => Label -> a2 -> Op
-is_binary a1 a2 = Op 53 [FromLabel a1, fromSource a2]
+is_binary a1 a2 = Op 53 [FromLabel a1, erase fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a cons or nil.
 is_list :: (Source a2) => Label -> a2 -> Op
-is_list a1 a2 = Op 55 [FromLabel a1, fromSource a2]
+is_list a1 a2 = Op 55 [FromLabel a1, erase fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a cons.
 is_nonempty_list :: (Source a2) => Label -> a2 -> Op
-is_nonempty_list a1 a2 = Op 56 [FromLabel a1, fromSource a2]
+is_nonempty_list a1 a2 = Op 56 [FromLabel a1, erase fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a tuple.
 is_tuple :: (Source a2) => Label -> a2 -> Op
-is_tuple a1 a2 = Op 57 [FromLabel a1, fromSource a2]
+is_tuple a1 a2 = Op 57 [FromLabel a1, erase fromSource a2]
 
 -- | Test the arity of (the tuple in) source and jump to label if it is not equal to arity.
 test_arity :: (Source a2) => Label -> a2 -> Int -> Op
-test_arity a1 a2 a3 = Op 58 [FromLabel a1, fromSource a2, FromInt a3]
+test_arity a1 a2 a3 = Op 58 [FromLabel a1, erase fromSource a2, FromInt a3]
 
 
 -- | Jump to the destination label corresponding to source
 -- | in the destinations list, if no arity matches, jump to fail label.
 select_val :: Source a1 => a1 -> Label -> ((Source s => s -> Label -> Variadic Argument) -> [Variadic Argument]) -> Op
-select_val a1 a2 a3 = Op 59 [fromSource a1, FromLabel a2, FromList (concatMap _args (a3 (\v1 v2 -> Variadic [fromSource v1, FromLabel v2])))]
+select_val a1 a2 a3 = Op 59 [erase fromSource a1, FromLabel a2, FromList (concatMap _args (a3 (\v1 v2 -> Variadic [erase fromSource v1, FromLabel v2])))]

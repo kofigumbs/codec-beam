@@ -5,7 +5,7 @@ import Data.Word (Word8)
 
 
 -- | You can find implementations in "Codec.Beam.Instruction"
-data Op = Op Word8 [Argument]
+data Op = Op Word8 [Argument ()]
 
 
 -- | A stack register! These are used to pass function arguments,
@@ -49,18 +49,18 @@ data Literal
   | Map [(Literal, Literal)]
 
 
-class    Register a where fromRegister :: a -> Argument
+class    Register a where fromRegister :: a -> Argument Register_
 instance Register X where fromRegister = FromX ;{-# INLINE fromRegister #-}
 instance Register Y where fromRegister = FromY ;{-# INLINE fromRegister #-}
 
 
-class    RegisterF a where fromRegisterF :: a -> Argument
-instance RegisterF F where fromRegisterF = FromF        ;{-# INLINE fromRegisterF #-}
-instance RegisterF X where fromRegisterF = FromX        ;{-# INLINE fromRegisterF #-}
-instance RegisterF Y where fromRegisterF = FromY        ;{-# INLINE fromRegisterF #-}
+class    RegisterF a where fromRegisterF :: a -> Argument RegisterF_
+instance RegisterF F where fromRegisterF = FromF ;{-# INLINE fromRegisterF #-}
+instance RegisterF X where fromRegisterF = FromX ;{-# INLINE fromRegisterF #-}
+instance RegisterF Y where fromRegisterF = FromY ;{-# INLINE fromRegisterF #-}
 
 
-class    Source a          where fromSource :: a -> Argument
+class    Source a          where fromSource :: a -> Argument Source_
 instance Source X          where fromSource = FromX          ;{-# INLINE fromSource #-}
 instance Source Y          where fromSource = FromY          ;{-# INLINE fromSource #-}
 instance Source ByteString where fromSource = FromByteString ;{-# INLINE fromSource #-}
@@ -68,7 +68,7 @@ instance Source Literal    where fromSource = FromLiteral    ;{-# INLINE fromSou
 instance Source Int        where fromSource = FromInt        ;{-# INLINE fromSource #-}
 
 
-class    SourceF a          where fromSourceF :: a -> Argument
+class    SourceF a          where fromSourceF :: a -> Argument SourceF_
 instance SourceF F          where fromSourceF = FromF          ;{-# INLINE fromSourceF #-}
 instance SourceF X          where fromSourceF = FromX          ;{-# INLINE fromSourceF #-}
 instance SourceF Y          where fromSourceF = FromY          ;{-# INLINE fromSourceF #-}
@@ -78,14 +78,23 @@ instance SourceF Int        where fromSourceF = FromInt        ;{-# INLINE fromS
 
 
 
--- PRIVATE
+-- PRIVATE, not exposed outside of package
+
+
+-- Phantom "Argument" types
+-- This lets us prevent mixing-and-matching outside the package,
+-- while still allowing users to express their own types in terms of argument constraints.
+data Register_  = Register_
+data RegisterF_ = RegisterF_
+data Source_    = Source_
+data SourceF_   = SourceF_
 
 
 -- Makes it safer to use bracket pattern for ops with var-args
 newtype Variadic a = Variadic { _args :: [a] }
 
 
-data Argument
+data Argument a
   = FromImport Import
   | FromX X
   | FromY Y
@@ -96,3 +105,18 @@ data Argument
   | FromLiteral Literal
   | FromList [Argument]
   | MODULE_NAME
+
+
+erase :: (a -> Argument b) -> a -> Argument c
+erase f a =
+  case f a of
+    FromImport x     -> FromImport x
+    FromX x          -> FromX x
+    FromY x          -> FromY x
+    FromF x          -> FromF x
+    FromInt x        -> FromInt x
+    FromByteString x -> FromByteString x
+    FromLabel x      -> FromLabel x
+    FromLiteral x    -> FromLiteral x
+    FromList x       -> FromList x
+    MODULE_NAME      -> MODULE_NAME
