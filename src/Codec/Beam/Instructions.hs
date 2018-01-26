@@ -282,5 +282,5 @@ test_arity a1 a2 a3 = Op 58 [FromLabel a1, erase fromSource a2, FromInt a3]
 
 -- | Jump to the destination label corresponding to source
 -- | in the destinations list, if no arity matches, jump to fail label.
-select_val :: Source a1 => a1 -> Label -> ((Source s => s -> Label -> Variadic Argument) -> [Variadic Argument]) -> Op
-select_val a1 a2 a3 = Op 59 [erase fromSource a1, FromLabel a2, FromList (concatMap _args (a3 (\v1 v2 -> Variadic [erase fromSource v1, FromLabel v2])))]
+select_val :: Source a1 => a1 -> Label -> [Destination] -> Op
+select_val a1 a2 a3 = Op 59 [erase fromSource a1, FromLabel a2, FromDestinations a3]

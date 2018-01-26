@@ -4,12 +4,11 @@ import Data.ByteString.Lazy (ByteString)
 import Data.Word (Word8)
 
 
--- | You can find implementations in "Codec.Beam.Instruction"
+-- | You can find implementations in "Codec.Beam.Instructions"
 data Op = Op Word8 [Argument ()]
 
 
--- | A stack register! These are used to pass function arguments,
---   and @X 0@ stores return values.
+-- | A stack register! These are used to pass function arguments, and @X 0@ stores return values.
 newtype X = X Int
 
 
@@ -49,6 +48,12 @@ data Literal
   | Map [(Literal, Literal)]
 
 
+-- | Create jump destinations for variadic functions, like `select_val`
+destination :: Source s => Label -> s -> Destination
+destination label source =
+  Destination Label (erase fromSource source)
+
+
 class    Register a where fromRegister :: a -> Argument Register_
 instance Register X where fromRegister = FromX ;{-# INLINE fromRegister #-}
 instance Register Y where fromRegister = FromY ;{-# INLINE fromRegister #-}
@@ -81,19 +86,6 @@ instance SourceF Int        where fromSourceF = FromInt        ;{-# INLINE fromS
 -- PRIVATE, not exposed outside of package
 
 
--- Phantom "Argument" types
--- This lets us prevent mixing-and-matching outside the package,
--- while still allowing users to express their own types in terms of argument constraints.
-data Register_  = Register_
-data RegisterF_ = RegisterF_
-data Source_    = Source_
-data SourceF_   = SourceF_
-
-
--- Makes it safer to use bracket pattern for ops with var-args
-newtype Variadic a = Variadic { _args :: [a] }
-
-
 data Argument a
   = FromImport Import
   | FromX X
@@ -103,20 +95,35 @@ data Argument a
   | FromByteString ByteString
   | FromLabel Label
   | FromLiteral Literal
-  | FromList [Argument]
+  | FromDestinations [Destination]
   | MODULE_NAME
 
 
 erase :: (a -> Argument b) -> a -> Argument c
 erase f a =
   case f a of
-    FromImport x     -> FromImport x
-    FromX x          -> FromX x
-    FromY x          -> FromY x
-    FromF x          -> FromF x
-    FromInt x        -> FromInt x
-    FromByteString x -> FromByteString x
-    FromLabel x      -> FromLabel x
-    FromLiteral x    -> FromLiteral x
-    FromList x       -> FromList x
-    MODULE_NAME      -> MODULE_NAME
+    FromImport x       -> FromImport x
+    FromX x            -> FromX x
+    FromY x            -> FromY x
+    FromF x            -> FromF x
+    FromInt x          -> FromInt x
+    FromByteString x   -> FromByteString x
+    FromLabel x        -> FromLabel x
+    FromLiteral x      -> FromLiteral x
+    FromDestinations x -> FromDestinations x
+    MODULE_NAME        -> MODULE_NAME
+
+
+-- Phantom "Argument" types
+-- This lets us prevent mixing-and-matching outside the package,
+-- while still allowing users to express their own types in terms of argument constraints.
+data Register_  = Register_
+data RegisterF_ = RegisterF_
+data Source_    = Source_
+data SourceF_   = SourceF_
+
+
+-- Types for variadic arguments
+
+data Destination =
+  Destination Label (Argument ())

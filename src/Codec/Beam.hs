@@ -2,6 +2,7 @@ module Codec.Beam
   ( -- * Generate BEAM code
     encode
   , Op, X(..), Y(..), F(..), Label(..), Import(..), Literal(..)
+  , Destination, destination
     -- * Argument constraints
   , Register, RegisterF, Source, SourceF
   ) where
