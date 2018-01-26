@@ -164,11 +164,11 @@ main =
         , Genop.allocate 2 3
         , Genop.move (Beam.Reg (Beam.X 2)) (Beam.Y 1)
         , Genop.move (Beam.Reg (Beam.X 1)) (Beam.Y 0)
-        , Genop.call 2 4
+        , Genop.call 1 4
         , Genop.move (Beam.Reg (Beam.X 0)) (Beam.X 1)
         , Genop.move (Beam.Reg (Beam.Y 0)) (Beam.X 0)
         , Genop.move (Beam.Reg (Beam.X 1)) (Beam.Y 0)
-        , Genop.call 2 4
+        , Genop.call 1 4
         , Genop.move (Beam.Reg (Beam.Y 1)) (Beam.X 2)
         , Genop.move (Beam.Reg (Beam.X 0)) (Beam.X 1)
         , Genop.move (Beam.Reg (Beam.Y 0)) (Beam.X 0)
