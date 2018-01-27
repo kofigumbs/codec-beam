@@ -10,7 +10,7 @@ import qualified Data.Bits as Bits
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as BS
 
-import Codec.Beam.Internal
+import Codec.Beam.Internal.Types
 import Data.Table (Table)
 import qualified Data.Table as Table
 

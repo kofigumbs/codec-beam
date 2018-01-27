@@ -45,6 +45,10 @@ data Lambda = Lambda
 newtype Label = Label Int
 
 
+-- | The empty list.
+data Nil = Nil
+
+
 -- | Erlang literals, stored on the heap.
 data Literal
   = Integer Int
@@ -55,9 +59,9 @@ data Literal
   | List [Literal]
   | Map [(Literal, Literal)]
 {- TODO
-	| String ByteString
-	| Port ...
-	| Pid ProcessId
+  | String ByteString
+  | Port ...
+  | Pid ProcessId
   | Fun ProcessId ModuleName Lambda [Literal]
 
 data ModuleName
@@ -65,7 +69,7 @@ data ModuleName
   | External ByteString
 
 data ProcessId
-	= ProcessId ...
+  = ProcessId ...
 -}
 
 
@@ -78,13 +82,13 @@ destination label source =
 -- | Create map pairs for variadic functions, like "put_map_assoc"
 pair :: (Source key, Source value) => key -> value -> Pair
 pair key value =
-	Pair (erase fromSource key) (erase fromSource value)
+  Pair (erase fromSource key) (erase fromSource value)
 
 
 -- | Create map fields for variadic functions, like "has_map_fields"
 field :: (Source s) => s -> Field
 field source =
-	Field (erase fromSource source)
+  Field (erase fromSource source)
 
 
 class    Register a where fromRegister :: a -> Argument Register_
@@ -101,6 +105,7 @@ instance RegisterF Y where fromRegisterF = FromY ;{-# INLINE fromRegisterF #-}
 class    Source a          where fromSource :: a -> Argument Source_
 instance Source X          where fromSource = FromX          ;{-# INLINE fromSource #-}
 instance Source Y          where fromSource = FromY          ;{-# INLINE fromSource #-}
+instance Source Nil        where fromSource = FromNil        ;{-# INLINE fromSource #-}
 instance Source ByteString where fromSource = FromByteString ;{-# INLINE fromSource #-}
 instance Source Literal    where fromSource = FromLiteral    ;{-# INLINE fromSource #-}
 instance Source Int        where fromSource = FromInt        ;{-# INLINE fromSource #-}
@@ -123,6 +128,7 @@ data Argument a
   | FromY Y
   | FromF F
   | FromInt Int
+  | FromNil Nil
   | FromByteString ByteString
   | FromLabel Label
   | FromLiteral Literal
