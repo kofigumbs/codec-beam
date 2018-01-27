@@ -323,7 +323,7 @@ oneByte tag n =
 
 twoBytes :: Word8 -> Int -> [Word8]
 twoBytes tag n =
-  [ top3 .|. continuation .|. tag, bottom8 ]
+  [ top3 .|. 0x8 {- continuation tag -} .|. tag, bottom8 ]
 
   where
     top3 =
@@ -332,17 +332,14 @@ twoBytes tag n =
     bottom8 =
       fromIntegral n
 
-    continuation =
-      0x8
-
 
 manyBytes :: Word8 -> [Word8] -> [Word8]
 manyBytes tag bytes =
   if count <= 8 then
-    (packedCount .|. continuation .|. tag) : bytes
+    (packedCount .|. 0x18 {- continuation tag -} .|. tag) : bytes
 
   else
-    (nested .|. tag) : encodeTag 0 (count - 9) ++ bytes
+    (0xF8 {- nested tag -} .|. tag) : encodeTag 0 (count - 9) ++ bytes
 
   where
     count =
@@ -350,12 +347,6 @@ manyBytes tag bytes =
 
     packedCount =
       fromIntegral $ Bits.shiftL (count - 2) 5
-
-    continuation =
-      0x18
-
-    nested =
-      0xF8
 
 
 negative :: Int -> [Word8] -> [Word8]
