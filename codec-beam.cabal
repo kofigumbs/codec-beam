@@ -21,7 +21,7 @@ Library
                      Codec.Beam.Genop
                      Codec.Beam.Instructions
     other-modules: Codec.Beam.Internal
-                   -- Codec.Beam.Internal.Assembler
+                   Codec.Beam.Internal.Assembler
                    Codec.Beam.Internal.Types
                    Data.Table
     build-depends: base,
