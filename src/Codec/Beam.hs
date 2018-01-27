@@ -1,8 +1,9 @@
 module Codec.Beam
   ( -- * Generate BEAM code
     encode
-  , Op, X(..), Y(..), F(..), Label(..), Import(..), Literal(..)
-  , Destination, destination
+    -- * Syntax
+  , Op, X(..), Y(..), F(..), Label(..), Import(..), Literal(..), Lambda(..)
+  , Destination, destination, Pair pair, Field, field,
     -- * Argument constraints
   , Register, RegisterF, Source, SourceF
   ) where

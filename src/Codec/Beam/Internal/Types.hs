@@ -13,23 +13,31 @@ newtype X = X Int
 
 
 -- | A stack register for saving values across function calls.
---   Anything you put in a 'X' register can be overwritten inside a function call
---   (or inside a function call inside a function call).
---   @Y@ registers let you avoid that—they must be allocated and de-allocated though.
+-- | Anything you put in a 'X' register can be overwritten inside a function call
+-- | (or inside a function call inside a function call).
+-- | @Y@ registers let you avoid that—they must be allocated and de-allocated though.
 newtype Y = Y Int
 
 
 -- | Floating point "register" for optimized floating point arithmetic.
---   These are not treated as traditional stack registers.
+-- | These are not treated as traditional stack registers.
 newtype F = F Int
 
 
 -- | Reference a function from another module
 -- | For example, @Import "erlang" "+" 2@ refers to the stdlib function: @erlang:'+'/2@ .
 data Import = Import
-  { _module :: ByteString
-  , _function :: ByteString
-  , _arity :: Int
+  { _import_module :: ByteString
+  , _import_function :: ByteString
+  , _import_arity :: Int
+  }
+
+
+-- | Turn a named function into a @fun@, for use with "make_fun2".
+data Lambda = Lambda
+  { _lambda_name :: ByteString
+  , _lambda_arity :: Int
+  , _lambda_label :: Label
   }
 
 
@@ -46,12 +54,37 @@ data Literal
   | Tuple [Literal]
   | List [Literal]
   | Map [(Literal, Literal)]
+{- TODO
+	| String ByteString
+	| Port ...
+	| Pid ProcessId
+  | Fun ProcessId ModuleName Lambda [Literal]
+
+data ModuleName
+  = This
+  | External ByteString
+
+data ProcessId
+	= ProcessId ...
+-}
 
 
--- | Create jump destinations for variadic functions, like `select_val`
-destination :: Source s => Label -> s -> Destination
+-- | Create jump destinations for variadic functions, like "select_val"
+destination :: (Source s) => Label -> s -> Destination
 destination label source =
   Destination Label (erase fromSource source)
+
+
+-- | Create map pairs for variadic functions, like "put_map_assoc"
+pair :: (Source key, Source value) => key -> value -> Pair
+pair key value =
+	Pair (erase fromSource key) (erase fromSource value0
+
+
+-- | Create map fields for variadic functions, like "has_map_fields"
+field :: (Source s) => s -> Field
+field source =
+	Field (erase fromSource source)
 
 
 class    Register a where fromRegister :: a -> Argument Register_
@@ -77,9 +110,7 @@ class    SourceF a          where fromSourceF :: a -> Argument SourceF_
 instance SourceF F          where fromSourceF = FromF          ;{-# INLINE fromSourceF #-}
 instance SourceF X          where fromSourceF = FromX          ;{-# INLINE fromSourceF #-}
 instance SourceF Y          where fromSourceF = FromY          ;{-# INLINE fromSourceF #-}
-instance SourceF ByteString where fromSourceF = FromByteString ;{-# INLINE fromSourceF #-}
 instance SourceF Literal    where fromSourceF = FromLiteral    ;{-# INLINE fromSourceF #-}
-instance SourceF Int        where fromSourceF = FromInt        ;{-# INLINE fromSourceF #-}
 
 
 
@@ -95,8 +126,11 @@ data Argument a
   | FromByteString ByteString
   | FromLabel Label
   | FromLiteral Literal
+  | FromLambda Lambda
   | FromDestinations [Destination]
-  | MODULE_NAME
+  | FromPair [Pair]
+  | FromFields [Field]
+  | FromThisModuleName
 
 
 erase :: (a -> Argument b) -> a -> Argument c
@@ -110,8 +144,11 @@ erase f a =
     FromByteString x   -> FromByteString x
     FromLabel x        -> FromLabel x
     FromLiteral x      -> FromLiteral x
+    FromLambda x       -> FromLambda x
     FromDestinations x -> FromDestinations x
-    MODULE_NAME        -> MODULE_NAME
+    FromPair x         -> FromPair x
+    FromFields x       -> FromFields x
+    FromThisModuleName -> FromThisModuleName
 
 
 -- Phantom "Argument" types
@@ -125,5 +162,6 @@ data SourceF_   = SourceF_
 
 -- Types for variadic arguments
 
-data Destination =
-  Destination Label (Argument ())
+data Destination = Destination Label (Argument ())
+data Pair = Pair (Argument ()) (Argument ())
+newtype Field = Field (Argument ())

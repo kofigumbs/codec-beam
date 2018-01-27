@@ -63,3 +63,6 @@ Thanks to the following projects, which helped me understand the BEAM file forma
  - https://github.com/jerlang/jerlang
  - https://github.com/kolmodin/herl
  - https://github.com/mbrock/HBEAM
+ - https://github.com/erlang/otp
+
+In particular, most of the documentation is derived from The Beam Book and Erlang compiler source code.
