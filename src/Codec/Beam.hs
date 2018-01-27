@@ -81,74 +81,67 @@ encodeArgument :: Env -> Argument a -> Env
 encodeArgument env argument =
   case argument of
     FromUntagged value ->
-      tag (encodeTag 0) value
+      appendTag (encodeTag 0 value) env
 
     FromNewLabel (Label value) ->
-      tag (encodeTag 0) value
-        |> \env -> env
-              { _labels = Set.insert value (_labels env)
-              , _exportNextLabel = Nothing
-              , _exportTable =
-                  maybe id
-                    (\(f, a) -> Table.ensure (f, a, value))
-                    (_exportNextLabel env)
-                    (_exportTable env)
-              }
+      appendTag (encodeTag 0 value) $ env
+        { _labels = Set.insert value (_labels env)
+        , _exportNextLabel = Nothing
+        , _exportTable =
+            maybe id
+              (\(f, a) -> Table.ensure (f, a, value))
+              (_exportNextLabel env)
+              (_exportTable env)
+        }
 
     FromImport import_ ->
-      tag (encodeTag 0)
-        |> \use -> Table.index import_ (_importTable env)
-          |> \(value, newTable) -> (use value)
-                { _importTable = newTable
-                , _atomTable = _atomTable env
-                    |> Table.ensure (_import_module import_)
-                    |> Table.ensure (_import_function import_)
-                }
-
+      let (value, newTable) = Table.index import_ (_importTable env) in
+      appendTag (encodeTag 0 value) $ env
+        { _importTable = newTable
+        , _atomTable =
+            Table.ensure (_import_module import_) $
+              Table.ensure (_import_function import_) $ _atomTable env
+        }
 
     FromLambda lambda ->
-      tag (encodeTag 0)
-        |> \use -> Table.index lambda (_lambdaTable env)
-          |> \(value, newTable) -> (use value) { _lambdaTable = newTable }
+      let (value, newTable) = Table.index lambda (_lambdaTable env) in
+      appendTag (encodeTag 0 value) $ env { _lambdaTable = newTable }
 
     FromInt value ->
-      tag (encodeTag 1) value
+      appendTag (encodeTag 1 value) env
 
     FromNil Nil ->
-      tag (encodeTag 2) 0
+      appendTag (encodeTag 2 0) env
 
     FromFunctionModule name arity ->
-      tag (encodeTag 2) 1
-        |> \env -> env
-              { _functionCount = 1 + _functionCount env
-              , _exportNextLabel =
-                  if Set.member (name, arity) (_toExport env) then
-                    Just (name, arity)
-                  else
-                    Nothing
-              }
+      appendTag (encodeTag 2 1) $ env
+        { _functionCount = 1 + _functionCount env
+        , _exportNextLabel =
+            if Set.member (name, arity) (_toExport env) then
+              Just (name, arity)
+            else
+              Nothing
+        }
 
     FromByteString name ->
-      tag (encodeTag 2)
-        |> \use -> Table.index name (_atomTable env)
-          |> \(value, newTable) -> (use value) { _atomTable = newTable }
+      let (value, newTable) = Table.index name (_atomTable env) in
+      appendTag (encodeTag 2 value) $ env { _atomTable = newTable }
 
     FromX (X value) ->
-      tag (encodeTag 3) value
+      appendTag (encodeTag 3 value) env
 
     FromY (Y value) ->
-      tag (encodeTag 4) value
+      appendTag (encodeTag 4 value) env
 
     FromF (F _value) ->
       undefined
 
     FromLabel (Label value) ->
-      tag (encodeTag 5) value
+      appendTag (encodeTag 5 value) env
 
     FromLiteral literal ->
-      tag ((encodeTag 7 4 ++) . encodeTag 0)
-        |> \use -> Table.index literal (_literalTable env)
-          |> \(value, newTable) -> (use value) { _literalTable = newTable }
+      let (value, newTable) = Table.index literal (_literalTable env) in
+      appendTag (encodeTag 7 4 ++ encodeTag 0 value) $ env { _literalTable = newTable }
 
     FromDestinations _destinations ->
       undefined
@@ -159,9 +152,10 @@ encodeArgument env argument =
     FromFields _fields ->
       undefined
 
-  where
-    tag encoder =
-      appendCode env . Builder.lazyByteString . BS.pack . encoder
+
+appendTag :: [Word8] -> Env -> Env
+appendTag words env =
+    appendCode env . Builder.lazyByteString $ BS.pack words
 
 
 appendCode :: Env -> Builder.Builder -> Env
@@ -424,9 +418,3 @@ packDouble =
 forceIndex :: Ord k => k -> Table k -> Int
 forceIndex k =
   fst . Table.index k
-
-
-(|>) :: a -> (a -> b) -> b
-{-# INLINE (|>) #-}
-a |> f =
-  f a
