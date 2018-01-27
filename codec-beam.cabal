@@ -19,6 +19,7 @@ Library
     hs-source-dirs: src
     exposed-modules: Codec.Beam
                      Codec.Beam.Genop
+                     Codec.Beam.Instructions
     other-modules: Codec.Beam.Internal
                    Codec.Beam.Internal.Assembler
                    Codec.Beam.Internal.Types

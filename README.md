@@ -42,8 +42,7 @@ and you can find a more complete [`./example` project here](example).
 Using [Stack](https://www.haskellstack.org)
 
 ```bash
-stack build ./gen --exec 'bootstrap TARGET_ERLANG_SHA'
-stack build
+stack build --test
 ```
 
 
@@ -64,3 +63,6 @@ Thanks to the following projects, which helped me understand the BEAM file forma
  - https://github.com/jerlang/jerlang
  - https://github.com/kolmodin/herl
  - https://github.com/mbrock/HBEAM
+ - https://github.com/erlang/otp
+
+In particular, most of the documentation is derived from The Beam Book and Erlang compiler source code.
