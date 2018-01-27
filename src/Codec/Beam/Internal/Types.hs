@@ -138,6 +138,8 @@ data Argument a
   | FromX X
   | FromY Y
   | FromF F
+  | FromNewLabel Label
+  | FromUntagged Int
   | FromInt Int
   | FromNil Nil
   | FromByteString ByteString
@@ -147,25 +149,28 @@ data Argument a
   | FromDestinations [Destination]
   | FromPairs [Pair]
   | FromFields [Field]
-  | FromThisModuleName
+  | FromFunctionModule ByteString Int
 
 
 erase :: (a -> Argument b) -> a -> Argument c
 erase f a =
   case f a of
-    FromImport x       -> FromImport x
-    FromX x            -> FromX x
-    FromY x            -> FromY x
-    FromF x            -> FromF x
-    FromInt x          -> FromInt x
-    FromByteString x   -> FromByteString x
-    FromLabel x        -> FromLabel x
-    FromLiteral x      -> FromLiteral x
-    FromLambda x       -> FromLambda x
-    FromDestinations x -> FromDestinations x
-    FromPairs x        -> FromPairs x
-    FromFields x       -> FromFields x
-    FromThisModuleName -> FromThisModuleName
+    FromImport x           -> FromImport x
+    FromX x                -> FromX x
+    FromY x                -> FromY x
+    FromF x                -> FromF x
+    FromNewLabel x         -> FromNewLabel x
+    FromUntagged x         -> FromUntagged x
+    FromInt x              -> FromInt x
+    FromNil x              -> FromNil x
+    FromByteString x       -> FromByteString x
+    FromLabel x            -> FromLabel x
+    FromLiteral x          -> FromLiteral x
+    FromLambda x           -> FromLambda x
+    FromDestinations x     -> FromDestinations x
+    FromPairs x            -> FromPairs x
+    FromFields x           -> FromFields x
+    FromFunctionModule f a -> FromFunctionModule f a
 
 
 -- Phantom "Argument" types

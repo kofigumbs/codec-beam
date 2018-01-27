@@ -17,6 +17,7 @@ import qualified Codec.Compression.Zlib as Zlib
 import qualified Data.Bits as Bits
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as BS
+import qualified Data.Set as Set
 
 import Codec.Beam.Internal.Types
 import Data.Table (Table)
@@ -29,8 +30,8 @@ encode
   -> [(BS.ByteString, Int)] -- ^ functions @(name, arity)@ that should be public
   -> [Op]                   -- ^ instructions
   -> BS.ByteString          -- ^ return encoded BEAM
-encode name toExpose =
-  toLazyByteString . foldl encodeOp (initialEnv name toExpose)
+encode name toExport =
+  toLazyByteString . foldl encodeOp (initialEnv name toExport)
 
 
 
@@ -41,30 +42,32 @@ encode name toExpose =
 data Env =
   Env
     { _moduleName :: BS.ByteString
-    , _labelCount :: Int
+    , _labels :: Set.Set Int
     , _functionCount :: Word32
     , _atomTable :: Table BS.ByteString
     , _literalTable :: Table Literal
     , _lambdaTable :: Table Lambda
     , _importTable :: Table Import
+    , _exportTable :: Table (BS.ByteString, Int, Int)
     , _exportNextLabel :: Maybe (BS.ByteString, Int)
-    , _toExport :: Table (BS.ByteString, Int, Label)
+    , _toExport :: Set.Set (BS.ByteString, Int)
     , _code :: Builder.Builder
     }
 
 
 initialEnv :: BS.ByteString -> [(BS.ByteString, Int)] -> Env
-initialEnv name _ =
+initialEnv name toExport =
   Env
     { _moduleName = name
-    , _labelCount = 0
+    , _labels = mempty
     , _functionCount = 0
     , _atomTable = Table.singleton name 1
     , _literalTable = Table.empty
     , _lambdaTable = Table.empty
     , _importTable = Table.empty
+    , _exportTable = Table.empty
     , _exportNextLabel = Nothing
-    , _toExport = Table.empty
+    , _toExport = Set.fromList toExport
     , _code = mempty
     }
 
@@ -77,18 +80,58 @@ encodeOp env (Op opCode args) =
 encodeArgument :: Env -> Argument a -> Env
 encodeArgument env argument =
   case argument of
-    FromInt value ->
+    FromUntagged value ->
       tag (encodeTag 0) value
 
-    -- TODO: allow tagged integers
-    -- Int value ->
-    --   tag (encodeTag 1) value
+    FromNewLabel (Label value) ->
+      tag (encodeTag 0) value
+        |> \env -> env
+              { _labels = Set.insert value (_labels env)
+              , _exportNextLabel = Nothing
+              , _exportTable =
+                  maybe id
+                    (\(f, a) -> insert (f, a, value))
+                    (_exportNextLabel env)
+                    (_exportTable env)
+              }
+
+    FromImport import_ ->
+      tag (encodeTag 0)
+        |> \use -> Table.index import_ (_importTable env)
+          |> \(value, newTable) -> (use value)
+                { _importTable = newTable
+                , _atomTable = _atomTable env
+                    |> insert (_import_module import_)
+                    |> insert (_import_function import_)
+                }
+
+
+    FromLambda lambda ->
+      tag (encodeTag 0)
+        |> \use -> Table.index lambda (_lambdaTable env)
+          |> \(value, newTable) -> (use value) { _lambdaTable = newTable }
+
+    FromInt value ->
+      tag (encodeTag 1) value
 
     FromNil Nil ->
       tag (encodeTag 2) 0
 
+    FromFunctionModule name arity ->
+      tag (encodeTag 2) 1
+        |> \env -> env
+              { _functionCount = 1 + _functionCount env
+              , _exportNextLabel =
+                  if Set.member (name, arity) (_toExport env) then
+                    Just (name, arity)
+                  else
+                    Nothing
+              }
+
     FromByteString name ->
-      tag (encodeTag 2) |> withAtom name
+      tag (encodeTag 2)
+        |> \use -> Table.index name (_atomTable env)
+          |> \(value, newTable) -> (use value) { _atomTable = newTable }
 
     FromX (X value) ->
       tag (encodeTag 3) value
@@ -96,23 +139,29 @@ encodeArgument env argument =
     FromY (Y value) ->
       tag (encodeTag 4) value
 
+    FromF (F _value) ->
+      undefined
+
     FromLabel (Label value) ->
-      tag (encodeTag 5) $ value
+      tag (encodeTag 5) value
 
     FromLiteral literal ->
-      tag ((encodeTag 7 4 ++) . encodeTag 0) |> withLiteral literal
+      tag ((encodeTag 7 4 ++) . encodeTag 0)
+        |> \use -> Table.index literal (_literalTable env)
+          |> \(value, newTable) -> (use value) { _literalTable = newTable }
+
+    FromDestinations _destinations ->
+      undefined
+
+    FromPairs _pairs ->
+      undefined
+
+    FromFields _fields ->
+      undefined
 
   where
     tag encoder =
       appendCode env . Builder.lazyByteString . BS.pack . encoder
-
-    withAtom name toBuilder =
-      Table.index name (_atomTable env)
-        |> \(value, newTable) -> (toBuilder value) { _atomTable = newTable }
-
-    withLiteral literal toBuilder =
-      Table.index literal (_literalTable env)
-        |> \(value, newTable) -> (toBuilder value) { _literalTable = newTable }
 
 
 appendCode :: Env -> Builder.Builder -> Env
@@ -131,8 +180,9 @@ toLazyByteString
       literalTable
       lambdaTable
       importTable
-      _
       exportTable
+      _
+      _
       bytes
   ) =
   "FOR1" <> pack32 (BS.length sections + 4) <> "BEAM" <> sections
@@ -147,7 +197,7 @@ toLazyByteString
       <> "FunT" <> alignSection (lambdas lambdaTable atomTable)
       <> "ImpT" <> alignSection (imports importTable atomTable)
       <> "ExpT" <> alignSection (exports exportTable atomTable)
-      <> "Code" <> alignSection (code bytes (labels + 1) functions)
+      <> "Code" <> alignSection (code bytes (Set.size labels + 1) functions)
 
 
 atoms :: Table BS.ByteString -> BS.ByteString
@@ -156,14 +206,14 @@ atoms table =
 
 
 code :: Builder.Builder -> Int -> Word32 -> BS.ByteString
-code env labelCount functionCount =
+code builder labelCount functionCount =
   mconcat
     [ pack32 16  -- header length
     , pack32 0   -- instruction set id
     , pack32 158 -- max op code, TODO: extract this
     , pack32 (fromIntegral labelCount)
     , pack32 functionCount
-    , Builder.toLazyByteString env
+    , Builder.toLazyByteString builder
     , pack8 3    -- int_code_end
     ]
 
@@ -193,12 +243,12 @@ imports importTable atomTable =
       pack32 (forceIndex m atomTable) <> pack32 (forceIndex f atomTable) <> pack32 a
 
 
-exports :: Table (BS.ByteString, Int, Label) -> Table BS.ByteString -> BS.ByteString
+exports :: Table (BS.ByteString, Int, Int) -> Table BS.ByteString -> BS.ByteString
 exports exportTable atomTable =
   pack32 (Table.size exportTable) <> Table.encode fromTuple exportTable
 
   where
-    fromTuple (name, arity, Label label) =
+    fromTuple (name, arity, label) =
       pack32 (forceIndex name atomTable) <> pack32 arity <> pack32 label
 
 
@@ -374,6 +424,11 @@ packDouble =
 forceIndex :: Ord k => k -> Table k -> Int
 forceIndex k =
   fst . Table.index k
+
+
+insert :: Ord k => k -> Table k -> Table k
+insert k =
+  snd . Table.index k
 
 
 (|>) :: a -> (a -> b) -> b
