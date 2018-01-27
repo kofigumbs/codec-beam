@@ -1,4 +1,6 @@
-module Data.Table (Table, empty, singleton, index, encode, size) where
+module Codec.Beam.Internal.Table
+  ( Table, empty, singleton, index, ensure, encode, size
+  ) where
 
 import qualified Data.Map as Map
 import qualified Data.List as List
@@ -34,6 +36,11 @@ index key table@(Table offset map) =
     Nothing ->
       let value = Map.size map + offset in
       (value, table { _map = Map.insert key value map })
+
+
+ensure :: Ord k => k -> Table k -> Table k
+ensure key =
+  snd . index key
 
 
 encode :: Monoid m => (k -> m) -> Table k -> m

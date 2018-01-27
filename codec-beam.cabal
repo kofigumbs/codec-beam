@@ -20,11 +20,10 @@ Library
     exposed-modules: Codec.Beam
                      Codec.Beam.Instructions
     other-modules: Codec.Beam.Internal.Types
-                   Data.Table
+                   Codec.Beam.Internal.Table
     build-depends: base,
                    bytestring,
                    containers,
-                   mtl,
                    process,
                    zlib,
                    text

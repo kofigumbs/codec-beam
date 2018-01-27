@@ -20,8 +20,8 @@ import qualified Data.ByteString.Lazy as BS
 import qualified Data.Set as Set
 
 import Codec.Beam.Internal.Types
-import Data.Table (Table)
-import qualified Data.Table as Table
+import Codec.Beam.Internal.Table (Table)
+import qualified Codec.Beam.Internal.Table as Table
 
 
 -- | Create code for a BEAM module!
@@ -90,7 +90,7 @@ encodeArgument env argument =
               , _exportNextLabel = Nothing
               , _exportTable =
                   maybe id
-                    (\(f, a) -> insert (f, a, value))
+                    (\(f, a) -> Table.ensure (f, a, value))
                     (_exportNextLabel env)
                     (_exportTable env)
               }
@@ -101,8 +101,8 @@ encodeArgument env argument =
           |> \(value, newTable) -> (use value)
                 { _importTable = newTable
                 , _atomTable = _atomTable env
-                    |> insert (_import_module import_)
-                    |> insert (_import_function import_)
+                    |> Table.ensure (_import_module import_)
+                    |> Table.ensure (_import_function import_)
                 }
 
 
@@ -424,11 +424,6 @@ packDouble =
 forceIndex :: Ord k => k -> Table k -> Int
 forceIndex k =
   fst . Table.index k
-
-
-insert :: Ord k => k -> Table k -> Table k
-insert k =
-  snd . Table.index k
 
 
 (|>) :: a -> (a -> b) -> b
