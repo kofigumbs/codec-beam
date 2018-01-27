@@ -10,6 +10,7 @@ data Op = Op Word8 [Argument ()]
 
 -- | A stack register! These are used to pass function arguments, and @X 0@ stores return values.
 newtype X = X Int
+  deriving (Eq, Ord, Show)
 
 
 -- | A stack register for saving values across function calls.
@@ -17,11 +18,13 @@ newtype X = X Int
 -- | (or inside a function call inside a function call).
 -- | @Y@ registers let you avoid that—they must be allocated and de-allocated though.
 newtype Y = Y Int
+  deriving (Eq, Ord, Show)
 
 
 -- | Floating point "register" for optimized floating point arithmetic.
 -- | These are not treated as traditional stack registers.
 newtype F = F Int
+  deriving (Eq, Ord, Show)
 
 
 -- | Reference a function from another module
@@ -31,6 +34,7 @@ data Import = Import
   , _import_function :: ByteString
   , _import_arity :: Int
   }
+  deriving (Eq, Ord, Show)
 
 
 -- | Turn a named function into a @fun@, for use with "make_fun2".
@@ -38,15 +42,19 @@ data Lambda = Lambda
   { _lambda_name :: ByteString
   , _lambda_arity :: Int
   , _lambda_label :: Label
+  , _lambda_free :: Int
   }
+  deriving (Eq, Ord, Show)
 
 
 -- | Mark a spot in the code, so that you can jump to it with a function or condition.
 newtype Label = Label Int
+  deriving (Eq, Ord, Show)
 
 
 -- | The empty list.
 data Nil = Nil
+  deriving (Eq, Ord, Show)
 
 
 -- | Erlang literals, stored on the heap.
@@ -58,6 +66,9 @@ data Literal
   | Tuple [Literal]
   | List [Literal]
   | Map [(Literal, Literal)]
+  deriving (Eq, Ord, Show)
+
+
 {- TODO
   | String ByteString
   | Port ...

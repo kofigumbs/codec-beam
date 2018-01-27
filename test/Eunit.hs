@@ -32,7 +32,7 @@ type Test =
 
 test :: String -> [String] -> [Beam.Op] -> Test
 test name body =
-  test_ name body . Beam.encode (fromString name)
+  test_ name body . Beam.encode (fromString name) []
 
 
 test_ :: String -> [String] -> BS.ByteString -> Test
