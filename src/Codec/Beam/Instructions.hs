@@ -1,16 +1,16 @@
-{-# LANGUAGE Rank2Types -#-}
+{-# LANGUAGE Rank2Types #-}
 
 -- | This module represents a type-safe port of Erlang's general instructions
---   (<https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab>).
---   In the end state, there should only be few variations,
---   existing only to promote ease of use and correctness!
+-- | (<https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab>).
+-- | In the end state, there should only be few variations,
+-- | existing only to promote ease of use and correctness!
 
-module Codec.Beam.Instruction where
+module Codec.Beam.Instructions
   ( label, func_info, on_load, line
   -- * Function and BIF calls
   , call, call_last, call_only, call_ext, call_ext_last, bif0, bif1, bif2, call_ext_only, apply, apply_last, gc_bif1, gc_bif2, gc_bif3
   -- * Allocating, deallocating and returning
-  , allocate, allocate_heap, allocate_zero, allocate_heap_zero, test_heap, init, deallocate, return_, trim
+  , allocate, allocate_heap, allocate_zero, allocate_heap_zero, test_heap, init_, deallocate, return_, trim
   -- * Sending & receiving
   , send, remove_message, timeout, loop_rec, loop_rec_end, wait, wait_timeout, recv_mark, recv_set
   -- * Comparision
@@ -40,6 +40,7 @@ module Codec.Beam.Instruction where
   ) where
 
 import Codec.Beam.Internal.Types
+import Data.ByteString.Lazy (ByteString)
 
 -- | Label gives this code address a name and marks the start of
 -- | a basic block.
@@ -83,14 +84,14 @@ call_only a1 a2 = Op 6 [FromInt a1, FromLabel a2]
 -- | Call the function of arity pointed to by Destination.
 -- | Save the next instruction as the return address in the CP register.
 call_ext :: Import -> Op
-call_ext a1 = Op 7 [FromInt (_arity a1), FromImport a1]
+call_ext a1 = Op 7 [FromInt (_import_arity a1), FromImport a1]
 
 -- | Deallocate and do a tail call to function
 -- | pointed to by Destination.
 -- | Do not update the CP register.
 -- | Deallocate some words from the stack before the call.
 call_ext_last :: Import -> Int -> Op
-call_ext_last a1 a2 = Op 8 [FromInt (_arity a1), FromImport a1, FromInt a2]
+call_ext_last a1 a2 = Op 8 [FromInt (_import_arity a1), FromImport a1, FromInt a2]
 
 -- | Call the bif and store the result in register.
 bif0 :: (Register a2) => Import -> a2 -> Op
@@ -103,7 +104,7 @@ bif1 a1 a2 a3 a4 = Op 10 [FromLabel a1, FromImport a2, erase fromSource a3, eras
 
 -- | Call the bif with the sources, and store the result in register.
 -- | On failure jump to label.
-bif2 :: (Source a3, Source a4, Regsiter a5) => Label -> Import -> a3 -> a4 -> a5 -> Op
+bif2 :: (Source a3, Source a4, Register a5) => Label -> Import -> a3 -> a4 -> a5 -> Op
 bif2 a1 a2 a3 a4 a5 = Op 11 [FromLabel a1, FromImport a2, erase fromSource a3, erase fromSource a4, erase fromRegister a5]
 
 -- | Allocate space for some words on the stack. If a GC is needed
@@ -157,8 +158,8 @@ test_heap
 test_heap a1 a2 = Op 16 [FromInt a1, FromInt a2]
 
 -- | Clear the stack word. (By writing NIL.)
-init :: Y -> Op
-init a1 = Op 17 [FromY a1]
+init_ :: Y -> Op
+init_ a1 = Op 17 [FromY a1]
 
 -- | Restore the continuation pointer (CP) from the stack and deallocate
 -- | N+1 words from the stack (the + 1 is for the CP).
@@ -376,7 +377,7 @@ is_function a1 a2 = Op 77 [FromLabel a1, erase fromSource a2]
 -- | Do a tail recursive call to the function at label.
 -- | Do not update the CP register.
 call_ext_only :: Import -> Op
-call_ext_only a1 = Op 78 [FromInt (_arity a1), FromImport a1]
+call_ext_only a1 = Op 78 [FromInt (_import_arity a1), FromImport a1]
 
 bs_put_integer :: (Source a2, Source a5) => Label -> a2 -> Int -> Int -> a5 -> Op
 bs_put_integer a1 a2 a3 a4 a5 = Op 89 [FromLabel a1, erase fromSource a2, FromInt a3, FromInt a4, erase fromSource a5]
@@ -443,15 +444,15 @@ bs_add a1 a2 a3 a4 a5 = Op 111 [FromLabel a1, erase fromSource a2, erase fromSou
 
 -- | Apply function object (in x[arity]) with args (in x[0..arity-1])
 apply
-	:: Int -- ^ arity
-	-> Op
+  :: Int -- ^ arity
+  -> Op
 apply a1 = Op 112 [FromInt a1]
 
 -- | Same as "apply" but does not save the CP and deallocates words
 apply_last
-	:: Int -- ^ arity
-	-> Int -- ^ words to deallocate
-	-> Op
+  :: Int -- ^ arity
+  -> Int -- ^ words to deallocate
+  -> Op
 apply_last a1 a2 = Op 113 [FromInt a1, FromInt a2]
 
 -- | Test the type of source and jump to label if it is not a boolean.
@@ -593,16 +594,16 @@ recv_set a1 = Op 151 [FromLabel a1]
 
 -- | Same as "gc_bif1", but with three source arguments.
 gc_bif3 :: (Source a4, Source a5, Source a6, Register a7) => Label -> Int -> Import -> a4 -> a5 -> a6 -> a7 -> Op
-gc_bif2 a1 a2 a3 a4 a5 a6 a7 = Op 152 [FromLabel a1, FromInt a2, FromImport a3, erase fromSource a4, erase fromSource a5, erase fromSource a6, erase fromRegister a7]
+gc_bif3 a1 a2 a3 a4 a5 a6 a7 = Op 152 [FromLabel a1, FromInt a2, FromImport a3, erase fromSource a4, erase fromSource a5, erase fromSource a6, erase fromRegister a7]
 
 line :: Int -> Op
 line a1 = Op 153 [FromInt a1]
 
-put_map_assoc :: (Source a2, Register a3) => Label -> a2 -> a3 -> [Update] -> Op
-put_map_assoc a1 a2 a3 a4 a5 = Op 154 [FromLabel a1, erase fromSource a2, erase fromRegister a3, FromUpdates a4]
+put_map_assoc :: (Source a2, Register a3) => Label -> a2 -> a3 -> [Pair] -> Op
+put_map_assoc a1 a2 a3 a4 = Op 154 [FromLabel a1, erase fromSource a2, erase fromRegister a3, FromPairs a4]
 
-put_map_exact :: (Source a2, Register a3) => Label -> a2 -> a3 -> [Update] -> Op
-put_map_exact a1 a2 a3 a4 a5 = Op 155 [FromLabel a1, erase fromSource a2, erase fromRegister a3, FromUpdates a4]
+put_map_exact :: (Source a2, Register a3) => Label -> a2 -> a3 -> [Pair] -> Op
+put_map_exact a1 a2 a3 a4 = Op 155 [FromLabel a1, erase fromSource a2, erase fromRegister a3, FromPairs a4]
 
 is_map :: (Source a2) => Label -> a2 -> Op
 is_map a1 a2 = Op 156 [FromLabel a1, erase fromSource a2]

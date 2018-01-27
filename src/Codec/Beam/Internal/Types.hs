@@ -72,13 +72,13 @@ data ProcessId
 -- | Create jump destinations for variadic functions, like "select_val"
 destination :: (Source s) => Label -> s -> Destination
 destination label source =
-  Destination Label (erase fromSource source)
+  Destination label (erase fromSource source)
 
 
 -- | Create map pairs for variadic functions, like "put_map_assoc"
 pair :: (Source key, Source value) => key -> value -> Pair
 pair key value =
-	Pair (erase fromSource key) (erase fromSource value0
+	Pair (erase fromSource key) (erase fromSource value)
 
 
 -- | Create map fields for variadic functions, like "has_map_fields"
@@ -128,7 +128,7 @@ data Argument a
   | FromLiteral Literal
   | FromLambda Lambda
   | FromDestinations [Destination]
-  | FromPair [Pair]
+  | FromPairs [Pair]
   | FromFields [Field]
   | FromThisModuleName
 
@@ -146,7 +146,7 @@ erase f a =
     FromLiteral x      -> FromLiteral x
     FromLambda x       -> FromLambda x
     FromDestinations x -> FromDestinations x
-    FromPair x         -> FromPair x
+    FromPairs x        -> FromPairs x
     FromFields x       -> FromFields x
     FromThisModuleName -> FromThisModuleName
 
