@@ -1,107 +1,185 @@
 module Codec.Beam
   ( -- * Generate BEAM code
-    encode
-  , Op, Operand(..), Register(..), Access(..), Literal(..), Label
+    encode, Export(..)
+    -- * Syntax
+  , Op, X(..), Y(..), F(..), Nil(..), Label(..), Import(..), Literal(..), Lambda(..)
+  , Destination, destination, Pair, pair, Field, field
+    -- * Argument constraints
+  , Register(fromRegister),   Source(fromSource)
+  , RegisterF(fromRegisterF), SourceF(fromSourceF)
   ) where
 
-import Control.Monad.State.Strict (runState)
+
+import Data.Bits ((.|.), (.&.))
 import Data.Int (Int64)
 import Data.Monoid ((<>))
 import Data.Word (Word8, Word32)
 import qualified Codec.Compression.Zlib as Zlib
+import qualified Data.Bits as Bits
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as BS
+import qualified Data.Set as Set
 
-import Codec.Beam.Internal
-import Data.Table (Table)
-import qualified Codec.Beam.Internal.Assembler as Asm
-import qualified Data.Table as Table
+import Codec.Beam.Internal.Types
+import Codec.Beam.Internal.Table (Table)
+import qualified Codec.Beam.Internal.Table as Table
 
 
 -- | Create code for a BEAM module!
 encode
   :: BS.ByteString -- ^ module name
+  -> [Export]      -- ^ functions that should be public
   -> [Op]          -- ^ instructions
   -> BS.ByteString -- ^ return encoded BEAM
-encode name =
-  toLazyByteString . foldl collectOp (new name)
+encode name exports =
+  toLazyByteString . foldl encodeOp (initialEnv name (Set.fromList exports))
 
 
--- | Create a fresh 'Builder' for a BEAM module
-new
-  :: BS.ByteString  -- ^ module name
-  -> Builder        -- ^ return encoding state
-new name =
-  Builder
-    { _moduleName = Atom name
+-- | Name and arity of functions to export
+data Export = Export BS.ByteString Int
+  deriving (Eq, Ord, Show)
+
+
+-- ASSEMBLER
+-- https://github.com/erlang/otp/blob/master/lib/compiler/src/beam_asm.erl
+
+
+data Env =
+  Env
+    { _moduleName :: BS.ByteString
+    , _labelCount :: Word32
+    , _functionCount :: Word32
+    , _atomTable :: Table BS.ByteString
+    , _literalTable :: Table Literal
+    , _lambdaTable :: Table Lambda
+    , _importTable :: Table Import
+    , _exportTable :: Table (BS.ByteString, Int, Int)
+    , _exportNextLabel :: Maybe (BS.ByteString, Int)
+    , _exporting :: BS.ByteString -> Int -> Bool
+    , _maxOpCode :: Word8
+    , _code :: Builder.Builder
+    }
+
+
+initialEnv :: BS.ByteString -> Set.Set Export -> Env
+{-# NOINLINE initialEnv #-}
+initialEnv name exports =
+  Env
+    { _moduleName = name
     , _labelCount = 0
     , _functionCount = 0
     , _atomTable = Table.singleton name 1
     , _literalTable = Table.empty
-    , _lambdaTable = []
+    , _lambdaTable = Table.empty
     , _importTable = Table.empty
+    , _exportTable = Table.empty
     , _exportNextLabel = Nothing
-    , _toExport = []
+    , _exporting = \name arity -> Set.member (Export name arity) exports
+    , _maxOpCode = 1
     , _code = mempty
     }
-
-
-collectOp :: Builder -> Op -> Builder
-collectOp acc (Op opCode state) =
-  let (args, newBuilder) = runState state acc in
-  appendCode newBuilder (Builder.word8 opCode)
-    |> foldl appendOperand $ args
-
-
-appendOperand :: Builder -> Operand -> Builder
-appendOperand builder operand =
-  case operand of
-    Lit value ->
-      tag (Asm.internal 0) value
-
-    Int value ->
-      tag (Asm.internal 1) value
-
-    Nil ->
-      tag (Asm.internal 2) 0
-
-    Atom name ->
-      tag (Asm.internal 2) |> withAtom name
-
-    Reg (X value) ->
-      tag (Asm.internal 3) value
-
-    Reg (Y value) ->
-      tag (Asm.internal 4) value
-
-    Label value ->
-      tag (Asm.internal 5) $ value
-
-    Ext literal ->
-      tag (Asm.external 4) |> withLiteral literal
-
   where
-    tag encoder =
-      appendCode builder . Builder.lazyByteString . BS.pack . encoder
-
-    withAtom name toBuilder =
-      Table.index name (_atomTable builder)
-        |> \(value, newTable) -> (toBuilder value) { _atomTable = newTable }
-
-    withLiteral literal toBuilder =
-      Table.index literal (_literalTable builder)
-        |> \(value, newTable) -> (toBuilder value) { _literalTable = newTable }
+    toTuple (Export name arity) = (name, arity)
 
 
-appendCode :: Builder -> Builder.Builder -> Builder
-appendCode builder bytes =
-  builder { _code = _code builder <> bytes }
+encodeOp :: Env -> Op -> Env
+encodeOp env (Op opCode args) =
+  foldl encodeArgument
+    (appendCode
+      (env { _maxOpCode = max opCode (_maxOpCode env)})
+      (Builder.word8 opCode))
+    args
+
+
+encodeArgument :: Env -> Argument a -> Env
+encodeArgument env argument =
+  case argument of
+    FromUntagged value ->
+      appendTag (encodeTag 0 value) env
+
+    FromNewLabel (Label value) ->
+      appendTag (encodeTag 0 value) $ env
+        { _labelCount = 1 + _labelCount env
+        , _exportNextLabel = Nothing
+        , _exportTable =
+            maybe id
+              (\(f, a) -> Table.ensure (f, a, value))
+              (_exportNextLabel env)
+              (_exportTable env)
+        }
+
+    FromImport import_ ->
+      let (value, newTable) = Table.index import_ (_importTable env) in
+      appendTag (encodeTag 0 value) $ env
+        { _importTable = newTable
+        , _atomTable =
+            Table.ensure (_import_module import_) $
+              Table.ensure (_import_function import_) $ _atomTable env
+        }
+
+    FromLambda lambda ->
+      let (value, newTable) = Table.index lambda (_lambdaTable env) in
+      appendTag (encodeTag 0 value) $ env { _lambdaTable = newTable }
+
+    FromInt value ->
+      appendTag (encodeTag 1 value) env
+
+    FromNil Nil ->
+      appendTag (encodeTag 2 0) env
+
+    FromFunctionModule name arity | _exporting env name arity ->
+      appendTag (encodeTag 2 1) $ env
+        { _functionCount = 1 + _functionCount env
+        , _exportNextLabel = Just (name, arity)
+        }
+
+    FromFunctionModule name arity ->
+      appendTag (encodeTag 2 1) $ env { _functionCount = 1 + _functionCount env }
+
+    FromByteString name ->
+      let (value, newTable) = Table.index name (_atomTable env) in
+      appendTag (encodeTag 2 value) $ env { _atomTable = newTable }
+
+    FromX (X value) ->
+      appendTag (encodeTag 3 value) env
+
+    FromY (Y value) ->
+      appendTag (encodeTag 4 value) env
+
+    FromF (F _value) ->
+      undefined
+
+    FromLabel (Label value) ->
+      appendTag (encodeTag 5 value) env
+
+    FromLiteral literal ->
+      let (value, newTable) = Table.index literal (_literalTable env) in
+      appendTag (encodeTag 7 4 ++ encodeTag 0 value) $ env { _literalTable = newTable }
+
+    FromDestinations _destinations ->
+      undefined
+
+    FromPairs _pairs ->
+      undefined
+
+    FromFields _fields ->
+      undefined
+
+
+appendTag :: [Word8] -> Env -> Env
+appendTag words env =
+    appendCode env . Builder.lazyByteString $ BS.pack words
+
+
+appendCode :: Env -> Builder.Builder -> Env
+appendCode env bytes =
+  env { _code = _code env <> bytes }
 
 
 -- | Turn the module encoding state into final BEAM code
-toLazyByteString :: Builder -> BS.ByteString
+toLazyByteString :: Env -> BS.ByteString
 toLazyByteString
-  ( Builder
+  ( Env
       _
       labels
       functions
@@ -109,8 +187,10 @@ toLazyByteString
       literalTable
       lambdaTable
       importTable
-      _
       exportTable
+      _
+      _
+      maxOpCode
       bytes
   ) =
   "FOR1" <> pack32 (BS.length sections + 4) <> "BEAM" <> sections
@@ -125,7 +205,7 @@ toLazyByteString
       <> "FunT" <> alignSection (lambdas lambdaTable atomTable)
       <> "ImpT" <> alignSection (imports importTable atomTable)
       <> "ExpT" <> alignSection (exports exportTable atomTable)
-      <> "Code" <> alignSection (code bytes (labels + 1) functions)
+      <> "Code" <> alignSection (code bytes (labels + 1) functions maxOpCode)
 
 
 atoms :: Table BS.ByteString -> BS.ByteString
@@ -133,63 +213,47 @@ atoms table =
   pack32 (Table.size table) <> Table.encode (withSize pack8) table
 
 
-code :: Builder.Builder -> Int -> Word32 -> BS.ByteString
-code builder labelCount functionCount =
+code :: Builder.Builder -> Word32 -> Word32 -> Word8 -> BS.ByteString
+code builder labelCount functionCount maxOpCode =
   mconcat
-    [ pack32 headerLength
-    , pack32 instructionSetId
+    [ pack32 16  -- header length
+    , pack32 0   -- instruction set id
     , pack32 maxOpCode
-    , pack32 (fromIntegral labelCount)
+    , pack32 labelCount
     , pack32 functionCount
     , Builder.toLazyByteString builder
-    , pack8 intCodeEnd
+    , pack8 3    -- int_code_end
     ]
 
-  where
-    headerLength =
-      16
 
-    instructionSetId =
-      0
-
-    maxOpCode =
-      158
-
-    intCodeEnd =
-      3
-
-
-lambdas :: [Lambda] -> Table BS.ByteString -> BS.ByteString
+lambdas :: Table Lambda -> Table BS.ByteString -> BS.ByteString
 lambdas lambdaTable atomTable =
-  pack32 (length lambdaTable) <> mconcat (map fromLambda lambdaTable)
+  pack32 (Table.size lambdaTable) <> Table.encode fromLambda lambdaTable
 
   where
-    fromLambda (Lambda name arity label index free) =
+    fromLambda lambda@(Lambda name arity (Label label) free) =
       mconcat
         [ pack32 (forceIndex name atomTable)
         , pack32 arity
         , pack32 label
-        , pack32 index
+        , pack32 (forceIndex lambda lambdaTable)
         , pack32 free
-        , pack32 oldUnique
+        , pack32 0 -- oldUnique
         ]
 
-    oldUnique =
-      0
 
-
-imports :: Table Function -> Table BS.ByteString -> BS.ByteString
+imports :: Table Import -> Table BS.ByteString -> BS.ByteString
 imports importTable atomTable =
-  pack32 (Table.size importTable) <> Table.encode fromFunction importTable
+  pack32 (Table.size importTable) <> Table.encode fromImport importTable
 
   where
-    fromFunction (Function m f a) =
+    fromImport (Import m f a) =
       pack32 (forceIndex m atomTable) <> pack32 (forceIndex f atomTable) <> pack32 a
 
 
-exports :: [Export] -> Table BS.ByteString -> BS.ByteString
+exports :: Table (BS.ByteString, Int, Int) -> Table BS.ByteString -> BS.ByteString
 exports exportTable atomTable =
-  pack32 (length exportTable) <> mconcat (map fromTuple exportTable)
+  pack32 (Table.size exportTable) <> Table.encode fromTuple exportTable
 
   where
     fromTuple (name, arity, label) =
@@ -203,55 +267,126 @@ literals table =
   where
     terms =
       pack32 (Table.size table)
-        <> Table.encode (withSize pack32 . BS.cons 131 . packLiteral) table
+        <> Table.encode (withSize pack32 . BS.cons 131 . encodeLiteral) table
 
 
-packLiteral :: Literal -> BS.ByteString
-packLiteral lit =
+encodeLiteral :: Literal -> BS.ByteString
+encodeLiteral lit =
   case lit of
-    EInt value | value < 256 ->
+    Integer value | value < 256 ->
       pack8 97 <> pack8 value
 
-    EInt value ->
+    Integer value ->
       pack8 98 <> pack32 value
 
-    EFloat value ->
+    Float value ->
       pack8 70 <> packDouble value
 
-    EAtom value ->
+    Atom value ->
       pack8 119 <> withSize pack8 value
 
-    EBinary value ->
+    Binary value ->
       pack8 109 <> withSize pack32 value
 
-    ETuple elements | length elements < 256 ->
+    Tuple elements | length elements < 256 ->
       mconcat
         [ pack8 104
         , pack8 (length elements)
-        , mconcat $ map packLiteral elements
+        , mconcat $ map encodeLiteral elements
         ]
 
-    ETuple elements ->
+    Tuple elements ->
       mconcat
         [ pack8 105
         , pack32 (length elements)
-        , mconcat $ map packLiteral elements
+        , mconcat $ map encodeLiteral elements
         ]
 
-    EList elements ->
+    List elements ->
       mconcat
         [ pack8 108
         , pack32 (length elements)
-        , mconcat $ map packLiteral elements
+        , mconcat $ map encodeLiteral elements
         , pack8 106
         ]
 
-    EMap pairs ->
+    Map pairs ->
       mconcat
         [ pack8 116
         , pack32 (length pairs)
-        , mconcat $ fmap (\(x, y) -> packLiteral x <> packLiteral y) pairs
+        , mconcat $ fmap (\(x, y) -> encodeLiteral x <> encodeLiteral y) pairs
         ]
+
+
+encodeTag :: Word8 -> Int -> [Word8]
+encodeTag tag n
+  | n < 0 = manyBytes tag (negative n [])
+  | n < 0x10 = oneByte tag n
+  | n < 0x800 = twoBytes tag n
+  | otherwise = manyBytes tag (positive n [])
+
+
+oneByte :: Word8 -> Int -> [Word8]
+oneByte tag n =
+  [ top4 .|. tag ]
+
+  where
+    top4 =
+      Bits.shiftL (fromIntegral n) 4
+
+
+twoBytes :: Word8 -> Int -> [Word8]
+twoBytes tag n =
+  [ top3 .|. 0x8 {- continuation tag -} .|. tag, bottom8 ]
+
+  where
+    top3 =
+      fromIntegral $ Bits.shiftR n 3 .&. 0xE0
+
+    bottom8 =
+      fromIntegral n
+
+
+manyBytes :: Word8 -> [Word8] -> [Word8]
+manyBytes tag bytes =
+  if count <= 8 then
+    (packedCount .|. 0x18 {- continuation tag -} .|. tag) : bytes
+
+  else
+    (0xF8 {- nested tag -} .|. tag) : encodeTag 0 (count - 9) ++ bytes
+
+  where
+    count =
+      length bytes
+
+    packedCount =
+      fromIntegral $ Bits.shiftL (count - 2) 5
+
+
+negative :: Int -> [Word8] -> [Word8]
+negative n bytes =
+  case ( n, bytes ) of
+    ( -1, first : _ : _ ) | first > 0x7F ->
+      bytes
+
+    _ ->
+      withBottom8 negative n bytes
+
+
+positive :: Int -> [Word8] -> [Word8]
+positive n bytes =
+  case ( n, bytes ) of
+    ( 0, first : _ ) | first < 0x80 ->
+      bytes
+
+    _ ->
+      withBottom8 positive n bytes
+
+
+withBottom8 :: (Int -> [Word8] -> a) -> Int -> [Word8] -> a
+{-# INLINE withBottom8 #-}
+withBottom8 f n bytes =
+  f (Bits.shiftR n 8) (fromIntegral n : bytes)
 
 
 alignSection :: BS.ByteString -> BS.ByteString
@@ -288,8 +423,3 @@ packDouble =
 forceIndex :: Ord k => k -> Table k -> Int
 forceIndex k =
   fst . Table.index k
-
-(|>) :: a -> (a -> b) -> b
-{-# INLINE (|>) #-}
-a |> f =
-  f a
