@@ -1,9 +1,9 @@
 {-# LANGUAGE Rank2Types #-}
 
 -- | This module represents a type-safe port of Erlang's general instructions
--- | (<https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab>).
--- | In the end state, there should only be few variations,
--- | existing only to promote ease of use and correctness!
+--   (<https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab>).
+--   In the end state, there should only be few variations,
+--   existing only to promote ease of use and correctness!
 
 module Codec.Beam.Instructions
   ( label, func_info, on_load, line
@@ -43,7 +43,7 @@ import Codec.Beam.Internal.Types
 import Data.ByteString.Lazy (ByteString)
 
 -- | Label gives this code address a name and marks the start of
--- | a basic block.
+--   a basic block.
 label
   :: Label -- ^ unique identifier
   -> Op
@@ -57,7 +57,7 @@ func_info
 func_info a1 a2 = Op 2 [FromFunctionModule a1 a2, FromByteString a1, FromUntagged a2]
 
 -- | Call the function at label.
--- | Save the next instruction as the return address in the CP register.
+--   Save the next instruction as the return address in the CP register.
 call
   :: Int -- ^ arity
   -> Label
@@ -65,8 +65,8 @@ call
 call a1 a2 = Op 4 [FromUntagged a1, FromLabel a2]
 
 -- | Deallocate and do a tail recursive call to the function at label.
--- | Do not update the CP register.
--- | Before the call deallocate Deallocate words of stack.
+--   Do not update the CP register.
+--   Before the call deallocate Deallocate words of stack.
 call_last
   :: Int -- ^ arity
   -> Label
@@ -75,7 +75,7 @@ call_last
 call_last a1 a2 a3 = Op 5 [FromUntagged a1, FromLabel a2, FromUntagged a3]
 
 -- | Do a tail recursive call to the function at Label.
--- | Do not update the CP register.
+--   Do not update the CP register.
 call_only
   :: Int -- ^ arity
   -> Label
@@ -83,14 +83,14 @@ call_only
 call_only a1 a2 = Op 6 [FromUntagged a1, FromLabel a2]
 
 -- | Call the function of arity pointed to by Destination.
--- | Save the next instruction as the return address in the CP register.
+--   Save the next instruction as the return address in the CP register.
 call_ext :: Import -> Op
 call_ext a1 = Op 7 [FromUntagged (_import_arity a1), FromImport a1]
 
 -- | Deallocate and do a tail call to function
--- | pointed to by Destination.
--- | Do not update the CP register.
--- | Deallocate some words from the stack before the call.
+--   pointed to by Destination.
+--   Do not update the CP register.
+--   Deallocate some words from the stack before the call.
 call_ext_last :: Import -> Int -> Op
 call_ext_last a1 a2 = Op 8 [FromUntagged (_import_arity a1), FromImport a1, FromUntagged a2]
 
@@ -99,17 +99,17 @@ bif0 :: (Register a2) => Import -> a2 -> Op
 bif0 a1 a2 = Op 9 [FromImport a1, erase fromRegister a2]
 
 -- | Call the bif with the source, and store the result in register.
--- | On failure jump to label.
+--   On failure jump to label.
 bif1 :: (Source a3, Register a4) => Label -> Import -> a3 -> a4 -> Op
 bif1 a1 a2 a3 a4 = Op 10 [FromLabel a1, FromImport a2, erase fromSource a3, erase fromRegister a4]
 
 -- | Call the bif with the sources, and store the result in register.
--- | On failure jump to label.
+--   On failure jump to label.
 bif2 :: (Source a3, Source a4, Register a5) => Label -> Import -> a3 -> a4 -> a5 -> Op
 bif2 a1 a2 a3 a4 a5 = Op 11 [FromLabel a1, FromImport a2, erase fromSource a3, erase fromSource a4, erase fromRegister a5]
 
 -- | Allocate space for some words on the stack. If a GC is needed
--- | during allocation there are a number of live X registers.
+--   during allocation there are a number of live X registers.
 -- | Also save the continuation pointer (CP) on the stack.
 allocate
   :: Int -- ^ stack words needed
@@ -118,9 +118,9 @@ allocate
 allocate a1 a2 = Op 12 [FromUntagged a1, FromUntagged a2]
 
 -- | Allocate space for some words on the stack and ensure there is
--- | space for words on the heap. If a GC is needed
--- | save Live number of X registers.
--- | Also save the continuation pointer (CP) on the stack.
+--   space for words on the heap. If a GC is needed
+--   save Live number of X registers.
+--   Also save the continuation pointer (CP) on the stack.
 allocate_heap
   :: Int -- ^ stack words needed
   -> Int -- ^ heap words needed
@@ -129,9 +129,9 @@ allocate_heap
 allocate_heap a1 a2 a3 = Op 13 [FromUntagged a1, FromUntagged a2, FromUntagged a3]
 
 -- | Allocate space for some words on the stack. If a GC is needed
--- | during allocation there are a number of live X registers.
--- | Clear the new stack words. (By writing NIL.)
--- | Also save the continuation pointer (CP) on the stack.
+--   during allocation there are a number of live X registers.
+--   Clear the new stack words. (By writing NIL.)
+--   Also save the continuation pointer (CP) on the stack.
 allocate_zero
   :: Int -- ^ stack words needed
   -> Int -- ^ live X registers
@@ -139,10 +139,10 @@ allocate_zero
 allocate_zero a1 a2 = Op 14 [FromUntagged a1, FromUntagged a2]
 
 -- | Allocate space for some words on the stack and ensure there is
--- | space for words on the heap. If a GC is needed
--- | save Live number of X registers.
--- | Clear the new stack words. (By writing NIL.)
--- | Also save the continuation pointer (CP) on the stack.
+--   space for words on the heap. If a GC is needed
+--   save Live number of X registers.
+--   Clear the new stack words. (By writing NIL.)
+--   Also save the continuation pointer (CP) on the stack.
 allocate_heap_zero
   :: Int -- ^ stack words needed
   -> Int -- ^ heap words needed
@@ -151,7 +151,7 @@ allocate_heap_zero
 allocate_heap_zero a1 a2 a3 = Op 15 [FromUntagged a1, FromUntagged a2, FromUntagged a3]
 
 -- | Ensure there is space for HeapNeed words on the heap. If a GC is needed
--- | save live number of X registers.
+--   save live number of X registers.
 test_heap
   :: Int -- ^ heap words needed
   -> Int -- ^ live number of X registers
@@ -163,7 +163,7 @@ init_ :: Y -> Op
 init_ a1 = Op 17 [FromY a1]
 
 -- | Restore the continuation pointer (CP) from the stack and deallocate
--- | N+1 words from the stack (the + 1 is for the CP).
+--   N+1 words from the stack (the + 1 is for the CP).
 deallocate :: Int -> Op
 deallocate a1 = Op 18 [FromUntagged a1]
 
@@ -172,12 +172,12 @@ return_ :: Op
 return_  = Op 19 []
 
 -- | Send argument in x(1) as a message to the destination process in x(0).
--- | The message in x(1) ends up as the result of the send in x(0).
+--   The message in x(1) ends up as the result of the send in x(0).
 send :: Op
 send  = Op 20 []
 
 -- | Unlink the current message from the message queue and store a
--- | pointer to the message in x(0). Remove any timeout.
+--   pointer to the message in x(0). Remove any timeout.
 remove_message :: Op
 remove_message  = Op 21 []
 
@@ -194,12 +194,12 @@ loop_rec_end :: Label -> Op
 loop_rec_end a1 = Op 24 [FromLabel a1]
 
 -- | Suspend the processes and set the entry point to the beginning of the 
--- | receive loop at label.
+--   receive loop at label.
 wait :: Label -> Op
 wait a1 = Op 25 [FromLabel a1]
 
 -- | Sets up a timeout of source milliseconds and saves the address of the
--- | following instruction as the entry point if the timeout triggers.
+--   following instruction as the entry point if the timeout triggers.
 wait_timeout :: (Source a2) => Label -> a2 -> Op
 wait_timeout a1 a2 = Op 26 [FromLabel a1, erase fromSource a2]
 
@@ -281,12 +281,12 @@ test_arity a1 a2 a3 = Op 58 [FromLabel a1, erase fromSource a2, FromUntagged a3]
 
 
 -- | Jump to the destination label corresponding to source
--- | in the destinations list, if no arity matches, jump to fail label.
+--   in the destinations list, if no arity matches, jump to fail label.
 select_val :: (Source a1) => a1 -> Label -> [Destination] -> Op
 select_val a1 a2 a3 = Op 59 [erase fromSource a1, FromLabel a2, FromDestinations a3]
 
 -- | Check the arity of the source tuple and jump to the corresponding
--- | destination label, if no arity matches, jump to FailLabel.
+--   destination label, if no arity matches, jump to FailLabel.
 select_tuple_arity :: (Source a1) => a1 -> Label -> [Destination] -> Op
 select_tuple_arity a1 a2 a3 = Op 60 [erase fromSource a1, FromLabel a2, FromDestinations a3]
 
@@ -302,12 +302,12 @@ catch_end :: Y -> Op
 catch_end a1 = Op 63 [FromY a1]
 
 -- | Move the source (a literal or a register) to
--- | the destination register.
+--   the destination register.
 move :: (Source a1, Register a2) => a1 -> a2 -> Op
 move a1 a2 = Op 64 [erase fromSource a1, erase fromRegister a2]
 
 -- | Get the head and tail (or car and cdr) parts of a list
--- | (a cons cell) from the initial register and put them into the registers.
+--   (a cons cell) from the initial register and put them into the registers.
 get_list
   :: (Register a1, Register a2, Register a3)
   => a1 -- ^ where to get the list
@@ -317,7 +317,7 @@ get_list
 get_list a1 a2 a3 = Op 65 [erase fromRegister a1, erase fromRegister a2, erase fromRegister a3]
 
 -- | Get a particular element number from the tuple in source and put
--- | it in the destination register.
+--   it in the destination register.
 get_tuple_element
   :: (Register a1, Register a3)
   => a1  -- ^ where to get the tuple
@@ -327,13 +327,13 @@ get_tuple_element
 get_tuple_element a1 a2 a3 = Op 66 [erase fromRegister a1, FromUntagged a2, erase fromRegister a3]
 
 -- | Update the element at position of the tuple in register
--- | with the new source element.
+--   with the new source element.
 set_tuple_element :: (Source a1, Register a2) => a1 -> a2 -> Int -> Op
 set_tuple_element a1 a2 a3 = Op 67 [erase fromSource a1, erase fromRegister a2, FromUntagged a3]
 
 
 -- | Build a list, from the front, and puts the resulting list in the register.
--- | Just like Erlang's @|@ or Haskell's @:@.
+--   Just like Erlang's @|@ or Haskell's @:@.
 put_list
   :: (Source a1, Source a2, Register a3)
     => a1 -- ^ the new head
@@ -343,10 +343,10 @@ put_list
 put_list a1 a2 a3 = Op 69 [erase fromSource a1, erase fromSource a2, erase fromRegister a3]
 
 -- | Constructs an empty tuple on the heap (size+1 words)
--- | and places its address into the Destination register.
--- | No elements are set at this moment.
--- | Put_tuple instruction is always followed by multiple
--- | 'put' instructions which destructively set its elements one by one.
+--   and places its address into the Destination register.
+--   No elements are set at this moment.
+--   Put_tuple instruction is always followed by multiple
+--   'put' instructions which destructively set its elements one by one.
 put_tuple :: (Register a2) => Int -> a2 -> Op
 put_tuple a1 a2 = Op 70 [FromUntagged a1, erase fromRegister a2]
 
@@ -363,20 +363,20 @@ case_end :: (Source a1) => a1 -> Op
 case_end a1 = Op 74 [erase fromSource a1]
 
 -- | Call @fun@ object (in x[Arity]) with args (in x[0..Arity-1])
--- | Raises @badarity@ if the arity doesn’t match the function object.
--- | Raises @badfun@ if a non-function is passed.
+--   Raises @badarity@ if the arity doesn’t match the function object.
+--   Raises @badfun@ if a non-function is passed.
 call_fun
   :: Int -- ^ arity
   -> Op
 call_fun a1 = Op 75 [FromUntagged a1]
 
 -- | Test the type of the source and jump to label if it is not a
--- | function (i.e. fun or closure).
+--   function (i.e. fun or closure).
 is_function :: (Source a2) => Label -> a2 -> Op
 is_function a1 a2 = Op 77 [FromLabel a1, erase fromSource a2]
 
 -- | Do a tail recursive call to the function at label.
--- | Do not update the CP register.
+--   Do not update the CP register.
 call_ext_only :: Import -> Op
 call_ext_only a1 = Op 78 [FromUntagged (_import_arity a1), FromImport a1]
 
@@ -461,7 +461,7 @@ is_boolean :: (Source a2) => Label -> a2 -> Op
 is_boolean a1 a2 = Op 114 [FromLabel a1, erase fromSource a2]
 
 -- | Test the type of the source and jump to label if it is not a
--- | function of the particular arity.
+--   function of the particular arity.
 is_function2
   :: (Source a2, Source a3)
   => Label
@@ -496,9 +496,9 @@ bs_restore2 a1 a2 = Op 123 [erase fromRegister a1, FromUntagged a2]
 
 
 -- | Call the bif with the argument, and store the result in the register.
--- | On failure jump to label.
--- | Do a garbage collection if necessary to allocate space on the heap
--- | for the result.
+--   On failure jump to label.
+--   Do a garbage collection if necessary to allocate space on the heap
+--   for the result.
 gc_bif1
   :: (Source a4, Register a5)
   => Label  -- ^ jump here on failure
@@ -535,7 +535,7 @@ bs_private_append :: (Source a2, Source a4, Register a6) => Label -> a2 -> Int -
 bs_private_append a1 a2 a3 a4 a5 a6 = Op 135 [FromLabel a1, erase fromSource a2, FromUntagged a3, erase fromSource a4, FromUntagged a5, erase fromRegister a6]
 
 -- | Reduce the stack usage by some number of words,
--- | keeping the CP on the top of the stack.
+--   keeping the CP on the top of the stack.
 trim
   :: Int -- ^ words to remove
   -> Int -- ^ words ro keep
@@ -582,14 +582,14 @@ on_load :: Op
 on_load  = Op 149 []
 
 -- | Save the end of the message queue and the address of
--- | the label so that a recv_set instruction can start
+--   the label so that a recv_set instruction can start
 -- | scanning the inbox from this position.
 recv_mark :: Label -> Op
 recv_mark a1 = Op 150 [FromLabel a1]
 
 -- | Check that the saved mark points to label and set the
--- | save pointer in the message queue to the last position
--- | of the message queue saved by the recv_mark instruction.
+--   save pointer in the message queue to the last position
+--   of the message queue saved by the recv_mark instruction.
 recv_set :: Label -> Op
 recv_set a1 = Op 151 [FromLabel a1]
 
@@ -616,24 +616,24 @@ get_map_elements :: (Source a2) => Label -> a2 -> [Pair] -> Op
 get_map_elements a1 a2 a3 = Op 158 [FromLabel a1, erase fromSource a2, FromPairs a3]
 
 -- | Test the type of source and jumps to label if it is not a tuple.
--- | Test the arity of Reg and jumps to label if it is not of the given size.
--- | Test the first element of the tuple and jumps to label if it is not given atom.
+--   Test the arity of Reg and jumps to label if it is not of the given size.
+--   Test the first element of the tuple and jumps to label if it is not given atom.
 is_tagged_tuple :: (Source a2) => Label -> a2 -> Int -> ByteString -> Op
 is_tagged_tuple a1 a2 a3 a4 = Op 159 [FromLabel a1, erase fromSource a2, FromUntagged a3, FromByteString a4]
 
 -- | Given the raw stacktrace in x(0), build a cooked stacktrace suitable
--- | for human consumption. Store it in x(0). Destroys all other registers.
--- | Do a garbage collection if necessary to allocate space on the heap
--- | for the result.
+--   for human consumption. Store it in x(0). Destroys all other registers.
+--   Do a garbage collection if necessary to allocate space on the heap
+--   for the result.
 build_stacktrace :: Op
 build_stacktrace = Op 160 []
 
 -- | This instruction works like the @erlang:raise/3 BIF@, except that the
--- | stacktrace in x(2) must be a raw stacktrace.
--- | x(0) is the class of the exception (error, exit, or throw),
--- | x(1) is the exception term, and x(2) is the raw stackframe.
--- | If x(0) is not a valid class, the instruction will not throw an
--- | exception, but store the atom @badarg@ in x(0) and execute the
--- | next instruction.
+--   stacktrace in x(2) must be a raw stacktrace.
+--   x(0) is the class of the exception (error, exit, or throw),
+--   x(1) is the exception term, and x(2) is the raw stackframe.
+--   If x(0) is not a valid class, the instruction will not throw an
+--   exception, but store the atom @badarg@ in x(0) and execute the
+--   next instruction.
 raw_raise :: Op
 raw_raise = Op 161 []

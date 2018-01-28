@@ -14,21 +14,21 @@ newtype X = X Int
 
 
 -- | A stack register for saving values across function calls.
--- | Anything you put in a 'X' register can be overwritten inside a function call
--- | (or inside a function call inside a function call).
--- | @Y@ registers let you avoid that—they must be allocated and de-allocated though.
+--   Anything you put in a 'X' register can be overwritten inside a function call
+--   (or inside a function call inside a function call).
+--   @Y@ registers let you avoid that—they must be allocated and de-allocated though.
 newtype Y = Y Int
   deriving (Eq, Ord, Show)
 
 
 -- | Floating point \"register\" for optimized floating point arithmetic.
--- | These are not treated as traditional stack registers.
+--   These are not treated as traditional stack registers.
 newtype F = F Int
   deriving (Eq, Ord, Show)
 
 
 -- | Reference a function from another module
--- | For example, @Import "erlang" "+" 2@ refers to the stdlib function: @erlang:'+'/2@ .
+--   For example, @Import "erlang" "+" 2@ refers to the stdlib function: @erlang:'+'/2@ .
 data Import = Import
   { _import_module :: ByteString
   , _import_function :: ByteString
