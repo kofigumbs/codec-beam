@@ -156,8 +156,11 @@ encodeArgument env argument =
       let (value, newTable) = Table.index literal (_literalTable env) in
       appendTag (encodeTag 7 4 ++ encodeTag 0 value) $ env { _literalTable = newTable }
 
-    FromDestinations _destinations ->
-      undefined
+    FromDestinations destinations ->
+      let elements = reverse (concatMap _destination_args destinations) in
+      foldl encodeArgument
+        (appendTag (encodeTag 7 1 ++ encodeTag 0 (length elements)) env)
+        elements
 
     FromPairs _pairs ->
       undefined

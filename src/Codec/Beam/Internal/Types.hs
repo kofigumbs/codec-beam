@@ -86,9 +86,9 @@ data ProcessId
 
 -- | Create jump destinations for variadic functions, like 'Codec.Beam.Instructions.select_val'
 --   Use 'destination' to make values of this type.
-data Destination = Destination Label (Argument ())
+data Destination = Destination { _destination_args :: [Argument ()] }
 destination :: (Source s) => Label -> s -> Destination
-destination label source = Destination label (erase fromSource source)
+destination label source = Destination [FromLabel label, erase fromSource source]
 
 
 -- | Create map pairs for variadic functions, like 'Codec.Beam.Instructions.put_map_assoc'
