@@ -14,21 +14,21 @@ newtype X = X Int
 
 
 -- | A stack register for saving values across function calls.
--- | Anything you put in a 'X' register can be overwritten inside a function call
--- | (or inside a function call inside a function call).
--- | @Y@ registers let you avoid that—they must be allocated and de-allocated though.
+--   Anything you put in a 'X' register can be overwritten inside a function call
+--   (or inside a function call inside a function call).
+--   @Y@ registers let you avoid that—they must be allocated and de-allocated though.
 newtype Y = Y Int
   deriving (Eq, Ord, Show)
 
 
 -- | Floating point \"register\" for optimized floating point arithmetic.
--- | These are not treated as traditional stack registers.
+--   These are not treated as traditional stack registers.
 newtype F = F Int
   deriving (Eq, Ord, Show)
 
 
 -- | Reference a function from another module
--- | For example, @Import "erlang" "+" 2@ refers to the stdlib function: @erlang:'+'/2@ .
+--   For example, @Import "erlang" "+" 2@ refers to the stdlib function: @erlang:'+'/2@ .
 data Import = Import
   { _import_module :: ByteString
   , _import_function :: ByteString
@@ -37,7 +37,7 @@ data Import = Import
   deriving (Eq, Ord, Show)
 
 
--- | Turn a named function into a @fun@, for use with 'make_fun2'.
+-- | Turn a named function into a @fun@, for use with 'Codec.Beam.Instructions.make_fun2'.
 data Lambda = Lambda
   { _lambda_name :: ByteString
   , _lambda_arity :: Int
@@ -84,19 +84,19 @@ data ProcessId
 -}
 
 
--- | Create jump destinations for variadic functions, like 'select_val'
+-- | Create jump destinations for variadic functions, like 'Codec.Beam.Instructions.select_val'
 destination :: (Source s) => Label -> s -> Destination
 destination label source =
   Destination label (erase fromSource source)
 
 
--- | Create map pairs for variadic functions, like 'put_map_assoc'
+-- | Create map pairs for variadic functions, like 'Codec.Beam.Instructions.put_map_assoc'
 pair :: (Source key, Source value) => key -> value -> Pair
 pair key value =
   Pair (erase fromSource key) (erase fromSource value)
 
 
--- | Create map fields for variadic functions, like 'has_map_fields'
+-- | Create map fields for variadic functions, like 'Codec.Beam.Instructions.has_map_fields'
 field :: (Source s) => s -> Field
 field source =
   Field (erase fromSource source)
