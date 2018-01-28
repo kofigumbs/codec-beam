@@ -345,7 +345,7 @@ put_list a1 a2 a3 = Op 69 [erase fromSource a1, erase fromSource a2, erase fromR
 -- | and places its address into the Destination register.
 -- | No elements are set at this moment.
 -- | Put_tuple instruction is always followed by multiple
--- | "put" instructions which destructively set its elements one by one.
+-- | 'put' instructions which destructively set its elements one by one.
 put_tuple :: (Register a2) => Int -> a2 -> Op
 put_tuple a1 a2 = Op 70 [FromUntagged a1, erase fromRegister a2]
 
@@ -448,7 +448,7 @@ apply
   -> Op
 apply a1 = Op 112 [FromUntagged a1]
 
--- | Same as "apply" but does not save the CP and deallocates words
+-- | Same as 'apply' but does not save the CP and deallocates words
 apply_last
   :: Int -- ^ arity
   -> Int -- ^ words to deallocate
@@ -508,7 +508,7 @@ gc_bif1
   -> Op
 gc_bif1 a1 a2 a3 a4 a5 = Op 124 [FromLabel a1, FromUntagged a2, FromImport a3, erase fromSource a4, erase fromRegister a5]
 
--- | Same as "gc_bif1", but with two source arguments.
+-- | Same as 'gc_bif1', but with two source arguments.
 gc_bif2 :: (Source a4, Source a5, Register a6) => Label -> Int -> Import -> a4 -> a5 -> a6 -> Op
 gc_bif2 a1 a2 a3 a4 a5 a6 = Op 125 [FromLabel a1, FromUntagged a2, FromImport a3, erase fromSource a4, erase fromSource a5, erase fromRegister a6]
 
@@ -592,7 +592,7 @@ recv_mark a1 = Op 150 [FromLabel a1]
 recv_set :: Label -> Op
 recv_set a1 = Op 151 [FromLabel a1]
 
--- | Same as "gc_bif1", but with three source arguments.
+-- | Same as 'gc_bif1', but with three source arguments.
 gc_bif3 :: (Source a4, Source a5, Source a6, Register a7) => Label -> Int -> Import -> a4 -> a5 -> a6 -> a7 -> Op
 gc_bif3 a1 a2 a3 a4 a5 a6 a7 = Op 152 [FromLabel a1, FromUntagged a2, FromImport a3, erase fromSource a4, erase fromSource a5, erase fromSource a6, erase fromRegister a7]
 

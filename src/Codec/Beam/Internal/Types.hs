@@ -21,7 +21,7 @@ newtype Y = Y Int
   deriving (Eq, Ord, Show)
 
 
--- | Floating point "register" for optimized floating point arithmetic.
+-- | Floating point \"register\" for optimized floating point arithmetic.
 -- | These are not treated as traditional stack registers.
 newtype F = F Int
   deriving (Eq, Ord, Show)
@@ -37,7 +37,7 @@ data Import = Import
   deriving (Eq, Ord, Show)
 
 
--- | Turn a named function into a @fun@, for use with "make_fun2".
+-- | Turn a named function into a @fun@, for use with 'make_fun2'.
 data Lambda = Lambda
   { _lambda_name :: ByteString
   , _lambda_arity :: Int
@@ -84,19 +84,19 @@ data ProcessId
 -}
 
 
--- | Create jump destinations for variadic functions, like "select_val"
+-- | Create jump destinations for variadic functions, like 'select_val'
 destination :: (Source s) => Label -> s -> Destination
 destination label source =
   Destination label (erase fromSource source)
 
 
--- | Create map pairs for variadic functions, like "put_map_assoc"
+-- | Create map pairs for variadic functions, like 'put_map_assoc'
 pair :: (Source key, Source value) => key -> value -> Pair
 pair key value =
   Pair (erase fromSource key) (erase fromSource value)
 
 
--- | Create map fields for variadic functions, like "has_map_fields"
+-- | Create map fields for variadic functions, like 'has_map_fields'
 field :: (Source s) => s -> Field
 field source =
   Field (erase fromSource source)
