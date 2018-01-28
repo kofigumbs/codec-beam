@@ -1,9 +1,10 @@
 {-# LANGUAGE Rank2Types #-}
 
--- | This module represents a type-safe port of Erlang's general instructions
---   (<https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab>).
+-- | This module represents a type-safe port of Erlang's general instructions.
 --   In the end state, there should only be few variations,
 --   existing only to promote ease of use and correctness!
+--
+--   — <https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab>
 
 module Codec.Beam.Instructions
   ( label, func_info, on_load, line
