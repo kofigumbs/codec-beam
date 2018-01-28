@@ -11,13 +11,13 @@ module Codec.Beam.Instructions
   , call, call_last, call_only, call_ext, call_ext_last, bif0, bif1, bif2, call_ext_only, apply, apply_last, gc_bif1, gc_bif2, gc_bif3
   -- * Allocating, deallocating and returning
   , allocate, allocate_heap, allocate_zero, allocate_heap_zero, test_heap, init_, deallocate, return_, trim
-  -- * Sending & receiving
+  -- * Sending and receiving
   , send, remove_message, timeout, loop_rec, loop_rec_end, wait, wait_timeout, recv_mark, recv_set
   -- * Comparision
   , is_lt, is_ge, is_eq, is_ne, is_eq_exact, is_ne_exact
   -- * Type tests
   , is_integer, is_float, is_number, is_atom, is_pid, is_reference, is_port, is_nil, is_binary, is_list, is_nonempty_list, is_tuple, test_arity, is_boolean, is_function, is_function2, is_bitstr, is_map, is_tagged_tuple
-  -- * Indexing & jumping
+  -- * Indexing and jumping
   , select_val, select_tuple_arity, jump
   -- * Moving, extracting, modifying
   , move, get_list, get_tuple_element, set_tuple_element
@@ -33,7 +33,7 @@ module Codec.Beam.Instructions
   , bs_init2, bs_put_integer, bs_put_binary, bs_put_float, bs_put_string, bs_add, bs_init_writable, bs_init_bits, bs_get_utf8, bs_skip_utf8, bs_get_utf16, bs_skip_utf16, bs_get_utf32, bs_skip_utf32, bs_utf8_size, bs_put_utf8, bs_utf16_size, bs_put_utf16, bs_put_utf32
   -- * Floating point arithmetic
   , fclearerror, fcheckerror, fmove, fconv, fadd, fsub, fmul, fdiv, fnegate
-  -- * Try/catch/raise
+  -- * Try, catch, raise
   , try, try_end, try_case, try_case_end, raise, build_stacktrace, raw_raise, catch, catch_end
   -- * Maps
   , put_map_assoc, put_map_exact, has_map_fields, get_map_elements
