@@ -403,20 +403,20 @@ fmove a1 a2 = Op 96 [erase fromSourceF a1, erase fromRegisterF a2]
 fconv :: (Source a1) => a1 -> F -> Op
 fconv a1 a2 = Op 97 [erase fromSource a1, FromF a2]
 
-fadd :: Label -> F -> F -> F -> Op
-fadd a1 a2 a3 a4 = Op 98 [FromLabel a1, FromF a2, FromF a3, FromF a4]
+fadd :: F -> F -> F -> Op
+fadd a1 a2 a3 = Op 98 [FromLabel (Label 0), FromF a1, FromF a2, FromF a3]
 
-fsub :: Label -> F -> F -> F -> Op
-fsub a1 a2 a3 a4 = Op 99 [FromLabel a1, FromF a2, FromF a3, FromF a4]
+fsub :: F -> F -> F -> Op
+fsub a1 a2 a3 = Op 99 [FromLabel (Label 0), FromF a1, FromF a2, FromF a3]
 
-fmul :: Label -> F -> F -> F -> Op
-fmul a1 a2 a3 a4 = Op 100 [FromLabel a1, FromF a2, FromF a3, FromF a4]
+fmul :: F -> F -> F -> Op
+fmul a1 a2 a3 = Op 100 [FromLabel (Label 0), FromF a1, FromF a2, FromF a3]
 
-fdiv :: Label -> F -> F -> F -> Op
-fdiv a1 a2 a3 a4 = Op 101 [FromLabel a1, FromF a2, FromF a3, FromF a4]
+fdiv :: F -> F -> F -> Op
+fdiv a1 a2 a3 = Op 101 [FromLabel (Label 0), FromF a1, FromF a2, FromF a3]
 
-fnegate :: Label -> F -> F -> Op
-fnegate a1 a2 a3 = Op 102 [FromLabel a1, FromF a2, FromF a3]
+fnegate :: F -> F -> Op
+fnegate a1 a2 = Op 102 [FromLabel (Label 0), FromF a1, FromF a2]
 
 make_fun2 :: Lambda -> Op
 make_fun2 a1 = Op 103 [FromLambda a1]

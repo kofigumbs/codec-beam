@@ -85,21 +85,24 @@ data ProcessId
 
 
 -- | Create jump destinations for variadic functions, like 'Codec.Beam.Instructions.select_val'
+--   Use 'destination' to make values of this type.
+data Destination = Destination { _destination_args :: [Argument ()] }
 destination :: (Source s) => Label -> s -> Destination
-destination label source =
-  Destination label (erase fromSource source)
+destination label source = Destination [FromLabel label, erase fromSource source]
 
 
 -- | Create map pairs for variadic functions, like 'Codec.Beam.Instructions.put_map_assoc'
+--   Use 'pair' to make values of this type.
+data Pair = Pair { _pair_args :: [Argument ()] }
 pair :: (Source key, Source value) => key -> value -> Pair
-pair key value =
-  Pair (erase fromSource key) (erase fromSource value)
+pair key value = Pair [erase fromSource key, erase fromSource value]
 
 
 -- | Create map fields for variadic functions, like 'Codec.Beam.Instructions.has_map_fields'
+--   Use 'field' to make values of this type.
+newtype Field = Field { _field_arg :: Argument () }
 field :: (Source s) => s -> Field
-field source =
-  Field (erase fromSource source)
+field source = Field (erase fromSource source)
 
 
 class    Register a where fromRegister :: a -> Argument Register_
@@ -180,10 +183,3 @@ data Register_  = Register_
 data RegisterF_ = RegisterF_
 data Source_    = Source_
 data SourceF_   = SourceF_
-
-
--- Types for variadic arguments
-
-data Destination = Destination Label (Argument ())
-data Pair = Pair (Argument ()) (Argument ())
-newtype Field = Field (Argument ())

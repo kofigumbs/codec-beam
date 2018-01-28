@@ -302,6 +302,45 @@ main =
         , call_ext_only (Beam.Import "erlang" "+" 2)
         , return_
         ]
+
+    , Eunit.test "float_math"
+        [ Beam.Export "sum" 2 ]
+        [ "?assertEqual(5.0, float_math:sum(2, 3.0))"
+        ]
+        [ label (Beam.Label 1)
+        , func_info "sum" 2
+        , label (Beam.Label 2)
+        , fconv (Beam.X 0) (Beam.F 0)
+        , fmove (Beam.X 1) (Beam.F 1)
+        , fclearerror
+        , fadd (Beam.F 0) (Beam.F 1) (Beam.F 0)
+        , fmove (Beam.F 0) (Beam.X 0)
+        , return_
+        ]
+
+    , Eunit.test "destinations"
+        [ Beam.Export "test" 1 ]
+        [ "?assertEqual(four, destinations:test(4)),"
+        , "?assertEqual(five, destinations:test(5)),"
+        , "?assertEqual(neither, destinations:test(6))"
+        ]
+        [ label (Beam.Label 1)
+        , func_info "test" 1
+        , label (Beam.Label 2)
+        , select_val (Beam.X 0) (Beam.Label 3)
+            [ Beam.destination (Beam.Label 4) (4 :: Int)
+            , Beam.destination (Beam.Label 5) (5 :: Int)
+            ]
+        , label (Beam.Label 3)
+        , move ("neither" :: ByteString) (Beam.X 0)
+        , return_
+        , label (Beam.Label 4)
+        , move ("four" :: ByteString) (Beam.X 0)
+        , return_
+        , label (Beam.Label 5)
+        , move ("five" :: ByteString) (Beam.X 0)
+        , return_
+        ]
     ]
 
 
