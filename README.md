@@ -11,16 +11,18 @@ This example writes a simple module to a file:
 import qualified Data.ByteString.Lazy as BS
 import qualified Codec.Beam as Beam
 
-import Codec.Beam.Genop -- all the instructions!
+import Codec.Beam.Instructions
 
 main : IO ()
 main =
   BS.writeFile "test_module.beam" $
     Beam.encode "test_module"
+      [ Beam.Export "tuple_of_one" 0
+      ]
       [ label 1
-      , func_info Beam.Public "tuple_of_one" 0
+      , func_info "tuple_of_one" 0
       , label 2
-      , move (Beam.Ext (Beam.ETuple [Beam.EInt 1])) (Beam.X 0)
+      , move (Beam.Tuple [Beam.Integer 1]) (Beam.X 0)
       , return_
       ]
 ```

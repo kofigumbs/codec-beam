@@ -36,42 +36,48 @@ main =
     , withConstant_ "constant_nil" Beam.Nil "[]"
 
     -- Comparisons
-    , Eunit.test "is_equal" [("test", 2)]
+    , Eunit.test "is_equal"
+        [ Beam.Export "test" 2 ]
         [ "?assertNot(is_equal:test(2, 3)),"
         , "?assertNot(is_equal:test(2.0, 3)),"
         , "?assert(is_equal:test(2.0, 2)),"
         , "?assert(is_equal:test(2.0, 2.0))"
         ]
         $ withCmp is_eq
-    , Eunit.test "is_not_equal" [("test", 2)]
+    , Eunit.test "is_not_equal"
+        [ Beam.Export "test" 2 ]
         [ "?assert(is_not_equal:test(2, 3)),"
         , "?assert(is_not_equal:test(2.0, 3)),"
         , "?assertNot(is_not_equal:test(2.0, 2)),"
         , "?assertNot(is_not_equal:test(2.0, 2.0))"
         ]
         $ withCmp is_ne
-    , Eunit.test "is_exactly_equal" [("test", 2)]
+    , Eunit.test "is_exactly_equal"
+        [ Beam.Export "test" 2 ]
         [ "?assertNot(is_exactly_equal:test(2, 3)),"
         , "?assertNot(is_exactly_equal:test(2.0, 3)),"
         , "?assertNot(is_exactly_equal:test(2.0, 2)),"
         , "?assert(is_exactly_equal:test(2.0, 2.0))"
         ]
         $ withCmp is_eq_exact
-    , Eunit.test "is_not_exactly_equal" [("test", 2)]
+    , Eunit.test "is_not_exactly_equal"
+        [ Beam.Export "test" 2 ]
         [ "?assert(is_not_exactly_equal:test(2, 3)),"
         , "?assert(is_not_exactly_equal:test(2.0, 3)),"
         , "?assert(is_not_exactly_equal:test(2.0, 2)),"
         , "?assertNot(is_not_exactly_equal:test(2.0, 2.0))"
         ]
         $ withCmp is_ne_exact
-    , Eunit.test "is_less_than" [("test", 2)]
+    , Eunit.test "is_less_than"
+        [ Beam.Export "test" 2 ]
         [ "?assert(is_less_than:test(5, 6)),"
         , "?assertNot(is_less_than:test(6, 5)),"
         , "?assertNot(is_less_than:test(5.0, 5)),"
         , "?assertNot(is_less_than:test(6.0, 5.0))"
         ]
         $ withCmp is_lt
-    , Eunit.test "is_greater_than_or_equal" [("test", 2)]
+    , Eunit.test "is_greater_than_or_equal"
+        [ Beam.Export "test" 2 ]
         [ "?assertNot(is_greater_than_or_equal:test(5, 6)),"
         , "?assert(is_greater_than_or_equal:test(6, 5)),"
         , "?assert(is_greater_than_or_equal:test(5.0, 5)),"
@@ -90,7 +96,8 @@ main =
     , withConstant_ "empty_map" (Beam.Map []) "#{}"
     , withConstant_ "small_map" (Beam.Map [(Beam.Atom "a", Beam.Integer 1), (Beam.Atom "b", Beam.Integer 2)]) "#{a=>1,b=>2}"
 
-    , Eunit.test "large_tuple" [("test", 0)]
+    , Eunit.test "large_tuple"
+        [ Beam.Export "test" 0 ]
         [ "?assertEqual(300, tuple_size(large_tuple:test())),"
         , "?assertEqual(300, element(300, large_tuple:test()))"
         ]
@@ -101,7 +108,8 @@ main =
         , return_
         ]
 
-    , Eunit.test "multiple_literals" [("test", 0)]
+    , Eunit.test "multiple_literals"
+        [ Beam.Export "test" 0 ]
         [ "?assert(multiple_literals:test())"
         ]
         [ label (Beam.Label 1)
@@ -112,7 +120,8 @@ main =
         , return_
         ]
 
-    , Eunit.test "call_into_identity" [("test", 0)]
+    , Eunit.test "call_into_identity"
+        [ Beam.Export "test" 0 ]
         [ "?assertEqual(1023, call_into_identity:test())"
         ]
         [ label (Beam.Label 1)
@@ -128,25 +137,29 @@ main =
         ]
 
     -- Type checks
-    , Eunit.test "is_nil" [("test", 1)]
+    , Eunit.test "is_nil"
+        [ Beam.Export "test" 1 ]
         [ "?assert(is_nil:test([])),"
         , "?assertNot(is_nil:test(23)),"
         , "?assertNot(is_nil:test([23]))"
         ]
         $ withType is_nil
-    , Eunit.test "is_list" [("test", 1)]
+    , Eunit.test "is_list"
+        [ Beam.Export "test" 1 ]
         [ "?assert(is_list:test([])),"
         , "?assertNot(is_list:test(23)),"
         , "?assert(is_list:test([23]))"
         ]
         $ withType is_list
-    , Eunit.test "is_nonempty_list" [("test", 1)]
+    , Eunit.test "is_nonempty_list"
+        [ Beam.Export "test" 1 ]
         [ "?assertNot(is_nonempty_list:test([])),"
         , "?assertNot(is_nonempty_list:test(23)),"
         , "?assert(is_nonempty_list:test([23]))"
         ]
         $ withType is_nonempty_list
-    , Eunit.test "is_map" [("test", 1)]
+    , Eunit.test "is_map"
+        [ Beam.Export "test" 1 ]
         [ "?assert(is_map:test(#{})),"
         , "?assertNot(is_map:test(23)),"
         , "?assert(is_map:test(#{a=>23}))"
@@ -154,7 +167,8 @@ main =
         $ withType is_map
 
     -- Based on https://happi.github.io/theBeamBook/#x_and_y_regs_in_memory
-    , Eunit.test "allocate_for_call_fun" [("apply2", 3)]
+    , Eunit.test "allocate_for_call_fun"
+        [ Beam.Export "apply2" 3 ]
         [ "_add = fun 'erlang':'+'/2,"
         , "?assertEqual(4, allocate_for_call_fun:apply2(2, 2, _add))"
         ]
@@ -181,7 +195,10 @@ main =
         , return_
         ]
 
-    , Eunit.test "get_tuple_element" [("first", 1), ("second", 1)]
+    , Eunit.test "get_tuple_element"
+        [ Beam.Export "first" 1
+        , Beam.Export "second" 1
+        ]
         [ "?assertEqual(2, get_tuple_element:first({2})),"
         , "?assertEqual(hi, get_tuple_element:second({oh, hi, there}))"
         ]
@@ -197,7 +214,8 @@ main =
         , return_
         ]
 
-    , Eunit.test "set_tuple_element" [("make", 1)]
+    , Eunit.test "set_tuple_element"
+        [ Beam.Export "make" 1 ]
         [ "?assertEqual({dream, work}, set_tuple_element:make({team, work}))"
         ]
         [ label (Beam.Label 1)
@@ -207,7 +225,8 @@ main =
         , return_
         ]
 
-    , Eunit.test "put_list" [("test", 0)]
+    , Eunit.test "put_list"
+        [ Beam.Export "test" 0 ]
         [ "?assertEqual([one, 2], put_list:test())"
         ]
         [ label (Beam.Label 1)
@@ -218,7 +237,8 @@ main =
         , return_
         ]
 
-    , Eunit.test "make_a_tuple" [("test", 0)]
+    , Eunit.test "make_a_tuple"
+        [ Beam.Export "test" 0 ]
         [ "?assertEqual({one, 2}, make_a_tuple:test())"
         ]
         [ label (Beam.Label 1)
@@ -230,7 +250,8 @@ main =
         , return_
         ]
 
-    , Eunit.test "get_da_list" [("second", 1)]
+    , Eunit.test "get_da_list"
+        [ Beam.Export "second" 1 ]
         [ "?assertEqual(2, get_da_list:second([1,2,3]))"
         ]
         [ label (Beam.Label 1)
@@ -241,7 +262,8 @@ main =
         , return_
         ]
 
-    , Eunit.test "jumping_around" [("test", 0)]
+    , Eunit.test "jumping_around"
+        [ Beam.Export "test" 0 ]
         [ "?assertEqual(yay, jumping_around:test())"
         ]
         [ label (Beam.Label 1)
@@ -255,7 +277,8 @@ main =
         , jump (Beam.Label 3)
         ]
 
-    , Eunit.test "simple_lambda" [("test", 1)]
+    , Eunit.test "simple_lambda"
+        [ Beam.Export "test" 1 ]
         [ "?assertEqual(to_capture, (simple_lambda:test(to_capture))())"
         ]
         [ label (Beam.Label 1)
@@ -269,7 +292,8 @@ main =
         , return_
         ]
 
-    , Eunit.test "external_call" [("test", 2)]
+    , Eunit.test "external_call"
+        [ Beam.Export "test" 2 ]
         [ "?assertEqual(3, external_call:test(1, 2))"
         ]
         [ label (Beam.Label 1)
@@ -294,7 +318,8 @@ withConstant_ name term =
 
 withConstant :: (ErlangLiteral a, Beam.Source s) => String -> (a -> s) -> a -> Eunit.Test
 withConstant name toSource value =
-  Eunit.test name [("check", 0)]
+  Eunit.test name
+    [ Beam.Export "check" 0 ]
     [ "?assertEqual(" <> erlang value <> ", " <> name <> ":check())"
     ]
     [ label (Beam.Label 1)

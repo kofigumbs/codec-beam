@@ -30,7 +30,7 @@ type Test =
   IO String
 
 
-test :: String -> [(BS.ByteString, Int)] -> [String] -> [Beam.Op] -> Test
+test :: String -> [Beam.Export] -> [String] -> [Beam.Op] -> Test
 test name exports body =
   test_ name body . Beam.encode (fromString name) exports
 

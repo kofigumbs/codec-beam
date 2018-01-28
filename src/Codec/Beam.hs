@@ -1,6 +1,6 @@
 module Codec.Beam
   ( -- * Generate BEAM code
-    encode
+    encode, Export(..)
     -- * Syntax
   , Op, X(..), Y(..), F(..), Nil(..), Label(..), Import(..), Literal(..), Lambda(..)
   , Destination, destination, Pair, pair, Field, field
@@ -26,13 +26,17 @@ import qualified Codec.Beam.Internal.Table as Table
 
 -- | Create code for a BEAM module!
 encode
-  :: BS.ByteString          -- ^ module name
-  -> [(BS.ByteString, Int)] -- ^ functions @(name, arity)@ that should be public
-  -> [Op]                   -- ^ instructions
-  -> BS.ByteString          -- ^ return encoded BEAM
-encode name toExport =
-  toLazyByteString . foldl encodeOp (initialEnv name toExport)
+  :: BS.ByteString -- ^ module name
+  -> [Export]      -- ^ functions that should be public
+  -> [Op]          -- ^ instructions
+  -> BS.ByteString -- ^ return encoded BEAM
+encode name exports =
+  toLazyByteString . foldl encodeOp (initialEnv name (Set.fromList exports))
 
+
+-- | Name and arity of functions to export
+data Export = Export BS.ByteString Int
+  deriving (Eq, Ord, Show)
 
 
 -- ASSEMBLER
@@ -42,7 +46,7 @@ encode name toExport =
 data Env =
   Env
     { _moduleName :: BS.ByteString
-    , _labels :: Set.Set Int
+    , _labelCount :: Word32
     , _functionCount :: Word32
     , _atomTable :: Table BS.ByteString
     , _literalTable :: Table Literal
@@ -50,16 +54,16 @@ data Env =
     , _importTable :: Table Import
     , _exportTable :: Table (BS.ByteString, Int, Int)
     , _exportNextLabel :: Maybe (BS.ByteString, Int)
-    , _toExport :: Set.Set (BS.ByteString, Int)
+    , _exporting :: BS.ByteString -> Int -> Bool
     , _code :: Builder.Builder
     }
 
 
-initialEnv :: BS.ByteString -> [(BS.ByteString, Int)] -> Env
-initialEnv name toExport =
+initialEnv :: BS.ByteString -> Set.Set Export -> Env
+initialEnv name exports =
   Env
     { _moduleName = name
-    , _labels = mempty
+    , _labelCount = 0
     , _functionCount = 0
     , _atomTable = Table.singleton name 1
     , _literalTable = Table.empty
@@ -67,9 +71,11 @@ initialEnv name toExport =
     , _importTable = Table.empty
     , _exportTable = Table.empty
     , _exportNextLabel = Nothing
-    , _toExport = Set.fromList toExport
+    , _exporting = \name arity -> Set.member (Export name arity) exports
     , _code = mempty
     }
+  where
+    toTuple (Export name arity) = (name, arity)
 
 
 encodeOp :: Env -> Op -> Env
@@ -85,7 +91,7 @@ encodeArgument env argument =
 
     FromNewLabel (Label value) ->
       appendTag (encodeTag 0 value) $ env
-        { _labels = Set.insert value (_labels env)
+        { _labelCount = 1 + _labelCount env
         , _exportNextLabel = Nothing
         , _exportTable =
             maybe id
@@ -113,15 +119,14 @@ encodeArgument env argument =
     FromNil Nil ->
       appendTag (encodeTag 2 0) env
 
-    FromFunctionModule name arity ->
+    FromFunctionModule name arity | _exporting env name arity ->
       appendTag (encodeTag 2 1) $ env
         { _functionCount = 1 + _functionCount env
-        , _exportNextLabel =
-            if Set.member (name, arity) (_toExport env) then
-              Just (name, arity)
-            else
-              Nothing
+        , _exportNextLabel = Just (name, arity)
         }
+
+    FromFunctionModule name arity ->
+      appendTag (encodeTag 2 1) $ env { _functionCount = 1 + _functionCount env }
 
     FromByteString name ->
       let (value, newTable) = Table.index name (_atomTable env) in
@@ -191,7 +196,7 @@ toLazyByteString
       <> "FunT" <> alignSection (lambdas lambdaTable atomTable)
       <> "ImpT" <> alignSection (imports importTable atomTable)
       <> "ExpT" <> alignSection (exports exportTable atomTable)
-      <> "Code" <> alignSection (code bytes (Set.size labels + 1) functions)
+      <> "Code" <> alignSection (code bytes (labels + 1) functions)
 
 
 atoms :: Table BS.ByteString -> BS.ByteString
@@ -199,13 +204,13 @@ atoms table =
   pack32 (Table.size table) <> Table.encode (withSize pack8) table
 
 
-code :: Builder.Builder -> Int -> Word32 -> BS.ByteString
+code :: Builder.Builder -> Word32 -> Word32 -> BS.ByteString
 code builder labelCount functionCount =
   mconcat
     [ pack32 16  -- header length
     , pack32 0   -- instruction set id
     , pack32 158 -- max op code, TODO: extract this
-    , pack32 (fromIntegral labelCount)
+    , pack32 labelCount
     , pack32 functionCount
     , Builder.toLazyByteString builder
     , pack8 3    -- int_code_end
