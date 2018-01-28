@@ -60,6 +60,7 @@ data Env =
 
 
 initialEnv :: BS.ByteString -> Set.Set Export -> Env
+{-# NOINLINE initialEnv #-}
 initialEnv name exports =
   Env
     { _moduleName = name
