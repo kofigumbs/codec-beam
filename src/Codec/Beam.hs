@@ -55,6 +55,7 @@ data Env =
     , _exportTable :: Table (BS.ByteString, Int, Int)
     , _exportNextLabel :: Maybe (BS.ByteString, Int)
     , _exporting :: BS.ByteString -> Int -> Bool
+    , _maxOpCode :: Word8
     , _code :: Builder.Builder
     }
 
@@ -73,6 +74,7 @@ initialEnv name exports =
     , _exportTable = Table.empty
     , _exportNextLabel = Nothing
     , _exporting = \name arity -> Set.member (Export name arity) exports
+    , _maxOpCode = 1
     , _code = mempty
     }
   where
@@ -81,7 +83,11 @@ initialEnv name exports =
 
 encodeOp :: Env -> Op -> Env
 encodeOp env (Op opCode args) =
-  foldl encodeArgument (appendCode env (Builder.word8 opCode)) args
+  foldl encodeArgument
+    (appendCode
+      (env { _maxOpCode = max opCode (_maxOpCode env)})
+      (Builder.word8 opCode))
+    args
 
 
 encodeArgument :: Env -> Argument a -> Env
@@ -183,6 +189,7 @@ toLazyByteString
       exportTable
       _
       _
+      maxOpCode
       bytes
   ) =
   "FOR1" <> pack32 (BS.length sections + 4) <> "BEAM" <> sections
@@ -197,7 +204,7 @@ toLazyByteString
       <> "FunT" <> alignSection (lambdas lambdaTable atomTable)
       <> "ImpT" <> alignSection (imports importTable atomTable)
       <> "ExpT" <> alignSection (exports exportTable atomTable)
-      <> "Code" <> alignSection (code bytes (labels + 1) functions)
+      <> "Code" <> alignSection (code bytes (labels + 1) functions maxOpCode)
 
 
 atoms :: Table BS.ByteString -> BS.ByteString
@@ -205,12 +212,12 @@ atoms table =
   pack32 (Table.size table) <> Table.encode (withSize pack8) table
 
 
-code :: Builder.Builder -> Word32 -> Word32 -> BS.ByteString
-code builder labelCount functionCount =
+code :: Builder.Builder -> Word32 -> Word32 -> Word8 -> BS.ByteString
+code builder labelCount functionCount maxOpCode =
   mconcat
     [ pack32 16  -- header length
     , pack32 0   -- instruction set id
-    , pack32 158 -- max op code, TODO: extract this
+    , pack32 maxOpCode
     , pack32 labelCount
     , pack32 functionCount
     , Builder.toLazyByteString builder
