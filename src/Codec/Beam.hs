@@ -146,20 +146,20 @@ encodeArgument env argument =
     FromY (Y value) ->
       appendTag (encodeTag 4 value) env
 
-    FromF (F _value) ->
-      undefined
-
     FromLabel (Label value) ->
       appendTag (encodeTag 5 value) env
 
+    FromF (F value) ->
+      appendTag (encodeExt 2 value) env
+
     FromLiteral literal ->
       let (value, newTable) = Table.index literal (_literalTable env) in
-      appendTag (encodeTag 7 4 ++ encodeTag 0 value) $ env { _literalTable = newTable }
+      appendTag (encodeExt 4 value) $ env { _literalTable = newTable }
 
     FromDestinations destinations ->
       let elements = reverse (concatMap _destination_args destinations) in
       foldl encodeArgument
-        (appendTag (encodeTag 7 1 ++ encodeTag 0 (length elements)) env)
+        (appendTag (encodeExt 1 (length elements)) env)
         elements
 
     FromPairs _pairs ->
@@ -179,7 +179,6 @@ appendCode env bytes =
   env { _code = _code env <> bytes }
 
 
--- | Turn the module encoding state into final BEAM code
 toLazyByteString :: Env -> BS.ByteString
 toLazyByteString
   ( Env
@@ -209,6 +208,10 @@ toLazyByteString
       <> "ImpT" <> alignSection (imports importTable atomTable)
       <> "ExpT" <> alignSection (exports exportTable atomTable)
       <> "Code" <> alignSection (code bytes (labels + 1) functions maxOpCode)
+
+
+
+-- SECTIONS
 
 
 atoms :: Table BS.ByteString -> BS.ByteString
@@ -273,6 +276,11 @@ literals table =
         <> Table.encode (withSize pack32 . BS.cons 131 . encodeLiteral) table
 
 
+
+-- COMPACT TERM ENCODING
+-- http://beam-wisdoms.clau.se/en/latest/indepth-beam-file.html#beam-term-format
+
+
 encodeLiteral :: Literal -> BS.ByteString
 encodeLiteral lit =
   case lit of
@@ -327,6 +335,11 @@ encodeTag tag n
   | n < 0x10 = oneByte tag n
   | n < 0x800 = twoBytes tag n
   | otherwise = manyBytes tag (positive n [])
+
+
+encodeExt :: Int -> Int -> [Word8]
+encodeExt tag n =
+  encodeTag 7 tag ++ encodeTag 0 n
 
 
 oneByte :: Word8 -> Int -> [Word8]

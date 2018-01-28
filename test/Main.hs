@@ -303,6 +303,21 @@ main =
         , return_
         ]
 
+    , Eunit.test "float_math"
+        [ Beam.Export "sum" 2 ]
+        [ "?assertEqual(5.0, float_math:sum(2, 3.0))"
+        ]
+        [ label (Beam.Label 1)
+        , func_info "sum" 2
+        , label (Beam.Label 2)
+        , fconv (Beam.X 0) (Beam.F 0)
+        , fmove (Beam.X 1) (Beam.F 1)
+        , fclearerror
+        , fadd (Beam.F 0) (Beam.F 1) (Beam.F 0)
+        , fmove (Beam.F 0) (Beam.X 0)
+        , return_
+        ]
+
     , Eunit.test "destinations"
         [ Beam.Export "test" 1 ]
         [ "?assertEqual(four, destinations:test(4)),"
