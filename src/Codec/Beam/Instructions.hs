@@ -60,7 +60,8 @@ func_info a1 a2 = Op 2 [FromFunctionModule a1 a2, FromByteString a1, FromUntagge
 -- | Save the next instruction as the return address in the CP register.
 call
   :: Int -- ^ arity
-  -> Label -> Op
+  -> Label
+  -> Op
 call a1 a2 = Op 4 [FromUntagged a1, FromLabel a2]
 
 -- | Deallocate and do a tail recursive call to the function at label.

@@ -5,7 +5,8 @@ module Codec.Beam
   , Op, X(..), Y(..), F(..), Nil(..), Label(..), Import(..), Literal(..), Lambda(..)
   , Destination, destination, Pair, pair, Field, field
     -- * Argument constraints
-  , Register, RegisterF, Source, SourceF
+  , Register(fromRegister),   Source(fromSource)
+  , RegisterF(fromRegisterF), SourceF(fromSourceF)
   ) where
 
 
