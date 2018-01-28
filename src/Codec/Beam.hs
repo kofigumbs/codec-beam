@@ -3,7 +3,7 @@ module Codec.Beam
     encode, Export(..)
     -- * Syntax
   , Op, X(..), Y(..), F(..), Nil(..), Label(..), Import(..), Literal(..), Lambda(..)
-  , Destination, destination, Pair, pair, Field, field
+  , Destination, destination, Pair, {- TODO pair -} Field {- TODO field -}
     -- * Argument constraints
   , Register(fromRegister),   Source(fromSource)
   , RegisterF(fromRegisterF), SourceF(fromSourceF)

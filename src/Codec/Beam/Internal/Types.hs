@@ -93,14 +93,14 @@ destination label source = Destination [FromLabel label, erase fromSource source
 
 -- | Create map pairs for variadic functions, like 'Codec.Beam.Instructions.put_map_assoc'
 --   Use 'pair' to make values of this type.
-data Pair = Pair (Argument ()) (Argument ())
+data Pair = Pair { _pair_args :: [Argument ()] }
 pair :: (Source key, Source value) => key -> value -> Pair
-pair key value = Pair (erase fromSource key) (erase fromSource value)
+pair key value = Pair [erase fromSource key, erase fromSource value]
 
 
 -- | Create map fields for variadic functions, like 'Codec.Beam.Instructions.has_map_fields'
 --   Use 'field' to make values of this type.
-newtype Field = Field (Argument ())
+newtype Field = Field { _field_arg :: Argument () }
 field :: (Source s) => s -> Field
 field source = Field (erase fromSource source)
 
