@@ -156,6 +156,7 @@ data Argument a
 
 
 erase :: (a -> Argument b) -> a -> Argument c
+{-# INLINE erase #-}
 erase f a =
   case f a of
     FromImport x           -> FromImport x
@@ -173,13 +174,13 @@ erase f a =
     FromDestinations x     -> FromDestinations x
     FromPairs x            -> FromPairs x
     FromFields x           -> FromFields x
-    FromFunctionModule f a -> FromFunctionModule f a
+    FromFunctionModule x y -> FromFunctionModule x y
 
 
 -- Phantom "Argument" types
 -- This lets us prevent mixing-and-matching outside the package,
 -- while still allowing users to express their own types in terms of argument constraints.
-data Register_  = Register_
-data RegisterF_ = RegisterF_
-data Source_    = Source_
-data SourceF_   = SourceF_
+newtype Register_  = Register_  Register_
+newtype RegisterF_ = RegisterF_ RegisterF_
+newtype Source_    = Source_    Source_
+newtype SourceF_   = SourceF_   SourceF_
