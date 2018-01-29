@@ -200,10 +200,8 @@ toLazyByteString
   where
     sections =
          "Atom" <> alignSection (atoms atomTable)
-      <> "LocT" <> alignSection (pack32 0)
-      <> "StrT" <> alignSection (pack32 0)
+      <> "StrT" <> alignSection (pack32 0) -- TODO
       <> "LitT" <> alignSection (literals literalTable)
-      <> "ImpT" <> alignSection (pack32 0)
       <> "FunT" <> alignSection (lambdas lambdaTable atomTable)
       <> "ImpT" <> alignSection (imports importTable atomTable)
       <> "ExpT" <> alignSection (exports exportTable atomTable)
