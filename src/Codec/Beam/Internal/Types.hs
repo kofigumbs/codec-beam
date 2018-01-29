@@ -2,6 +2,7 @@ module Codec.Beam.Internal.Types where
 
 import Data.ByteString.Lazy (ByteString)
 import Data.Word (Word8)
+import Unsafe.Coerce (unsafeCoerce)
 
 
 -- | You can find implementations in "Codec.Beam.Instructions"
@@ -155,31 +156,16 @@ data Argument a
   | FromFunctionModule ByteString Int
 
 
-erase :: (a -> Argument b) -> a -> Argument c
+-- Drops the phantom type, so that we can use it inside 'Op's
+erase :: (a -> Argument b) -> a -> Argument ()
 erase f a =
-  case f a of
-    FromImport x           -> FromImport x
-    FromX x                -> FromX x
-    FromY x                -> FromY x
-    FromF x                -> FromF x
-    FromNewLabel x         -> FromNewLabel x
-    FromUntagged x         -> FromUntagged x
-    FromInt x              -> FromInt x
-    FromNil x              -> FromNil x
-    FromByteString x       -> FromByteString x
-    FromLabel x            -> FromLabel x
-    FromLiteral x          -> FromLiteral x
-    FromLambda x           -> FromLambda x
-    FromDestinations x     -> FromDestinations x
-    FromPairs x            -> FromPairs x
-    FromFields x           -> FromFields x
-    FromFunctionModule f a -> FromFunctionModule f a
+  unsafeCoerce (f a)
 
 
--- Phantom "Argument" types
+-- Phantom 'Argument' types
 -- This lets us prevent mixing-and-matching outside the package,
 -- while still allowing users to express their own types in terms of argument constraints.
-data Register_  = Register_
-data RegisterF_ = RegisterF_
-data Source_    = Source_
-data SourceF_   = SourceF_
+newtype Register_  = Register_  Register_
+newtype RegisterF_ = RegisterF_ RegisterF_
+newtype Source_    = Source_    Source_
+newtype SourceF_   = SourceF_   SourceF_

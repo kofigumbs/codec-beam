@@ -109,7 +109,10 @@ encodeArgument env argument =
         }
 
     FromImport import_ ->
-      let (value, newTable) = Table.index import_ (_importTable env) in
+      let
+        (value, newTable) =
+          Table.index import_ (_importTable env)
+      in
       appendTag (encodeTag 0 value) $ env
         { _importTable = newTable
         , _atomTable =
@@ -118,7 +121,10 @@ encodeArgument env argument =
         }
 
     FromLambda lambda ->
-      let (value, newTable) = Table.index lambda (_lambdaTable env) in
+      let
+        (value, newTable) =
+          Table.index lambda (_lambdaTable env)
+      in
       appendTag (encodeTag 0 value) $ env { _lambdaTable = newTable }
 
     FromInt value ->
@@ -127,17 +133,18 @@ encodeArgument env argument =
     FromNil Nil ->
       appendTag (encodeTag 2 0) env
 
-    FromFunctionModule name arity | _exporting env name arity ->
+    FromFunctionModule name arity ->
       appendTag (encodeTag 2 1) $ env
         { _functionCount = 1 + _functionCount env
-        , _exportNextLabel = Just (name, arity)
+        , _exportNextLabel =
+            if _exporting env name arity then Just (name, arity) else Nothing
         }
 
-    FromFunctionModule name arity ->
-      appendTag (encodeTag 2 1) $ env { _functionCount = 1 + _functionCount env }
-
     FromByteString name ->
-      let (value, newTable) = Table.index name (_atomTable env) in
+      let
+        (value, newTable) =
+          Table.index name (_atomTable env)
+      in
       appendTag (encodeTag 2 value) $ env { _atomTable = newTable }
 
     FromX (X value) ->
@@ -153,14 +160,18 @@ encodeArgument env argument =
       appendTag (encodeExt 2 value) env
 
     FromLiteral literal ->
-      let (value, newTable) = Table.index literal (_literalTable env) in
+      let
+        (value, newTable) =
+          Table.index literal (_literalTable env)
+      in
       appendTag (encodeExt 4 value) $ env { _literalTable = newTable }
 
     FromDestinations destinations ->
-      let elements = reverse (concatMap _destination_args destinations) in
-      foldl encodeArgument
-        (appendTag (encodeExt 1 (length elements)) env)
-        elements
+      let
+        list =
+          reverse (concatMap _destination_args destinations)
+      in
+      foldl encodeArgument (appendTag (encodeExt 1 (length list)) env) list
 
     FromPairs _pairs ->
       undefined
@@ -200,10 +211,8 @@ toLazyByteString
   where
     sections =
          "Atom" <> alignSection (atoms atomTable)
-      <> "LocT" <> alignSection (pack32 0)
-      <> "StrT" <> alignSection (pack32 0)
+      <> "StrT" <> alignSection (strings)
       <> "LitT" <> alignSection (literals literalTable)
-      <> "ImpT" <> alignSection (pack32 0)
       <> "FunT" <> alignSection (lambdas lambdaTable atomTable)
       <> "ImpT" <> alignSection (imports importTable atomTable)
       <> "ExpT" <> alignSection (exports exportTable atomTable)
@@ -217,6 +226,24 @@ toLazyByteString
 atoms :: Table BS.ByteString -> BS.ByteString
 atoms table =
   pack32 (Table.size table) <> Table.encode (withSize pack8) table
+
+
+-- Explicit string literals are unsupported by this library, but mandatory in BEAM.
+--
+-- Why not support explicit string literals?
+--  1. Since Erlang strings are really integer lists,
+--     they are easy to add to the literal table!
+--     This can be done in "user-land" without library support:
+--     @string :: [Int] -> Beam.Literal@
+--  2. Since Erlang strings are really integer lists,
+--     they are probably a bad idea for your compiler!
+--     It seems that most compile-through-Erlang languages prefer bitstrings,
+--     which are supported via the 'Binary' literal.
+--
+--  If your use case requires this table, please reach out!
+strings :: BS.ByteString
+strings =
+  pack32 0
 
 
 code :: Builder.Builder -> Word32 -> Word32 -> Word8 -> BS.ByteString
@@ -244,7 +271,7 @@ lambdas lambdaTable atomTable =
         , pack32 label
         , pack32 (forceIndex lambda lambdaTable)
         , pack32 free
-        , pack32 0 -- oldUnique
+        , pack32 0 -- old unique
         ]
 
 
