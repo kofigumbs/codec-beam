@@ -19,7 +19,7 @@ Library
     hs-source-dirs: src
     exposed-modules: Codec.Beam
                      Codec.Beam.Instructions
-    other-modules: Codec.Beam.Internal.Types
+    other-modules: Codec.Beam.Internal.Syntax
                    Codec.Beam.Internal.Table
     build-depends: base,
                    bytestring,

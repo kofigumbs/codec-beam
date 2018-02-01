@@ -5,7 +5,7 @@ module Codec.Beam
   , Op, X(..), Y(..), F(..), Nil(..), Label(..), Import(..), Literal(..), Lambda(..)
   , Destination, destination, Pair, {- TODO pair -} Field {- TODO field -}
     -- * Argument constraints
-  , Register(fromRegister),   Source(fromSource)
+  , Register(fromRegister), Source(fromSource)
   , RegisterF(fromRegisterF), SourceF(fromSourceF)
   ) where
 
@@ -20,7 +20,7 @@ import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Set as Set
 
-import Codec.Beam.Internal.Types
+import Codec.Beam.Internal.Syntax
 import Codec.Beam.Internal.Table (Table)
 import qualified Codec.Beam.Internal.Table as Table
 
