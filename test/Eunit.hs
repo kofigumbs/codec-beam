@@ -67,6 +67,6 @@ run tests =
 
       writeFile filename fileContents
 
-      callProcess "erlc" [filename]
+      callProcess "erlc" ["-o", erlangDir, filename]
 
       callProcess "erl" ["-noshell", "-pa", erlangDir , "-eval", runnerCode]
