@@ -59,13 +59,11 @@ data Env =
 data Value
   = Literal Beam.Literal
   | Variable Beam.Y
-  | Return
 
 
 instance Beam.Source Value where
   fromSource (Literal literal)   = Beam.fromSource literal
   fromSource (Variable register) = Beam.fromSource register
-  fromSource Return              = Beam.fromSource returnAddress
 
 
 generate :: Def -> State Env [Beam.Op]
@@ -123,12 +121,16 @@ genExpr expr =
 
     Var name ->
       lookupVar name >>= \result ->
-        return $ case result of
+        case result of
           Left register ->
-            ([], Variable register)
+            return ([], Variable register)
 
           Right (lbl, arity) ->
-            ([ make_fun2 (Beam.Lambda (toBytes name) arity lbl 0) ] , Return)
+            do  tmp <- nextTmp
+                return
+                  ( [ make_fun2 (Beam.Lambda (toBytes name) arity lbl 0) ]
+                  , Variable tmp
+                  )
 
     Call name args ->
       lookupVar name >>= \result ->
