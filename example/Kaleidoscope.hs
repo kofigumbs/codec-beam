@@ -114,8 +114,12 @@ genExpr expr =
     Float f ->
       return ([], Literal (Beam.Float f))
 
-    BinOp operator lhs rhs ->
-      genCall (call_ext (stdlibMath operator 2)) [lhs, rhs]
+    BinOp operator left right ->
+      do  tmp <- nextTmp
+          lhs <- genExpr left
+          rhs <- genExpr right
+          let bif = bif2 (Beam.Label 0) (stdlibMath operator 2) (snd lhs) (snd rhs) tmp
+          return (fst lhs ++ fst rhs ++ [ bif ], Variable tmp)
 
     Var name ->
       lookupVar name >>= \result ->
