@@ -38,7 +38,7 @@ module Codec.Beam.Instructions
   , put_map_assoc, put_map_exact, has_map_fields, get_map_elements
   ) where
 
-import Codec.Beam.Internal.Types
+import Codec.Beam.Internal.Syntax
 import Data.ByteString.Lazy (ByteString)
 
 -- | Label gives this code address a name and marks the start of

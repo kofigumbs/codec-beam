@@ -5,7 +5,7 @@ module Codec.Beam
   , Op, X(..), Y(..), F(..), Nil(..), Label(..), Import(..), Literal(..), Lambda(..)
   , Destination, destination, Pair, {- TODO pair -} Field {- TODO field -}
     -- * Argument constraints
-  , Register(fromRegister),   Source(fromSource)
+  , Register(fromRegister), Source(fromSource)
   , RegisterF(fromRegisterF), SourceF(fromSourceF)
   ) where
 
@@ -20,7 +20,7 @@ import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Set as Set
 
-import Codec.Beam.Internal.Types
+import Codec.Beam.Internal.Syntax
 import Codec.Beam.Internal.Table (Table)
 import qualified Codec.Beam.Internal.Table as Table
 
@@ -32,7 +32,7 @@ encode
   -> [Op]          -- ^ instructions
   -> BS.ByteString -- ^ return encoded BEAM
 encode name exports =
-  toLazyByteString . foldl encodeOp (initialEnv name (Set.fromList exports))
+  toLazyByteString . foldl encodeOp (initialEnv name exports)
 
 
 -- | Name and arity of functions to export
@@ -61,8 +61,7 @@ data Env =
     }
 
 
-initialEnv :: BS.ByteString -> Set.Set Export -> Env
-{-# NOINLINE initialEnv #-}
+initialEnv :: BS.ByteString -> [Export] -> Env
 initialEnv name exports =
   Env
     { _moduleName = name
@@ -74,21 +73,23 @@ initialEnv name exports =
     , _importTable = Table.empty
     , _exportTable = Table.empty
     , _exportNextLabel = Nothing
-    , _exporting = \name arity -> Set.member (Export name arity) exports
+    , _exporting = exporting
     , _maxOpCode = 1
     , _code = mempty
     }
+
   where
-    toTuple (Export name arity) = (name, arity)
+    exporting name arity =
+      Set.member (Export name arity) (Set.fromList exports)
 
 
 encodeOp :: Env -> Op -> Env
 encodeOp env (Op opCode args) =
-  foldl encodeArgument
-    (appendCode
-      (env { _maxOpCode = max opCode (_maxOpCode env)})
-      (Builder.word8 opCode))
-    args
+  foldl encodeArgument (appendCode withMaxOp (Builder.word8 opCode)) args
+
+  where
+    withMaxOp =
+      env { _maxOpCode = max opCode (_maxOpCode env) }
 
 
 encodeArgument :: Env -> Argument a -> Env
@@ -280,8 +281,12 @@ imports importTable atomTable =
   pack32 (Table.size importTable) <> Table.encode fromImport importTable
 
   where
-    fromImport (Import m f a) =
-      pack32 (forceIndex m atomTable) <> pack32 (forceIndex f atomTable) <> pack32 a
+    fromImport (Import module_ function arity) =
+      mconcat
+        [ pack32 (forceIndex module_ atomTable)
+        , pack32 (forceIndex function atomTable)
+        , pack32 arity
+        ]
 
 
 exports :: Table (BS.ByteString, Int, Int) -> Table BS.ByteString -> BS.ByteString

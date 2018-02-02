@@ -1,7 +1,6 @@
 import Control.Monad.State (State, evalState)
 import Data.Text.Lazy (pack)
 import Data.Text.Lazy.Encoding (encodeUtf8)
-import Data.Monoid ((<>))
 import System.FilePath (takeBaseName)
 import System.Environment (getArgs)
 import System.Posix.Files (accessModes, setFileMode)
@@ -22,22 +21,22 @@ import qualified Codec.Beam as Beam
 
 main :: IO ()
 main =
-  do  file <- head <$> getArgs
+  do  file <- fmap head getArgs
       code <- readFile file
       either print (makeExecutable (takeBaseName file)) (compile file code)
 
 
 compile :: FilePath -> String -> Either ParseError [Beam.Op]
 compile file code =
-  flip evalState (Env Map.empty Map.empty 1 0)
-    <$> fmap concat
-    <$> mapM generate
-    <$> parse (contents (many def)) file code
+  do  defs <- parse (contents (many def)) file code
+      let initial = Env Map.empty Map.empty 1 0
+          ops     = fmap concat (mapM generate defs)
+      return $ evalState ops initial
 
 
 makeExecutable :: String -> [Beam.Op] -> IO ()
 makeExecutable name ops =
-  do  let output = name <> ".beam"
+  do  let output = name ++ ".beam"
       writeFile output "#!/usr/bin/env escript\n"
       BS.appendFile output $
         Beam.encode (fromString name) [Beam.Export "main" 1] ops
@@ -66,22 +65,27 @@ data Value
 instance Beam.Source Value where
   fromSource (Literal literal)   = Beam.fromSource literal
   fromSource (Variable register) = Beam.fromSource register
-  fromSource Return              = Beam.fromSource x0
+  fromSource Return              = Beam.fromSource returnAddress
 
 
 generate :: Def -> State Env [Beam.Op]
 generate (Def name args body) =
-  do  header <- genHeader stack name args
-      locals <- sequence $ withArgs genLocal args
-      (body, value) <- genExpr body
-      let footer = [ move value x0, deallocate stack, return_ ]
-      return $ concat [ header, locals, body, displayMain name value, footer ]
-  where
-    stack = length args + tmpsNeeded body
+  do  begin  <- genBegin name args
+      locals <- sequence (withArgs genLocal args)
+      result <- genExpr body
+      stack  <- usedVars
+      return $ concat
+        [ begin
+        , [ allocate stack (length args) ]
+        , locals
+        , fst result
+        , [ move (snd result) returnAddress ]
+        , finish name stack
+        ]
 
 
-genHeader :: Int -> Name -> [Name] -> State Env [Beam.Op]
-genHeader stack name args =
+genBegin :: Name -> [Name] -> State Env [Beam.Op]
+genBegin name args =
   do  x <- nextLabel
       y <- nextLabel
       State.modify $ \e -> e
@@ -91,9 +95,8 @@ genHeader stack name args =
         }
       return
         [ label x
-        , func_info (fromString (toRaw name)) (length args)
+        , func_info (toBytes name) (length args)
         , label y
-        , allocate stack (length args)
         ]
 
 
@@ -112,7 +115,7 @@ genExpr expr =
       return ([], Literal (Beam.Float f))
 
     BinOp operator lhs rhs ->
-      genCall (call_ext (Beam.Import "erlang" (stdlibMath operator) 2)) [lhs, rhs]
+      genCall (call_ext (stdlibMath operator 2)) [lhs, rhs]
 
     Var name ->
       lookupVar name >>= \result ->
@@ -120,31 +123,28 @@ genExpr expr =
           Left register ->
             ([], Variable register)
 
-          Right (label, arity) ->
-            let bs = fromString (toRaw name) in
-            ([make_fun2 (Beam.Lambda bs arity label 0)], Return)
+          Right (lbl, arity) ->
+            ([ make_fun2 (Beam.Lambda (toBytes name) arity lbl 0) ] , Return)
 
     Call name args ->
       lookupVar name >>= \result ->
         case result of
-          Left register ->
-            do  let fun = move register (Beam.X (length args))
-                (ops, value) <- genCall (call_fun (length args)) args
-                return (fun : ops, value)
+          Left fun ->
+            do  (ops, value) <- genCall (call_fun (length args)) args
+                return (move fun (Beam.X (length args)) : ops, value)
 
-          Right (label, _) ->
-            genCall (call (length args) label) args
+          Right (lbl, _) ->
+            genCall (call (length args) lbl) args
 
 
 genCall :: Beam.Op -> [Expr] -> State Env ([Beam.Op], Value)
-genCall call args =
+genCall usage args =
   do  tmp <- nextTmp
-      (argOps, argValues) <- unzip <$> mapM genExpr args
-      let ops =
-            concat argOps
-              ++ withArgs move argValues
-              ++ [call, move x0 tmp]
-      return (ops, Variable tmp)
+      (ops, values) <- fmap unzip (mapM genExpr args)
+      return
+        ( concat ops ++ withArgs move values ++ [ usage, move returnAddress tmp ]
+        , Variable tmp
+        )
 
 
 nextLabel :: State Env Beam.Label
@@ -168,7 +168,12 @@ lookupVar name =
       case (Map.lookup name locals, Map.lookup name functions) of
         (Just register, _) -> return $ Left register
         (_, Just funcInfo) -> return $ Right funcInfo
-        (Nothing, Nothing) -> error  $ "`" ++ toRaw name ++ "` is undefined!"
+        (Nothing, Nothing) -> error  $ "`" ++ _raw name ++ "` is undefined!"
+
+
+usedVars :: State Env Int
+usedVars =
+  State.gets $ \e -> _uniqueTmp e + Map.size (_locals e)
 
 
 withArgs :: (a -> Beam.X -> op) -> [a] -> [op]
@@ -176,36 +181,29 @@ withArgs f list =
   zipWith f list $ map Beam.X [0..]
 
 
-tmpsNeeded :: Expr -> Int
-tmpsNeeded (Float _)         = 0
-tmpsNeeded (BinOp _ lhs rhs) = 1 + tmpsNeeded lhs + tmpsNeeded rhs
-tmpsNeeded (Var _)           = 0
-tmpsNeeded (Call _ args)     = 1 + sum (map tmpsNeeded args)
-
-
-displayMain :: Name -> Value -> [Beam.Op]
-displayMain name value =
-  if toRaw name == "main" then
-    [ move value x0, call_ext (Beam.Import "erlang" "display" 1) ]
+finish :: Name -> Int -> [Beam.Op]
+finish name stack =
+  if _raw name == "main" then
+    [ call_ext_last (Beam.Import "erlang" "display" 1) stack ]
   else
-    []
+    [ deallocate stack, return_ ]
 
 
-stdlibMath :: Op -> BS.ByteString
-stdlibMath Plus   = "+"
-stdlibMath Minus  = "-"
-stdlibMath Times  = "*"
-stdlibMath Divide = "/"
+stdlibMath :: Op -> Int -> Beam.Import
+stdlibMath Plus   = Beam.Import "erlang" "+"
+stdlibMath Minus  = Beam.Import "erlang" "-"
+stdlibMath Times  = Beam.Import "erlang" "*"
+stdlibMath Divide = Beam.Import "erlang" "/"
 
 
-x0 :: Beam.X
-x0 =
+returnAddress :: Beam.X
+returnAddress =
   Beam.X 0
 
 
-toRaw :: Name -> String
-toRaw (Name raw) =
-  raw
+toBytes :: Name -> BS.ByteString
+toBytes =
+  fromString . _raw
 
 
 fromString :: String -> BS.ByteString
@@ -236,8 +234,8 @@ data Op
 
 
 newtype Name
-  = Name String
-  deriving (Eq, Ord, Show)
+  = Name { _raw :: String }
+  deriving (Eq, Ord)
 
 
 

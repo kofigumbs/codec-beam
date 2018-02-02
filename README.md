@@ -1,21 +1,21 @@
 [![Build Status](https://travis-ci.org/hkgumbs/codec-beam.svg?branch=master)](https://travis-ci.org/hkgumbs/codec-beam)
 
 BEAM (Erlang Virtual Machine) byte code syntax tree and encoder, for implementing compile-to-beam languages.
-Goal is to a provide delightful API for generating BEAM instructions from pure Haskell.  
+The goal is to a provide delightful API for generating BEAM instructions from pure Haskell.
 
 ### Usage
 
 This example writes a simple module to a file:
 
 ```haskell
-import qualified Data.ByteString.Lazy as BS
-import qualified Codec.Beam as Beam
+import qualified Data.ByteString.Lazy as LBS
 
 import Codec.Beam.Instructions
+import qualified Codec.Beam as Beam
 
 main : IO ()
 main =
-  BS.writeFile "test_module.beam" $
+  LBS.writeFile "test_module.beam" $
     Beam.encode "test_module"
       [ Beam.Export "tuple_of_one" 0
       ]
@@ -54,7 +54,7 @@ This library is pre-release and under active development.
 If you are interested in helping, [please reach out](https://twitter.com/messages/compose?recipient_id=365768225).
 It will be much easier to coordinate work if we have a conversation first.
 
-I generally use [this style guide](https://gist.github.com/evancz/0a1f3717c92fe71702be).
+I generally prefer [this style guide](https://gist.github.com/evancz/0a1f3717c92fe71702be).
 
 
 ### Acknowledgements
@@ -67,4 +67,4 @@ Thanks to the following projects, which helped me understand the BEAM file forma
  - https://github.com/mbrock/HBEAM
  - https://github.com/erlang/otp
 
-In particular, most of the documentation is derived from The Beam Book and Erlang compiler source code.
+In particular, most of the documentation derives from _The Beam Book_ and Erlang compiler source code.
