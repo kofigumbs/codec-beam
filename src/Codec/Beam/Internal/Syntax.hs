@@ -5,7 +5,7 @@ import Data.Word (Word8)
 import Unsafe.Coerce (unsafeCoerce)
 
 
--- | You can find implementations in "Codec.Beam.Instructions"
+-- | You can find implementations in "Codec.Beam.Instructions".
 data Op = Op Word8 [Argument ()]
 
 
@@ -28,8 +28,8 @@ newtype F = F Int
   deriving (Eq, Ord, Show)
 
 
--- | Reference a function from another module
---   For example, @Import "erlang" "+" 2@ refers to the stdlib function: @erlang:'+'/2@ .
+-- | Reference a function from another module.
+--   For example, @Import "array" "map" 2@ refers to the stdlib function: @array:map/2@.
 data Import = Import
   { _import_module :: ByteString
   , _import_function :: ByteString
@@ -40,10 +40,10 @@ data Import = Import
 
 -- | Turn a named function into a @fun@, for use with 'Codec.Beam.Instructions.make_fun2'.
 data Lambda = Lambda
-  { _lambda_name :: ByteString
+  { _lambda_name :: ByteString -- ^ unique name for this lambda
   , _lambda_arity :: Int
-  , _lambda_label :: Label
-  , _lambda_free :: Int
+  , _lambda_label :: Label     -- ^ where to find the backing functino
+  , _lambda_free :: Int        -- ^ how many variables to capture from calling scope
   }
   deriving (Eq, Ord, Show)
 
@@ -85,21 +85,21 @@ data ProcessId
 -}
 
 
--- | Create jump destinations for variadic functions, like 'Codec.Beam.Instructions.select_val'
+-- | Create jump destinations for variadic functions, like 'Codec.Beam.Instructions.select_val'.
 --   Use 'destination' to make values of this type.
 data Destination = Destination { _destination_args :: [Argument ()] }
 destination :: (Source s) => Label -> s -> Destination
 destination label source = Destination [FromLabel label, erase fromSource source]
 
 
--- | Create map pairs for variadic functions, like 'Codec.Beam.Instructions.put_map_assoc'
+-- | Create map pairs for variadic functions, like 'Codec.Beam.Instructions.put_map_assoc'.
 --   Use 'pair' to make values of this type.
 data Pair = Pair { _pair_args :: [Argument ()] }
 pair :: (Source key, Source value) => key -> value -> Pair
 pair key value = Pair [erase fromSource key, erase fromSource value]
 
 
--- | Create map fields for variadic functions, like 'Codec.Beam.Instructions.has_map_fields'
+-- | Create map fields for variadic functions, like 'Codec.Beam.Instructions.has_map_fields'.
 --   Use 'field' to make values of this type.
 newtype Field = Field { _field_arg :: Argument () }
 field :: (Source s) => s -> Field
