@@ -2,7 +2,7 @@
 --   In the end state, there should only be few variations,
 --   existing only to promote ease of use and correctness!
 --
---   — <https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab>
+--   <https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab>
 
 module Codec.Beam.Instructions
   ( label, func_info, on_load, line
@@ -94,22 +94,22 @@ call_ext_last :: Import -> Int -> Op
 call_ext_last a1 a2 = Op 8 [FromUntagged (_import_arity a1), FromImport a1, FromUntagged a2]
 
 -- | Call the bif and store the result in register.
-bif0 :: (Register a2) => Import -> a2 -> Op
-bif0 a1 a2 = Op 9 [FromImport a1, erase fromRegister a2]
+bif0 :: (Bif0 a1, NoGC a1, Register a2) => a1 -> a2 -> Op
+bif0 a1 a2 = Op 9 [FromImport (importBif0 a1), erase fromRegister a2]
 
 -- | Call the bif with the source, and store the result in register.
 --   On failure jump to label.
-bif1 :: (Source a3, Register a4) => Label -> Import -> a3 -> a4 -> Op
-bif1 a1 a2 a3 a4 = Op 10 [FromLabel a1, FromImport a2, erase fromSource a3, erase fromRegister a4]
+bif1 :: (Bif1 a2, NoGC a2, Source a3, Register a4) => Label -> a2 -> a3 -> a4 -> Op
+bif1 a1 a2 a3 a4 = Op 10 [FromLabel a1, FromImport (importBif1 a2), erase fromSource a3, erase fromRegister a4]
 
 -- | Call the bif with the sources, and store the result in register.
 --   On failure jump to label.
-bif2 :: (Source a3, Source a4, Register a5) => Label -> Import -> a3 -> a4 -> a5 -> Op
-bif2 a1 a2 a3 a4 a5 = Op 11 [FromLabel a1, FromImport a2, erase fromSource a3, erase fromSource a4, erase fromRegister a5]
+bif2 :: (Bif2 a2, NoGC a2, Source a3, Source a4, Register a5) => Label -> a2 -> a3 -> a4 -> a5 -> Op
+bif2 a1 a2 a3 a4 a5 = Op 11 [FromLabel a1, FromImport (importBif2 a2), erase fromSource a3, erase fromSource a4, erase fromRegister a5]
 
 -- | Allocate space for some words on the stack. If a GC is needed
 --   during allocation there are a number of live X registers.
--- | Also save the continuation pointer (CP) on the stack.
+--   Also save the continuation pointer (CP) on the stack.
 allocate
   :: Int -- ^ stack words needed
   -> Int -- ^ live X registers
@@ -499,18 +499,18 @@ bs_restore2 a1 a2 = Op 123 [erase fromRegister a1, FromUntagged a2]
 --   Do a garbage collection if necessary to allocate space on the heap
 --   for the result.
 gc_bif1
-  :: (Source a4, Register a5)
-  => Label  -- ^ jump here on failure
-  -> Int    -- ^ number of X-registers to save
-  -> Import -- ^ BIF, something like @Import "erlang" "splus" 1@
-  -> a4     -- ^ argument
-  -> a5     -- ^ where to put the result
+  :: (Bif1 a3, Source a4, Register a5)
+  => Label -- ^ jump here on failure
+  -> Int   -- ^ number of X-registers to save
+  -> a3    -- ^ BIF, something like 'Codec.Beam.Bifs.erlang_localtime'
+  -> a4    -- ^ argument
+  -> a5    -- ^ where to put the result
   -> Op
-gc_bif1 a1 a2 a3 a4 a5 = Op 124 [FromLabel a1, FromUntagged a2, FromImport a3, erase fromSource a4, erase fromRegister a5]
+gc_bif1 a1 a2 a3 a4 a5 = Op 124 [FromLabel a1, FromUntagged a2, FromImport (importBif1 a3), erase fromSource a4, erase fromRegister a5]
 
 -- | Same as 'gc_bif1', but with two source arguments.
-gc_bif2 :: (Source a4, Source a5, Register a6) => Label -> Int -> Import -> a4 -> a5 -> a6 -> Op
-gc_bif2 a1 a2 a3 a4 a5 a6 = Op 125 [FromLabel a1, FromUntagged a2, FromImport a3, erase fromSource a4, erase fromSource a5, erase fromRegister a6]
+gc_bif2 :: (Bif2 a3, Source a4, Source a5, Register a6) => Label -> Int -> a3 -> a4 -> a5 -> a6 -> Op
+gc_bif2 a1 a2 a3 a4 a5 a6 = Op 125 [FromLabel a1, FromUntagged a2, FromImport (importBif2 a3), erase fromSource a4, erase fromSource a5, erase fromRegister a6]
 
 is_bitstr :: (Source a2) => Label -> a2 -> Op
 is_bitstr a1 a2 = Op 129 [FromLabel a1, erase fromSource a2]
@@ -593,8 +593,8 @@ recv_set :: Label -> Op
 recv_set a1 = Op 151 [FromLabel a1]
 
 -- | Same as 'gc_bif1', but with three source arguments.
-gc_bif3 :: (Source a4, Source a5, Source a6, Register a7) => Label -> Int -> Import -> a4 -> a5 -> a6 -> a7 -> Op
-gc_bif3 a1 a2 a3 a4 a5 a6 a7 = Op 152 [FromLabel a1, FromUntagged a2, FromImport a3, erase fromSource a4, erase fromSource a5, erase fromSource a6, erase fromRegister a7]
+gc_bif3 :: (Bif3 a3, Source a4, Source a5, Source a6, Register a7) => Label -> Int -> a3 -> a4 -> a5 -> a6 -> a7 -> Op
+gc_bif3 a1 a2 a3 a4 a5 a6 a7 = Op 152 [FromLabel a1, FromUntagged a2, FromImport (importBif3 a3), erase fromSource a4, erase fromSource a5, erase fromSource a6, erase fromRegister a7]
 
 line :: Int -> Op
 line a1 = Op 153 [FromUntagged a1]
@@ -627,7 +627,7 @@ is_tagged_tuple a1 a2 a3 a4 = Op 159 [FromLabel a1, erase fromSource a2, FromUnt
 build_stacktrace :: Op
 build_stacktrace = Op 160 []
 
--- | This instruction works like the @erlang:raise/3 BIF@, except that the
+-- | This instruction works like the @erlang:raise/3@ BIF, except that the
 --   stacktrace in x(2) must be a raw stacktrace.
 --   x(0) is the class of the exception (error, exit, or throw),
 --   x(1) is the exception term, and x(2) is the raw stackframe.
