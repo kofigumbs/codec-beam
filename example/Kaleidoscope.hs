@@ -15,6 +15,7 @@ import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Expr as Expr
 import qualified Text.Parsec.Token as Token
 
+import Codec.Beam.Bifs
 import Codec.Beam.Instructions
 import qualified Codec.Beam as Beam
 
@@ -59,13 +60,11 @@ data Env =
 data Value
   = Literal Beam.Literal
   | Variable Beam.Y
-  | Return
 
 
 instance Beam.Source Value where
   fromSource (Literal literal)   = Beam.fromSource literal
   fromSource (Variable register) = Beam.fromSource register
-  fromSource Return              = Beam.fromSource returnAddress
 
 
 generate :: Def -> State Env [Beam.Op]
@@ -114,17 +113,25 @@ genExpr expr =
     Float f ->
       return ([], Literal (Beam.Float f))
 
-    BinOp operator lhs rhs ->
-      genCall (call_ext (stdlibMath operator 2)) [lhs, rhs]
+    BinOp operator left right ->
+      do  tmp <- nextTmp
+          lhs <- genExpr left
+          rhs <- genExpr right
+          let bif = stdlibMath operator (snd lhs) (snd rhs) tmp
+          return (fst lhs ++ fst rhs ++ [ bif ], Variable tmp)
 
     Var name ->
       lookupVar name >>= \result ->
-        return $ case result of
+        case result of
           Left register ->
-            ([], Variable register)
+            return ([], Variable register)
 
           Right (lbl, arity) ->
-            ([ make_fun2 (Beam.Lambda (toBytes name) arity lbl 0) ] , Return)
+            do  tmp <- nextTmp
+                return
+                  ( [ make_fun2 (Beam.Lambda (toBytes name) arity lbl 0) ]
+                  , Variable tmp
+                  )
 
     Call name args ->
       lookupVar name >>= \result ->
@@ -138,11 +145,11 @@ genExpr expr =
 
 
 genCall :: Beam.Op -> [Expr] -> State Env ([Beam.Op], Value)
-genCall usage args =
+genCall use args =
   do  tmp <- nextTmp
       (ops, values) <- fmap unzip (mapM genExpr args)
       return
-        ( concat ops ++ withArgs move values ++ [ usage, move returnAddress tmp ]
+        ( concat ops ++ withArgs move values ++ [ use, move returnAddress tmp ]
         , Variable tmp
         )
 
@@ -184,21 +191,26 @@ withArgs f list =
 finish :: Name -> Int -> [Beam.Op]
 finish name stack =
   if _raw name == "main" then
-    [ call_ext_last (Beam.Import "erlang" "display" 1) stack ]
+    [ call_ext_last (Beam.importBif1 Erlang_display) stack ]
   else
     [ deallocate stack, return_ ]
 
 
-stdlibMath :: Op -> Int -> Beam.Import
-stdlibMath Plus   = Beam.Import "erlang" "+"
-stdlibMath Minus  = Beam.Import "erlang" "-"
-stdlibMath Times  = Beam.Import "erlang" "*"
-stdlibMath Divide = Beam.Import "erlang" "/"
+stdlibMath :: Operator -> Value -> Value -> Beam.Y -> Beam.Op
+stdlibMath Plus   = bif2 noFailure Erlang_splus_2
+stdlibMath Minus  = bif2 noFailure Erlang_sminus_2
+stdlibMath Times  = bif2 noFailure Erlang_stimes_2
+stdlibMath Divide = bif2 noFailure Erlang_div_2
 
 
 returnAddress :: Beam.X
 returnAddress =
   Beam.X 0
+
+
+noFailure :: Beam.Label
+noFailure =
+  Beam.Label 0
 
 
 toBytes :: Name -> BS.ByteString
@@ -221,12 +233,12 @@ data Def
 
 data Expr
   = Float Double
-  | BinOp Op Expr Expr
+  | BinOp Operator Expr Expr
   | Var Name
   | Call Name [Expr]
 
 
-data Op
+data Operator
   = Plus
   | Minus
   | Times

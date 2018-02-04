@@ -1,15 +1,23 @@
 module Codec.Beam.Internal.Syntax where
 
 import Data.ByteString.Lazy (ByteString)
+import Data.Void (Void)
 import Data.Word (Word8)
 import Unsafe.Coerce (unsafeCoerce)
 
 
--- | You can find implementations in "Codec.Beam.Instructions"
+-- | A virtual machine instruction—the main unit this library deals with.
+--   There are a finite number of instructions, enumerated in "Codec.Beam.Instructions".
+--   Each new release of Erlang/OTP might introduce a few more and deprecate old ones.
 data Op = Op Word8 [Argument ()]
 
 
--- | A stack register! These are used to pass function arguments, and @X 0@ stores return values.
+-- | Mark a spot in the code, so that you can jump to it with a function or condition.
+newtype Label = Label Int
+  deriving (Eq, Ord, Show)
+
+
+-- | A stack register. These are used to pass function arguments, and @X 0@ stores return values.
 newtype X = X Int
   deriving (Eq, Ord, Show)
 
@@ -28,33 +36,18 @@ newtype F = F Int
   deriving (Eq, Ord, Show)
 
 
--- | Reference a function from another module
---   For example, @Import "erlang" "+" 2@ refers to the stdlib function: @erlang:'+'/2@ .
-data Import = Import
-  { _import_module :: ByteString
-  , _import_function :: ByteString
-  , _import_arity :: Int
-  }
+-- | The empty list.
+data Nil = Nil
   deriving (Eq, Ord, Show)
 
 
 -- | Turn a named function into a @fun@, for use with 'Codec.Beam.Instructions.make_fun2'.
 data Lambda = Lambda
-  { _lambda_name :: ByteString
+  { _lambda_name :: ByteString -- ^ unique name for this lambda
   , _lambda_arity :: Int
-  , _lambda_label :: Label
-  , _lambda_free :: Int
+  , _lambda_label :: Label     -- ^ where to find the backing functino
+  , _lambda_free :: Int        -- ^ how many variables to capture from calling scope
   }
-  deriving (Eq, Ord, Show)
-
-
--- | Mark a spot in the code, so that you can jump to it with a function or condition.
-newtype Label = Label Int
-  deriving (Eq, Ord, Show)
-
-
--- | The empty list.
-data Nil = Nil
   deriving (Eq, Ord, Show)
 
 
@@ -85,21 +78,67 @@ data ProcessId
 -}
 
 
--- | Create jump destinations for variadic functions, like 'Codec.Beam.Instructions.select_val'
+-- | Reference a function from another module.
+--   For example, @Import "array" "map" 2@ refers to the stdlib function: @array:map/2@.
+data Import = Import
+  { _import_module :: ByteString
+  , _import_function :: ByteString
+  , _import_arity :: Int
+  }
+  deriving (Eq, Ord, Show)
+
+
+-- | This constraint marks functions that do not require heap storage,
+--   which means they can be called without concern for garbage collection.
+class NoGC a
+
+class Bif_ a => Bif0 a
+class Bif_ a => Bif1 a
+class Bif_ a => Bif2 a
+class Bif_ a => Bif3 a
+class Bif_ a => Bif4 a
+
+-- | Convert BIF to a normal import with zero arguments,
+--   whichcan be used with 'Codec.Beam.Instructions.call' and friends.
+importBif0 :: Bif0 a => a -> Import
+importBif0 = importBif_ 0
+
+-- | Convert BIF to a normal import with one argument.
+importBif1 :: Bif1 a => a -> Import
+importBif1 = importBif_ 1
+
+-- | Convert BIF to a normal import with two arguments.
+importBif2 :: Bif2 a => a -> Import
+importBif2 = importBif_ 2
+
+-- | Convert BIF to a normal import with three arguments.
+importBif3 :: Bif3 a => a -> Import
+importBif3 = importBif_ 3
+
+-- | Convert BIF to a normal import with four arguments.
+importBif4 :: Bif4 a => a -> Import
+importBif4 = importBif_ 4
+
+importBif_ :: Bif_ a => Int -> a -> Import
+importBif_ arity a = Import module_ function arity
+  where (module_, function) = bif_ a
+
+
+-- | Create jump destinations for variadic functions, like 'Codec.Beam.Instructions.select_val'.
 --   Use 'destination' to make values of this type.
 data Destination = Destination { _destination_args :: [Argument ()] }
 destination :: (Source s) => Label -> s -> Destination
 destination label source = Destination [FromLabel label, erase fromSource source]
 
 
--- | Create map pairs for variadic functions, like 'Codec.Beam.Instructions.put_map_assoc'
+-- | Create map pairs for variadic functions, like 'Codec.Beam.Instructions.put_map_assoc'.
 --   Use 'pair' to make values of this type.
 data Pair = Pair { _pair_args :: [Argument ()] }
 pair :: (Source key, Source value) => key -> value -> Pair
 pair key value = Pair [erase fromSource key, erase fromSource value]
 
 
--- | Create map fields for variadic functions, like 'Codec.Beam.Instructions.has_map_fields'
+-- | Create map fields for variadic functions, like 'Codec.Beam.Instructions.has_map_fields'.
 --   Use 'field' to make values of this type.
 newtype Field = Field { _field_arg :: Argument () }
 field :: (Source s) => s -> Field
@@ -169,3 +208,6 @@ newtype Register_  = Register_  Register_
 newtype RegisterF_ = RegisterF_ RegisterF_
 newtype Source_    = Source_    Source_
 newtype SourceF_   = SourceF_   SourceF_
+
+
+class Bif_ a where bif_ :: a -> (ByteString, ByteString)
