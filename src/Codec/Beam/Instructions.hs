@@ -33,7 +33,7 @@ module Codec.Beam.Instructions
   -- * Floating point arithmetic
   , fclearerror, fcheckerror, fmove, fconv, fadd, fsub, fmul, fdiv, fnegate
   -- * Try, catch, raise
-  , try, try_end, try_case, try_case_end, raise, build_stacktrace, raw_raise, catch, catch_end
+  , try, try_end, try_case, try_case_end, raise, catch, catch_end
   -- * Maps
   , put_map_assoc, put_map_exact, has_map_fields, get_map_elements
   ) where
@@ -619,20 +619,3 @@ get_map_elements a1 a2 a3 = Op 158 [FromLabel a1, erase fromSource a2, FromPairs
 --   Test the first element of the tuple and jumps to label if it is not given atom.
 is_tagged_tuple :: (Source a2) => Label -> a2 -> Int -> ByteString -> Op
 is_tagged_tuple a1 a2 a3 a4 = Op 159 [FromLabel a1, erase fromSource a2, FromUntagged a3, FromByteString a4]
-
--- | Given the raw stacktrace in x(0), build a cooked stacktrace suitable
---   for human consumption. Store it in x(0). Destroys all other registers.
---   Do a garbage collection if necessary to allocate space on the heap
---   for the result.
-build_stacktrace :: Op
-build_stacktrace = Op 160 []
-
--- | This instruction works like the @erlang:raise/3@ BIF, except that the
---   stacktrace in x(2) must be a raw stacktrace.
---   x(0) is the class of the exception (error, exit, or throw),
---   x(1) is the exception term, and x(2) is the raw stackframe.
---   If x(0) is not a valid class, the instruction will not throw an
---   exception, but store the atom @badarg@ in x(0) and execute the
---   next instruction.
-raw_raise :: Op
-raw_raise = Op 161 []
