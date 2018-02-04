@@ -101,28 +101,27 @@ class Bif_ a => Bif4 a
 -- | Convert BIF to a normal import with zero arguments,
 --   whichcan be used with 'Codec.Beam.Instructions.call' and friends.
 importBif0 :: Bif0 a => a -> Import
-importBif0 b = Import module_ function 0
-  where (module_, function) = bif_ b
+importBif0 = importBif_ 0
 
 -- | Convert BIF to a normal import with one argument.
 importBif1 :: Bif1 a => a -> Import
-importBif1 b = Import module_ function 1
-  where (module_, function) = bif_ b
+importBif1 = importBif_ 1
 
 -- | Convert BIF to a normal import with two arguments.
 importBif2 :: Bif2 a => a -> Import
-importBif2 b = Import module_ function 2
-  where (module_, function) = bif_ b
+importBif2 = importBif_ 2
 
 -- | Convert BIF to a normal import with three arguments.
 importBif3 :: Bif3 a => a -> Import
-importBif3 b = Import module_ function 3
-  where (module_, function) = bif_ b
+importBif3 = importBif_ 3
 
 -- | Convert BIF to a normal import with four arguments.
 importBif4 :: Bif4 a => a -> Import
-importBif4 b = Import module_ function 4
-  where (module_, function) = bif_ b
+importBif4 = importBif_ 4
+
+importBif_ :: Bif_ a => Int -> a -> Import
+importBif_ arity a = Import module_ function arity
+  where (module_, function) = bif_ a
 
 
 -- | Create jump destinations for variadic functions, like 'Codec.Beam.Instructions.select_val'.
