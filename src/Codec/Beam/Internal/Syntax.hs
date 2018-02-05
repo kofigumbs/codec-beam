@@ -95,27 +95,28 @@ class NoGC a
 -- | Convert BIF to a normal import with zero arguments,
 --   whichcan be used with 'Codec.Beam.Instructions.call' and friends.
 importBif0 :: Bif0 a => a -> Import
-importBif0 a = bif_ a 0
-class Bif_ a => Bif0 a
+importBif0 = bif_ 0
 
 -- | Convert BIF to a normal import with one argument.
 importBif1 :: Bif1 a => a -> Import
-importBif1 a = bif_ a 1
-class Bif_ a => Bif1 a
+importBif1 = bif_ 1
 
 -- | Convert BIF to a normal import with two arguments.
 importBif2 :: Bif2 a => a -> Import
-importBif2 a = bif_ a 2
-class Bif_ a => Bif2 a
+importBif2 = bif_ 2
 
 -- | Convert BIF to a normal import with three arguments.
 importBif3 :: Bif3 a => a -> Import
-importBif3 a = bif_ a 3
-class Bif_ a => Bif3 a
+importBif3 = bif_ 3
 
 -- | Convert BIF to a normal import with four arguments.
 importBif4 :: Bif4 a => a -> Import
-importBif4 a = bif_ a 4
+importBif4 = bif_ 4
+
+class Bif_ a => Bif0 a
+class Bif_ a => Bif1 a
+class Bif_ a => Bif2 a
+class Bif_ a => Bif3 a
 class Bif_ a => Bif4 a
 
 
@@ -205,4 +206,4 @@ newtype Source_    = Source_    Source_
 newtype SourceF_   = SourceF_   SourceF_
 
 
-class Bif_ a where bif_ :: a -> Int -> Import
+class Bif_ a where bif_ :: Int -> a -> Import
