@@ -2,14 +2,14 @@ module Codec.Beam
   ( encode, Export(..)
     -- * Syntax
   , Op, X(..), Y(..), F(..), Nil(..), Label(..), Literal(..), Lambda(..), Import(..)
-    -- * BIFs (Built-In Functions)
-  , NoGC, Bif0, Bif1, Bif2, Bif3, Bif4
-  , importBif0, importBif1, importBif2, importBif3, importBif4
     -- * Variadic arguments
   , Destination, destination, Pair, {- TODO pair -} Field {- TODO field -}
     -- * Argument constraints
   , Register(fromRegister), Source(fromSource)
   , RegisterF(fromRegisterF), SourceF(fromSourceF)
+    -- * BIFs (Built-In Functions)
+  , NoGC, importBif0, importBif1, importBif2, importBif3, importBif4
+  , Bif0, Bif1, Bif2, Bif3, Bif4
   ) where
 
 
