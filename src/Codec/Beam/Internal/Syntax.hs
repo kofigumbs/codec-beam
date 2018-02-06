@@ -45,7 +45,7 @@ data Nil = Nil
 data Lambda = Lambda
   { _lambda_name :: ByteString -- ^ unique name for this lambda
   , _lambda_arity :: Int
-  , _lambda_label :: Label     -- ^ where to find the backing functino
+  , _lambda_label :: Label     -- ^ where to find the backing function
   , _lambda_free :: Int        -- ^ how many variables to capture from calling scope
   }
   deriving (Eq, Ord, Show)
