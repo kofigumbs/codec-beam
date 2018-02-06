@@ -9,7 +9,7 @@ import Unsafe.Coerce (unsafeCoerce)
 -- | A virtual machine instruction—the main unit this library deals with.
 --   There are a finite number of instructions, enumerated in "Codec.Beam.Instructions".
 --   Each new release of Erlang/OTP might introduce a few more and deprecate old ones.
-data Op = Op Word8 [Argument ()]
+data Op = Op Word8 [Argument]
 
 
 -- | Mark a spot in the code, so that you can jump to it with a function or condition.
@@ -120,59 +120,54 @@ class Bif_ a => Bif3 a
 class Bif_ a => Bif4 a
 
 
--- | Create jump destinations for variadic functions, like 'Codec.Beam.Instructions.select_val'.
---   Use 'destination' to make values of this type.
-data Destination = Destination { _destination_args :: [Argument ()] }
-destination :: (Source s) => Label -> s -> Destination
-destination label source = Destination [FromLabel label, erase fromSource source]
+-- | Either type of stack register, 'X' or 'Y'.
+--   Instructions that work with this type, use 'IsRegister' for convenience.
+newtype  Register  = Register { unRegister :: Argument }
+class    IsRegister a        where toRegister :: a -> Register
+instance IsRegister Register where toRegister = id               ;{-# INLINE toRegister #-}
+instance IsRegister X        where toRegister = Register . FromX ;{-# INLINE toRegister #-}
+instance IsRegister Y        where toRegister = Register . FromY ;{-# INLINE toRegister #-}
 
 
--- | Create map pairs for variadic functions, like 'Codec.Beam.Instructions.put_map_assoc'.
---   Use 'pair' to make values of this type.
-data Pair = Pair { _pair_args :: [Argument ()] }
-pair :: (Source key, Source value) => key -> value -> Pair
-pair key value = Pair [erase fromSource key, erase fromSource value]
+-- | Any sort of Erlang value.
+--   Instructions that work with this type, use 'IsSource' for convenience.
+newtype  Source = Source { unSource :: Argument }
+class    IsSource a          where toSource :: a -> Source
+instance IsSource Source     where toSource = id                      ;{-# INLINE toSource #-}
+instance IsSource X          where toSource = Source . FromX          ;{-# INLINE toSource #-}
+instance IsSource Y          where toSource = Source . FromY          ;{-# INLINE toSource #-}
+instance IsSource Nil        where toSource = Source . FromNil        ;{-# INLINE toSource #-}
+instance IsSource ByteString where toSource = Source . FromByteString ;{-# INLINE toSource #-}
+instance IsSource Literal    where toSource = Source . FromLiteral    ;{-# INLINE toSource #-}
+instance IsSource Int        where toSource = Source . FromInt        ;{-# INLINE toSource #-}
 
 
--- | Create map fields for variadic functions, like 'Codec.Beam.Instructions.has_map_fields'.
---   Use 'field' to make values of this type.
-newtype Field = Field { _field_arg :: Argument () }
-field :: (Source s) => s -> Field
-field source = Field (erase fromSource source)
+-- | Memory for manipulating 'F', for use with 'Codec.Beam.Instructions.fmove'.
+--   Instructions that work with this type, use 'IsRegisterF' for convenience.
+newtype  RegisterF = RegisterF { unRegisterF :: Argument }
+class    IsRegisterF a         where toRegisterF :: a -> RegisterF
+instance IsRegisterF RegisterF where toRegisterF = id                ;{-# INLINE toRegisterF #-}
+instance IsRegisterF F         where toRegisterF = RegisterF . FromF ;{-# INLINE toRegisterF #-}
+instance IsRegisterF X         where toRegisterF = RegisterF . FromX ;{-# INLINE toRegisterF #-}
+instance IsRegisterF Y         where toRegisterF = RegisterF . FromY ;{-# INLINE toRegisterF #-}
 
 
-class    Register a where fromRegister :: a -> Argument Register_
-instance Register X where fromRegister = FromX ;{-# INLINE fromRegister #-}
-instance Register Y where fromRegister = FromY ;{-# INLINE fromRegister #-}
-
-
-class    RegisterF a where fromRegisterF :: a -> Argument RegisterF_
-instance RegisterF F where fromRegisterF = FromF ;{-# INLINE fromRegisterF #-}
-instance RegisterF X where fromRegisterF = FromX ;{-# INLINE fromRegisterF #-}
-instance RegisterF Y where fromRegisterF = FromY ;{-# INLINE fromRegisterF #-}
-
-
-class    Source a          where fromSource :: a -> Argument Source_
-instance Source X          where fromSource = FromX          ;{-# INLINE fromSource #-}
-instance Source Y          where fromSource = FromY          ;{-# INLINE fromSource #-}
-instance Source Nil        where fromSource = FromNil        ;{-# INLINE fromSource #-}
-instance Source ByteString where fromSource = FromByteString ;{-# INLINE fromSource #-}
-instance Source Literal    where fromSource = FromLiteral    ;{-# INLINE fromSource #-}
-instance Source Int        where fromSource = FromInt        ;{-# INLINE fromSource #-}
-
-
-class    SourceF a          where fromSourceF :: a -> Argument SourceF_
-instance SourceF F          where fromSourceF = FromF          ;{-# INLINE fromSourceF #-}
-instance SourceF X          where fromSourceF = FromX          ;{-# INLINE fromSourceF #-}
-instance SourceF Y          where fromSourceF = FromY          ;{-# INLINE fromSourceF #-}
-instance SourceF Literal    where fromSourceF = FromLiteral    ;{-# INLINE fromSourceF #-}
+-- | Something that can be coerced into 'F', for use with 'Codec.Beam.Instructions.fmove'.
+--   Instructions that work with this type, use 'IsSourceF' for convenience.
+newtype  SourceF = SourceF { unSourceF :: Argument }
+class    IsSourceF a          where toSourceF :: a -> SourceF
+instance IsSourceF SourceF    where toSourceF = id                       ;{-# INLINE toSourceF #-}
+instance IsSourceF F          where toSourceF = SourceF . FromF          ;{-# INLINE toSourceF #-}
+instance IsSourceF X          where toSourceF = SourceF . FromX          ;{-# INLINE toSourceF #-}
+instance IsSourceF Y          where toSourceF = SourceF . FromY          ;{-# INLINE toSourceF #-}
+instance IsSourceF Literal    where toSourceF = SourceF . FromLiteral    ;{-# INLINE toSourceF #-}
 
 
 
 -- PRIVATE, not exposed outside of package
 
 
-data Argument a
+data Argument
   = FromImport Import
   | FromX X
   | FromY Y
@@ -185,25 +180,40 @@ data Argument a
   | FromLabel Label
   | FromLiteral Literal
   | FromLambda Lambda
-  | FromDestinations [Destination]
-  | FromPairs [Pair]
-  | FromFields [Field]
+  | FromList [Argument]
   | FromFunctionModule ByteString Int
 
 
--- Drops the phantom type, so that we can use it inside 'Op's
-erase :: (a -> Argument b) -> a -> Argument ()
-erase f a =
-  unsafeCoerce (f a)
+fromRegister :: IsRegister a => a -> Argument
+{-# INLINE fromRegister #-}
+fromRegister = unRegister . toRegister
 
 
--- Phantom 'Argument' types
--- This lets us prevent mixing-and-matching outside the package,
--- while still allowing users to express their own types in terms of argument constraints.
-newtype Register_  = Register_  Register_
-newtype RegisterF_ = RegisterF_ RegisterF_
-newtype Source_    = Source_    Source_
-newtype SourceF_   = SourceF_   SourceF_
+fromSource :: IsSource a => a -> Argument
+{-# INLINE fromSource #-}
+fromSource = unSource . toSource
+
+
+fromRegisterF :: IsRegisterF a => a -> Argument
+{-# INLINE fromRegisterF #-}
+fromRegisterF = unRegisterF . toRegisterF
+
+
+fromSourceF :: IsSourceF a => a -> Argument
+{-# INLINE fromSourceF #-}
+fromSourceF = unSourceF . toSourceF
+
+
+fromPairs :: [(Source, Source)] -> Argument
+{-# INLINE fromPairs #-}
+fromPairs =
+  FromList . concatMap (\x -> [fromSource (fst x), fromSource (snd x)])
+
+
+fromDestinations :: [(Label, Source)] -> Argument
+{-# INLINE fromDestinations #-}
+fromDestinations =
+  FromList . concatMap (\x -> [FromLabel (fst x), fromSource (snd x)])
 
 
 class Bif_ a where bif_ :: Int -> a -> Import

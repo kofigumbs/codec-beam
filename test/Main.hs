@@ -328,8 +328,8 @@ main =
         , func_info "test" 1
         , label (Beam.Label 2)
         , select_val (Beam.X 0) (Beam.Label 3)
-            [ Beam.destination (Beam.Label 4) (4 :: Int)
-            , Beam.destination (Beam.Label 5) (5 :: Int)
+            [ (Beam.Label 4, Beam.toSource (4 :: Int))
+            , (Beam.Label 5, Beam.toSource (5 :: Int))
             ]
         , label (Beam.Label 3)
         , move ("neither" :: ByteString) (Beam.X 0)
@@ -350,12 +350,12 @@ main =
 -- I imagine that some of these will eventually live in a utility module within src/.
 
 
-withConstant_ :: Beam.Source s => String -> s -> String -> Eunit.Test
+withConstant_ :: Beam.IsSource s => String -> s -> String -> Eunit.Test
 withConstant_ name term =
   withConstant name (const term)
 
 
-withConstant :: (ErlangLiteral a, Beam.Source s) => String -> (a -> s) -> a -> Eunit.Test
+withConstant :: (ErlangLiteral a, Beam.IsSource s) => String -> (a -> s) -> a -> Eunit.Test
 withConstant name toSource value =
   Eunit.test name
     [ Beam.Export "check" 0 ]

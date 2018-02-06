@@ -57,16 +57,6 @@ data Env =
     }
 
 
-data Value
-  = Literal Beam.Literal
-  | Variable Beam.Y
-
-
-instance Beam.Source Value where
-  fromSource (Literal literal)   = Beam.fromSource literal
-  fromSource (Variable register) = Beam.fromSource register
-
-
 generate :: Def -> State Env [Beam.Op]
 generate (Def name args body) =
   do  begin  <- genBegin name args
@@ -99,7 +89,7 @@ genBegin name args =
         ]
 
 
-genLocal :: Beam.Source s => Name -> s -> State Env Beam.Op
+genLocal :: Beam.IsSource s => Name -> s -> State Env Beam.Op
 genLocal name source =
   do  locals <- State.gets _locals
       let register = Beam.Y (Map.size locals)
@@ -107,30 +97,30 @@ genLocal name source =
       return $ move source register
 
 
-genExpr :: Expr -> State Env ([Beam.Op], Value)
+genExpr :: Expr -> State Env ([Beam.Op], Beam.Source)
 genExpr expr =
   case expr of
     Float f ->
-      return ([], Literal (Beam.Float f))
+      return ([], Beam.toSource (Beam.Float f))
 
     BinOp operator left right ->
       do  tmp <- nextTmp
           lhs <- genExpr left
           rhs <- genExpr right
           let bif = stdlibMath operator (snd lhs) (snd rhs) tmp
-          return (fst lhs ++ fst rhs ++ [ bif ], Variable tmp)
+          return (fst lhs ++ fst rhs ++ [ bif ], Beam.toSource tmp)
 
     Var name ->
       lookupVar name >>= \result ->
         case result of
           Left register ->
-            return ([], Variable register)
+            return ([], Beam.toSource register)
 
           Right (lbl, arity) ->
             do  tmp <- nextTmp
                 return
                   ( [ make_fun2 (Beam.Lambda (toBytes name) arity lbl 0) ]
-                  , Variable tmp
+                  , Beam.toSource tmp
                   )
 
     Call name args ->
@@ -144,13 +134,13 @@ genExpr expr =
             genCall (call (length args) lbl) args
 
 
-genCall :: Beam.Op -> [Expr] -> State Env ([Beam.Op], Value)
+genCall :: Beam.Op -> [Expr] -> State Env ([Beam.Op], Beam.Source)
 genCall use args =
   do  tmp <- nextTmp
       (ops, values) <- fmap unzip (mapM genExpr args)
       return
         ( concat ops ++ withArgs move values ++ [ use, move returnAddress tmp ]
-        , Variable tmp
+        , Beam.toSource tmp
         )
 
 
@@ -196,7 +186,7 @@ finish name stack =
     [ deallocate stack, return_ ]
 
 
-stdlibMath :: Operator -> Value -> Value -> Beam.Y -> Beam.Op
+stdlibMath :: Operator -> Beam.Source -> Beam.Source -> Beam.Y -> Beam.Op
 stdlibMath Plus   = bif2 noFailure Erlang_splus_2
 stdlibMath Minus  = bif2 noFailure Erlang_sminus_2
 stdlibMath Times  = bif2 noFailure Erlang_stimes_2

@@ -94,18 +94,18 @@ call_ext_last :: Import -> Int -> Op
 call_ext_last a1 a2 = Op 8 [FromUntagged (_import_arity a1), FromImport a1, FromUntagged a2]
 
 -- | Call the bif and store the result in register.
-bif0 :: (Bif0 a1, NoGC a1, Register a2) => a1 -> a2 -> Op
-bif0 a1 a2 = Op 9 [FromImport (importBif0 a1), erase fromRegister a2]
+bif0 :: (Bif0 a1, NoGC a1, IsRegister a2) => a1 -> a2 -> Op
+bif0 a1 a2 = Op 9 [FromImport (importBif0 a1), fromRegister a2]
 
 -- | Call the bif with the source, and store the result in register.
 --   On failure jump to label.
-bif1 :: (Bif1 a2, NoGC a2, Source a3, Register a4) => Label -> a2 -> a3 -> a4 -> Op
-bif1 a1 a2 a3 a4 = Op 10 [FromLabel a1, FromImport (importBif1 a2), erase fromSource a3, erase fromRegister a4]
+bif1 :: (Bif1 a2, NoGC a2, IsSource a3, IsRegister a4) => Label -> a2 -> a3 -> a4 -> Op
+bif1 a1 a2 a3 a4 = Op 10 [FromLabel a1, FromImport (importBif1 a2), fromSource a3, fromRegister a4]
 
 -- | Call the bif with the sources, and store the result in register.
 --   On failure jump to label.
-bif2 :: (Bif2 a2, NoGC a2, Source a3, Source a4, Register a5) => Label -> a2 -> a3 -> a4 -> a5 -> Op
-bif2 a1 a2 a3 a4 a5 = Op 11 [FromLabel a1, FromImport (importBif2 a2), erase fromSource a3, erase fromSource a4, erase fromRegister a5]
+bif2 :: (Bif2 a2, NoGC a2, IsSource a3, IsSource a4, IsRegister a5) => Label -> a2 -> a3 -> a4 -> a5 -> Op
+bif2 a1 a2 a3 a4 a5 = Op 11 [FromLabel a1, FromImport (importBif2 a2), fromSource a3, fromSource a4, fromRegister a5]
 
 -- | Allocate space for some words on the stack. If a GC is needed
 --   during allocation there are a number of live X registers.
@@ -199,95 +199,95 @@ wait a1 = Op 25 [FromLabel a1]
 
 -- | Sets up a timeout of source milliseconds and saves the address of the
 --   following instruction as the entry point if the timeout triggers.
-wait_timeout :: (Source a2) => Label -> a2 -> Op
-wait_timeout a1 a2 = Op 26 [FromLabel a1, erase fromSource a2]
+wait_timeout :: (IsSource a2) => Label -> a2 -> Op
+wait_timeout a1 a2 = Op 26 [FromLabel a1, fromSource a2]
 
 -- | Compare two terms and jump to label if first is not less than second.
-is_lt :: (Source a2, Source a3) => Label -> a2 -> a3 -> Op
-is_lt a1 a2 a3 = Op 39 [FromLabel a1, erase fromSource a2, erase fromSource a3]
+is_lt :: (IsSource a2, IsSource a3) => Label -> a2 -> a3 -> Op
+is_lt a1 a2 a3 = Op 39 [FromLabel a1, fromSource a2, fromSource a3]
 
 -- | Compare two terms and jump to label if first is less than second.
-is_ge :: (Source a2, Source a3) => Label -> a2 -> a3 -> Op
-is_ge a1 a2 a3 = Op 40 [FromLabel a1, erase fromSource a2, erase fromSource a3]
+is_ge :: (IsSource a2, IsSource a3) => Label -> a2 -> a3 -> Op
+is_ge a1 a2 a3 = Op 40 [FromLabel a1, fromSource a2, fromSource a3]
 
 -- | Compare two terms and jump to label if first is not (numerically) equal to second.
-is_eq :: (Source a2, Source a3) => Label -> a2 -> a3 -> Op
-is_eq a1 a2 a3 = Op 41 [FromLabel a1, erase fromSource a2, erase fromSource a3]
+is_eq :: (IsSource a2, IsSource a3) => Label -> a2 -> a3 -> Op
+is_eq a1 a2 a3 = Op 41 [FromLabel a1, fromSource a2, fromSource a3]
 
 -- | Compare two terms and jump to label if first is (numerically) equal to second.
-is_ne :: (Source a2, Source a3) => Label -> a2 -> a3 -> Op
-is_ne a1 a2 a3 = Op 42 [FromLabel a1, erase fromSource a2, erase fromSource a3]
+is_ne :: (IsSource a2, IsSource a3) => Label -> a2 -> a3 -> Op
+is_ne a1 a2 a3 = Op 42 [FromLabel a1, fromSource a2, fromSource a3]
 
 -- | Compare two terms and jump to label if first is not exactly equal to second.
-is_eq_exact :: (Source a2, Source a3) => Label -> a2 -> a3 -> Op
-is_eq_exact a1 a2 a3 = Op 43 [FromLabel a1, erase fromSource a2, erase fromSource a3]
+is_eq_exact :: (IsSource a2, IsSource a3) => Label -> a2 -> a3 -> Op
+is_eq_exact a1 a2 a3 = Op 43 [FromLabel a1, fromSource a2, fromSource a3]
 
 -- | Compare two terms and jump to label if first is exactly equal to second.
-is_ne_exact :: (Source a2, Source a3) => Label -> a2 -> a3 -> Op
-is_ne_exact a1 a2 a3 = Op 44 [FromLabel a1, erase fromSource a2, erase fromSource a3]
+is_ne_exact :: (IsSource a2, IsSource a3) => Label -> a2 -> a3 -> Op
+is_ne_exact a1 a2 a3 = Op 44 [FromLabel a1, fromSource a2, fromSource a3]
 
 -- | Test the type of source and jump to label if it is not an integer.
-is_integer :: (Source a2) => Label -> a2 -> Op
-is_integer a1 a2 = Op 45 [FromLabel a1, erase fromSource a2]
+is_integer :: (IsSource a2) => Label -> a2 -> Op
+is_integer a1 a2 = Op 45 [FromLabel a1, fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a float.
-is_float :: (Source a2) => Label -> a2 -> Op
-is_float a1 a2 = Op 46 [FromLabel a1, erase fromSource a2]
+is_float :: (IsSource a2) => Label -> a2 -> Op
+is_float a1 a2 = Op 46 [FromLabel a1, fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a number.
-is_number :: (Source a2) => Label -> a2 -> Op
-is_number a1 a2 = Op 47 [FromLabel a1, erase fromSource a2]
+is_number :: (IsSource a2) => Label -> a2 -> Op
+is_number a1 a2 = Op 47 [FromLabel a1, fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a atom.
-is_atom :: (Source a2) => Label -> a2 -> Op
-is_atom a1 a2 = Op 48 [FromLabel a1, erase fromSource a2]
+is_atom :: (IsSource a2) => Label -> a2 -> Op
+is_atom a1 a2 = Op 48 [FromLabel a1, fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a pid.
-is_pid :: (Source a2) => Label -> a2 -> Op
-is_pid a1 a2 = Op 49 [FromLabel a1, erase fromSource a2]
+is_pid :: (IsSource a2) => Label -> a2 -> Op
+is_pid a1 a2 = Op 49 [FromLabel a1, fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a reference.
-is_reference :: (Source a2) => Label -> a2 -> Op
-is_reference a1 a2 = Op 50 [FromLabel a1, erase fromSource a2]
+is_reference :: (IsSource a2) => Label -> a2 -> Op
+is_reference a1 a2 = Op 50 [FromLabel a1, fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a port.
-is_port :: (Source a2) => Label -> a2 -> Op
-is_port a1 a2 = Op 51 [FromLabel a1, erase fromSource a2]
+is_port :: (IsSource a2) => Label -> a2 -> Op
+is_port a1 a2 = Op 51 [FromLabel a1, fromSource a2]
 
 -- | Test the type of source and jump to label if it is not nil.
-is_nil :: (Source a2) => Label -> a2 -> Op
-is_nil a1 a2 = Op 52 [FromLabel a1, erase fromSource a2]
+is_nil :: (IsSource a2) => Label -> a2 -> Op
+is_nil a1 a2 = Op 52 [FromLabel a1, fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a binary.
-is_binary :: (Source a2) => Label -> a2 -> Op
-is_binary a1 a2 = Op 53 [FromLabel a1, erase fromSource a2]
+is_binary :: (IsSource a2) => Label -> a2 -> Op
+is_binary a1 a2 = Op 53 [FromLabel a1, fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a cons or nil.
-is_list :: (Source a2) => Label -> a2 -> Op
-is_list a1 a2 = Op 55 [FromLabel a1, erase fromSource a2]
+is_list :: (IsSource a2) => Label -> a2 -> Op
+is_list a1 a2 = Op 55 [FromLabel a1, fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a cons.
-is_nonempty_list :: (Source a2) => Label -> a2 -> Op
-is_nonempty_list a1 a2 = Op 56 [FromLabel a1, erase fromSource a2]
+is_nonempty_list :: (IsSource a2) => Label -> a2 -> Op
+is_nonempty_list a1 a2 = Op 56 [FromLabel a1, fromSource a2]
 
 -- | Test the type of source and jump to label if it is not a tuple.
-is_tuple :: (Source a2) => Label -> a2 -> Op
-is_tuple a1 a2 = Op 57 [FromLabel a1, erase fromSource a2]
+is_tuple :: (IsSource a2) => Label -> a2 -> Op
+is_tuple a1 a2 = Op 57 [FromLabel a1, fromSource a2]
 
 -- | Test the arity of (the tuple in) source and jump to label if it is not equal to arity.
-test_arity :: (Source a2) => Label -> a2 -> Int -> Op
-test_arity a1 a2 a3 = Op 58 [FromLabel a1, erase fromSource a2, FromUntagged a3]
+test_arity :: (IsSource a2) => Label -> a2 -> Int -> Op
+test_arity a1 a2 a3 = Op 58 [FromLabel a1, fromSource a2, FromUntagged a3]
 
 
 -- | Jump to the destination label corresponding to source
 --   in the destinations list, if no arity matches, jump to fail label.
-select_val :: (Source a1) => a1 -> Label -> [Destination] -> Op
-select_val a1 a2 a3 = Op 59 [erase fromSource a1, FromLabel a2, FromDestinations a3]
+select_val :: (IsSource a1) => a1 -> Label -> [(Label, Source)] -> Op
+select_val a1 a2 a3 = Op 59 [fromSource a1, FromLabel a2, fromDestinations a3]
 
 -- | Check the arity of the source tuple and jump to the corresponding
 --   destination label, if no arity matches, jump to FailLabel.
-select_tuple_arity :: (Source a1) => a1 -> Label -> [Destination] -> Op
-select_tuple_arity a1 a2 a3 = Op 60 [erase fromSource a1, FromLabel a2, FromDestinations a3]
+select_tuple_arity :: (IsSource a1) => a1 -> Label -> [(Label, Source)] -> Op
+select_tuple_arity a1 a2 a3 = Op 60 [fromSource a1, FromLabel a2, fromDestinations a3]
 
 -- | Jump to label.
 jump :: Label -> Op
@@ -302,64 +302,64 @@ catch_end a1 = Op 63 [FromY a1]
 
 -- | Move the source (a literal or a register) to
 --   the destination register.
-move :: (Source a1, Register a2) => a1 -> a2 -> Op
-move a1 a2 = Op 64 [erase fromSource a1, erase fromRegister a2]
+move :: (IsSource a1, IsRegister a2) => a1 -> a2 -> Op
+move a1 a2 = Op 64 [fromSource a1, fromRegister a2]
 
 -- | Get the head and tail (or car and cdr) parts of a list
 --   (a cons cell) from the initial register and put them into the registers.
 get_list
-  :: (Register a1, Register a2, Register a3)
+  :: (IsRegister a1, IsRegister a2, IsRegister a3)
   => a1 -- ^ where to get the list
   -> a2 -- ^ where to put the head (car)
   -> a3 -- ^ where to put the tail (cdr)
   -> Op
-get_list a1 a2 a3 = Op 65 [erase fromRegister a1, erase fromRegister a2, erase fromRegister a3]
+get_list a1 a2 a3 = Op 65 [fromRegister a1, fromRegister a2, fromRegister a3]
 
 -- | Get a particular element number from the tuple in source and put
 --   it in the destination register.
 get_tuple_element
-  :: (Register a1, Register a3)
+  :: (IsRegister a1, IsRegister a3)
   => a1  -- ^ where to get the tuple
   -> Int -- ^ target element index, __0-based__
   -> a3  -- ^ where to put the element
   -> Op
-get_tuple_element a1 a2 a3 = Op 66 [erase fromRegister a1, FromUntagged a2, erase fromRegister a3]
+get_tuple_element a1 a2 a3 = Op 66 [fromRegister a1, FromUntagged a2, fromRegister a3]
 
 -- | Update the element at position of the tuple in register
 --   with the new source element.
-set_tuple_element :: (Source a1, Register a2) => a1 -> a2 -> Int -> Op
-set_tuple_element a1 a2 a3 = Op 67 [erase fromSource a1, erase fromRegister a2, FromUntagged a3]
+set_tuple_element :: (IsSource a1, IsRegister a2) => a1 -> a2 -> Int -> Op
+set_tuple_element a1 a2 a3 = Op 67 [fromSource a1, fromRegister a2, FromUntagged a3]
 
 
 -- | Build a list, from the front, and puts the resulting list in the register.
 --   Just like Erlang's @|@ or Haskell's @:@.
 put_list
-  :: (Source a1, Source a2, Register a3)
+  :: (IsSource a1, IsSource a2, IsRegister a3)
     => a1 -- ^ the new head
     -> a2 -- ^ the new tail
     -> a3
     -> Op
-put_list a1 a2 a3 = Op 69 [erase fromSource a1, erase fromSource a2, erase fromRegister a3]
+put_list a1 a2 a3 = Op 69 [fromSource a1, fromSource a2, fromRegister a3]
 
 -- | Constructs an empty tuple on the heap (size+1 words)
 --   and places its address into the Destination register.
 --   No elements are set at this moment.
 --   Put_tuple instruction is always followed by multiple
 --   'put' instructions which destructively set its elements one by one.
-put_tuple :: (Register a2) => Int -> a2 -> Op
-put_tuple a1 a2 = Op 70 [FromUntagged a1, erase fromRegister a2]
+put_tuple :: (IsRegister a2) => Int -> a2 -> Op
+put_tuple a1 a2 = Op 70 [FromUntagged a1, fromRegister a2]
 
-put :: (Source a1) => a1 -> Op
-put a1 = Op 71 [erase fromSource a1]
+put :: (IsSource a1) => a1 -> Op
+put a1 = Op 71 [fromSource a1]
 
-badmatch :: (Source a1) => a1 -> Op
-badmatch a1 = Op 72 [erase fromSource a1]
+badmatch :: (IsSource a1) => a1 -> Op
+badmatch a1 = Op 72 [fromSource a1]
 
 if_end :: Op
 if_end  = Op 73 []
 
-case_end :: (Source a1) => a1 -> Op
-case_end a1 = Op 74 [erase fromSource a1]
+case_end :: (IsSource a1) => a1 -> Op
+case_end a1 = Op 74 [fromSource a1]
 
 -- | Call @fun@ object (in x[Arity]) with args (in x[0..Arity-1])
 --   Raises @badarity@ if the arity doesn’t match the function object.
@@ -371,22 +371,22 @@ call_fun a1 = Op 75 [FromUntagged a1]
 
 -- | Test the type of the source and jump to label if it is not a
 --   function (i.e. fun or closure).
-is_function :: (Source a2) => Label -> a2 -> Op
-is_function a1 a2 = Op 77 [FromLabel a1, erase fromSource a2]
+is_function :: (IsSource a2) => Label -> a2 -> Op
+is_function a1 a2 = Op 77 [FromLabel a1, fromSource a2]
 
 -- | Do a tail recursive call to the function at label.
 --   Do not update the CP register.
 call_ext_only :: Import -> Op
 call_ext_only a1 = Op 78 [FromUntagged (_import_arity a1), FromImport a1]
 
-bs_put_integer :: (Source a2, Source a5) => Label -> a2 -> Int -> Int -> a5 -> Op
-bs_put_integer a1 a2 a3 a4 a5 = Op 89 [FromLabel a1, erase fromSource a2, FromUntagged a3, FromUntagged a4, erase fromSource a5]
+bs_put_integer :: (IsSource a2, IsSource a5) => Label -> a2 -> Int -> Int -> a5 -> Op
+bs_put_integer a1 a2 a3 a4 a5 = Op 89 [FromLabel a1, fromSource a2, FromUntagged a3, FromUntagged a4, fromSource a5]
 
-bs_put_binary :: (Source a2, Source a5) => Label -> a2 -> Int -> Int -> a5 -> Op
-bs_put_binary a1 a2 a3 a4 a5 = Op 90 [FromLabel a1, erase fromSource a2, FromUntagged a3, FromUntagged a4, erase fromSource a5]
+bs_put_binary :: (IsSource a2, IsSource a5) => Label -> a2 -> Int -> Int -> a5 -> Op
+bs_put_binary a1 a2 a3 a4 a5 = Op 90 [FromLabel a1, fromSource a2, FromUntagged a3, FromUntagged a4, fromSource a5]
 
-bs_put_float :: (Source a2, Source a5) => Label -> a2 -> Int -> Int -> a5 -> Op
-bs_put_float a1 a2 a3 a4 a5 = Op 91 [FromLabel a1, erase fromSource a2, FromUntagged a3, FromUntagged a4, erase fromSource a5]
+bs_put_float :: (IsSource a2, IsSource a5) => Label -> a2 -> Int -> Int -> a5 -> Op
+bs_put_float a1 a2 a3 a4 a5 = Op 91 [FromLabel a1, fromSource a2, FromUntagged a3, FromUntagged a4, fromSource a5]
 
 bs_put_string :: Int -> Int -> Op
 bs_put_string a1 a2 = Op 92 [FromUntagged a1, FromUntagged a2]
@@ -397,11 +397,11 @@ fclearerror  = Op 94 []
 fcheckerror :: Label -> Op
 fcheckerror a1 = Op 95 [FromLabel a1]
 
-fmove :: (SourceF a1, RegisterF a2) => a1 -> a2 -> Op
-fmove a1 a2 = Op 96 [erase fromSourceF a1, erase fromRegisterF a2]
+fmove :: (IsSourceF a1, IsRegisterF a2) => a1 -> a2 -> Op
+fmove a1 a2 = Op 96 [fromSourceF a1, fromRegisterF a2]
 
-fconv :: (Source a1) => a1 -> F -> Op
-fconv a1 a2 = Op 97 [erase fromSource a1, FromF a2]
+fconv :: (IsSource a1) => a1 -> F -> Op
+fconv a1 a2 = Op 97 [fromSource a1, FromF a2]
 
 fadd :: F -> F -> F -> Op
 fadd a1 a2 a3 = Op 98 [FromLabel (Label 0), FromF a1, FromF a2, FromF a3]
@@ -430,17 +430,17 @@ try_end a1 = Op 105 [FromY a1]
 try_case :: Y -> Op
 try_case a1 = Op 106 [FromY a1]
 
-try_case_end :: (Source a1) => a1 -> Op
-try_case_end a1 = Op 107 [erase fromSource a1]
+try_case_end :: (IsSource a1) => a1 -> Op
+try_case_end a1 = Op 107 [fromSource a1]
 
-raise :: (Source a1, Source a2) => a1 -> a2 -> Op
-raise a1 a2 = Op 108 [erase fromSource a1, erase fromSource a2]
+raise :: (IsSource a1, IsSource a2) => a1 -> a2 -> Op
+raise a1 a2 = Op 108 [fromSource a1, fromSource a2]
 
-bs_init2 :: (Source a2, Register a6) => Label -> a2 -> Int -> Int -> Int -> a6 -> Op
-bs_init2 a1 a2 a3 a4 a5 a6 = Op 109 [FromLabel a1, erase fromSource a2, FromUntagged a3, FromUntagged a4, FromUntagged a5, erase fromRegister a6]
+bs_init2 :: (IsSource a2, IsRegister a6) => Label -> a2 -> Int -> Int -> Int -> a6 -> Op
+bs_init2 a1 a2 a3 a4 a5 a6 = Op 109 [FromLabel a1, fromSource a2, FromUntagged a3, FromUntagged a4, FromUntagged a5, fromRegister a6]
 
-bs_add :: (Source a2, Source a3, Register a5) => Label -> a2 -> a3 -> Int -> a5 -> Op
-bs_add a1 a2 a3 a4 a5 = Op 111 [FromLabel a1, erase fromSource a2, erase fromSource a3, FromUntagged a4, erase fromRegister a5]
+bs_add :: (IsSource a2, IsSource a3, IsRegister a5) => Label -> a2 -> a3 -> Int -> a5 -> Op
+bs_add a1 a2 a3 a4 a5 = Op 111 [FromLabel a1, fromSource a2, fromSource a3, FromUntagged a4, fromRegister a5]
 
 -- | Apply function object (in x[arity]) with args (in x[0..arity-1])
 apply
@@ -456,42 +456,42 @@ apply_last
 apply_last a1 a2 = Op 113 [FromUntagged a1, FromUntagged a2]
 
 -- | Test the type of source and jump to label if it is not a boolean.
-is_boolean :: (Source a2) => Label -> a2 -> Op
-is_boolean a1 a2 = Op 114 [FromLabel a1, erase fromSource a2]
+is_boolean :: (IsSource a2) => Label -> a2 -> Op
+is_boolean a1 a2 = Op 114 [FromLabel a1, fromSource a2]
 
 -- | Test the type of the source and jump to label if it is not a
 --   function of the particular arity.
 is_function2
-  :: (Source a2, Source a3)
+  :: (IsSource a2, IsSource a3)
   => Label
   -> a2 -- ^ possible function
   -> a3 -- ^ possible arity
   -> Op
-is_function2 a1 a2 a3 = Op 115 [FromLabel a1, erase fromSource a2, erase fromSource a3]
+is_function2 a1 a2 a3 = Op 115 [FromLabel a1, fromSource a2, fromSource a3]
 
-bs_start_match2 :: (Source a2, Register a5) => Label -> a2 -> Int -> Int -> a5 -> Op
-bs_start_match2 a1 a2 a3 a4 a5 = Op 116 [FromLabel a1, erase fromSource a2, FromUntagged a3, FromUntagged a4, erase fromRegister a5]
+bs_start_match2 :: (IsSource a2, IsRegister a5) => Label -> a2 -> Int -> Int -> a5 -> Op
+bs_start_match2 a1 a2 a3 a4 a5 = Op 116 [FromLabel a1, fromSource a2, FromUntagged a3, FromUntagged a4, fromRegister a5]
 
-bs_get_integer2 :: (Source a4, Register a7) => Label -> X -> Int -> a4 -> Int -> Int -> a7 -> Op
-bs_get_integer2 a1 a2 a3 a4 a5 a6 a7 = Op 117 [FromLabel a1, FromX a2, FromUntagged a3, erase fromSource a4, FromUntagged a5, FromUntagged a6, erase fromRegister a7]
+bs_get_integer2 :: (IsSource a4, IsRegister a7) => Label -> X -> Int -> a4 -> Int -> Int -> a7 -> Op
+bs_get_integer2 a1 a2 a3 a4 a5 a6 a7 = Op 117 [FromLabel a1, FromX a2, FromUntagged a3, fromSource a4, FromUntagged a5, FromUntagged a6, fromRegister a7]
 
-bs_get_float2 :: (Source a4, Register a7) => Label -> X -> Int -> a4 -> Int -> Int -> a7 -> Op
-bs_get_float2 a1 a2 a3 a4 a5 a6 a7 = Op 118 [FromLabel a1, FromX a2, FromUntagged a3, erase fromSource a4, FromUntagged a5, FromUntagged a6, erase fromRegister a7]
+bs_get_float2 :: (IsSource a4, IsRegister a7) => Label -> X -> Int -> a4 -> Int -> Int -> a7 -> Op
+bs_get_float2 a1 a2 a3 a4 a5 a6 a7 = Op 118 [FromLabel a1, FromX a2, FromUntagged a3, fromSource a4, FromUntagged a5, FromUntagged a6, fromRegister a7]
 
-bs_get_binary2 :: (Source a4, Register a7) => Label -> X -> Int -> a4 -> Int -> Int -> a7 -> Op
-bs_get_binary2 a1 a2 a3 a4 a5 a6 a7 = Op 119 [FromLabel a1, FromX a2, FromUntagged a3, erase fromSource a4, FromUntagged a5, FromUntagged a6, erase fromRegister a7]
+bs_get_binary2 :: (IsSource a4, IsRegister a7) => Label -> X -> Int -> a4 -> Int -> Int -> a7 -> Op
+bs_get_binary2 a1 a2 a3 a4 a5 a6 a7 = Op 119 [FromLabel a1, FromX a2, FromUntagged a3, fromSource a4, FromUntagged a5, FromUntagged a6, fromRegister a7]
 
-bs_skip_bits2 :: (Source a3) => Label -> X -> a3 -> Int -> Int -> Op
-bs_skip_bits2 a1 a2 a3 a4 a5 = Op 120 [FromLabel a1, FromX a2, erase fromSource a3, FromUntagged a4, FromUntagged a5]
+bs_skip_bits2 :: (IsSource a3) => Label -> X -> a3 -> Int -> Int -> Op
+bs_skip_bits2 a1 a2 a3 a4 a5 = Op 120 [FromLabel a1, FromX a2, fromSource a3, FromUntagged a4, FromUntagged a5]
 
 bs_test_tail2 :: Label -> X -> Int -> Op
 bs_test_tail2 a1 a2 a3 = Op 121 [FromLabel a1, FromX a2, FromUntagged a3]
 
-bs_save2 :: (Register a1) => a1 -> Int -> Op
-bs_save2 a1 a2 = Op 122 [erase fromRegister a1, FromUntagged a2]
+bs_save2 :: (IsRegister a1) => a1 -> Int -> Op
+bs_save2 a1 a2 = Op 122 [fromRegister a1, FromUntagged a2]
 
-bs_restore2 :: (Register a1) => a1 -> Int -> Op
-bs_restore2 a1 a2 = Op 123 [erase fromRegister a1, FromUntagged a2]
+bs_restore2 :: (IsRegister a1) => a1 -> Int -> Op
+bs_restore2 a1 a2 = Op 123 [fromRegister a1, FromUntagged a2]
 
 
 -- | Call the bif with the argument, and store the result in the register.
@@ -499,24 +499,24 @@ bs_restore2 a1 a2 = Op 123 [erase fromRegister a1, FromUntagged a2]
 --   Do a garbage collection if necessary to allocate space on the heap
 --   for the result.
 gc_bif1
-  :: (Bif1 a3, Source a4, Register a5)
+  :: (Bif1 a3, IsSource a4, IsRegister a5)
   => Label -- ^ jump here on failure
   -> Int   -- ^ number of X-registers to save
   -> a3    -- ^ BIF, something like 'Codec.Beam.Bifs.erlang_localtime'
   -> a4    -- ^ argument
   -> a5    -- ^ where to put the result
   -> Op
-gc_bif1 a1 a2 a3 a4 a5 = Op 124 [FromLabel a1, FromUntagged a2, FromImport (importBif1 a3), erase fromSource a4, erase fromRegister a5]
+gc_bif1 a1 a2 a3 a4 a5 = Op 124 [FromLabel a1, FromUntagged a2, FromImport (importBif1 a3), fromSource a4, fromRegister a5]
 
 -- | Same as 'gc_bif1', but with two source arguments.
-gc_bif2 :: (Bif2 a3, Source a4, Source a5, Register a6) => Label -> Int -> a3 -> a4 -> a5 -> a6 -> Op
-gc_bif2 a1 a2 a3 a4 a5 a6 = Op 125 [FromLabel a1, FromUntagged a2, FromImport (importBif2 a3), erase fromSource a4, erase fromSource a5, erase fromRegister a6]
+gc_bif2 :: (Bif2 a3, IsSource a4, IsSource a5, IsRegister a6) => Label -> Int -> a3 -> a4 -> a5 -> a6 -> Op
+gc_bif2 a1 a2 a3 a4 a5 a6 = Op 125 [FromLabel a1, FromUntagged a2, FromImport (importBif2 a3), fromSource a4, fromSource a5, fromRegister a6]
 
-is_bitstr :: (Source a2) => Label -> a2 -> Op
-is_bitstr a1 a2 = Op 129 [FromLabel a1, erase fromSource a2]
+is_bitstr :: (IsSource a2) => Label -> a2 -> Op
+is_bitstr a1 a2 = Op 129 [FromLabel a1, fromSource a2]
 
-bs_context_to_binary :: (Register a1) => a1 -> Op
-bs_context_to_binary a1 = Op 130 [erase fromRegister a1]
+bs_context_to_binary :: (IsRegister a1) => a1 -> Op
+bs_context_to_binary a1 = Op 130 [fromRegister a1]
 
 bs_test_unit :: Label -> X -> Int -> Op
 bs_test_unit a1 a2 a3 = Op 131 [FromLabel a1, FromX a2, FromUntagged a3]
@@ -527,11 +527,11 @@ bs_match_string a1 a2 a3 a4 = Op 132 [FromLabel a1, FromX a2, FromUntagged a3, F
 bs_init_writable :: Op
 bs_init_writable  = Op 133 []
 
-bs_append :: (Source a2, Source a6, Register a8) => Label -> a2 -> Int -> Int -> Int -> a6 -> Int -> a8 -> Op
-bs_append a1 a2 a3 a4 a5 a6 a7 a8 = Op 134 [FromLabel a1, erase fromSource a2, FromUntagged a3, FromUntagged a4, FromUntagged a5, erase fromSource a6, FromUntagged a7, erase fromRegister a8]
+bs_append :: (IsSource a2, IsSource a6, IsRegister a8) => Label -> a2 -> Int -> Int -> Int -> a6 -> Int -> a8 -> Op
+bs_append a1 a2 a3 a4 a5 a6 a7 a8 = Op 134 [FromLabel a1, fromSource a2, FromUntagged a3, FromUntagged a4, FromUntagged a5, fromSource a6, FromUntagged a7, fromRegister a8]
 
-bs_private_append :: (Source a2, Source a4, Register a6) => Label -> a2 -> Int -> a4 -> Int -> a6 -> Op
-bs_private_append a1 a2 a3 a4 a5 a6 = Op 135 [FromLabel a1, erase fromSource a2, FromUntagged a3, erase fromSource a4, FromUntagged a5, erase fromRegister a6]
+bs_private_append :: (IsSource a2, IsSource a4, IsRegister a6) => Label -> a2 -> Int -> a4 -> Int -> a6 -> Op
+bs_private_append a1 a2 a3 a4 a5 a6 = Op 135 [FromLabel a1, fromSource a2, FromUntagged a3, fromSource a4, FromUntagged a5, fromRegister a6]
 
 -- | Reduce the stack usage by some number of words,
 --   keeping the CP on the top of the stack.
@@ -541,41 +541,41 @@ trim
   -> Op
 trim a1 a2 = Op 136 [FromUntagged a1, FromUntagged a2]
 
-bs_init_bits :: (Source a2, Register a6) => Label -> a2 -> Int -> Int -> Int -> a6 -> Op
-bs_init_bits a1 a2 a3 a4 a5 a6 = Op 137 [FromLabel a1, erase fromSource a2, FromUntagged a3, FromUntagged a4, FromUntagged a5, erase fromRegister a6]
+bs_init_bits :: (IsSource a2, IsRegister a6) => Label -> a2 -> Int -> Int -> Int -> a6 -> Op
+bs_init_bits a1 a2 a3 a4 a5 a6 = Op 137 [FromLabel a1, fromSource a2, FromUntagged a3, FromUntagged a4, FromUntagged a5, fromRegister a6]
 
-bs_get_utf8 :: (Register a5) => Label -> X -> Int -> Int -> a5 -> Op
-bs_get_utf8 a1 a2 a3 a4 a5 = Op 138 [FromLabel a1, FromX a2, FromUntagged a3, FromUntagged a4, erase fromRegister a5]
+bs_get_utf8 :: (IsRegister a5) => Label -> X -> Int -> Int -> a5 -> Op
+bs_get_utf8 a1 a2 a3 a4 a5 = Op 138 [FromLabel a1, FromX a2, FromUntagged a3, FromUntagged a4, fromRegister a5]
 
 bs_skip_utf8 :: Label -> X -> Int -> Int -> Op
 bs_skip_utf8 a1 a2 a3 a4 = Op 139 [FromLabel a1, FromX a2, FromUntagged a3, FromUntagged a4]
 
-bs_get_utf16 :: (Register a5) => Label -> X -> Int -> Int -> a5 -> Op
-bs_get_utf16 a1 a2 a3 a4 a5 = Op 140 [FromLabel a1, FromX a2, FromUntagged a3, FromUntagged a4, erase fromRegister a5]
+bs_get_utf16 :: (IsRegister a5) => Label -> X -> Int -> Int -> a5 -> Op
+bs_get_utf16 a1 a2 a3 a4 a5 = Op 140 [FromLabel a1, FromX a2, FromUntagged a3, FromUntagged a4, fromRegister a5]
 
 bs_skip_utf16 :: Label -> X -> Int -> Int -> Op
 bs_skip_utf16 a1 a2 a3 a4 = Op 141 [FromLabel a1, FromX a2, FromUntagged a3, FromUntagged a4]
 
-bs_get_utf32 :: (Register a5) => Label -> X -> Int -> Int -> a5 -> Op
-bs_get_utf32 a1 a2 a3 a4 a5 = Op 142 [FromLabel a1, FromX a2, FromUntagged a3, FromUntagged a4, erase fromRegister a5]
+bs_get_utf32 :: (IsRegister a5) => Label -> X -> Int -> Int -> a5 -> Op
+bs_get_utf32 a1 a2 a3 a4 a5 = Op 142 [FromLabel a1, FromX a2, FromUntagged a3, FromUntagged a4, fromRegister a5]
 
 bs_skip_utf32 :: Label -> X -> Int -> Int -> Op
 bs_skip_utf32 a1 a2 a3 a4 = Op 143 [FromLabel a1, FromX a2, FromUntagged a3, FromUntagged a4]
 
-bs_utf8_size :: (Source a2, Register a3) => Label -> a2 -> a3 -> Op
-bs_utf8_size a1 a2 a3 = Op 144 [FromLabel a1, erase fromSource a2, erase fromRegister a3]
+bs_utf8_size :: (IsSource a2, IsRegister a3) => Label -> a2 -> a3 -> Op
+bs_utf8_size a1 a2 a3 = Op 144 [FromLabel a1, fromSource a2, fromRegister a3]
 
-bs_put_utf8 :: (Source a3) => Label -> Int -> a3 -> Op
-bs_put_utf8 a1 a2 a3 = Op 145 [FromLabel a1, FromUntagged a2, erase fromSource a3]
+bs_put_utf8 :: (IsSource a3) => Label -> Int -> a3 -> Op
+bs_put_utf8 a1 a2 a3 = Op 145 [FromLabel a1, FromUntagged a2, fromSource a3]
 
-bs_utf16_size :: (Source a2, Register a3) => Label -> a2 -> a3 -> Op
-bs_utf16_size a1 a2 a3 = Op 146 [FromLabel a1, erase fromSource a2, erase fromRegister a3]
+bs_utf16_size :: (IsSource a2, IsRegister a3) => Label -> a2 -> a3 -> Op
+bs_utf16_size a1 a2 a3 = Op 146 [FromLabel a1, fromSource a2, fromRegister a3]
 
-bs_put_utf16 :: (Source a3) => Label -> Int -> a3 -> Op
-bs_put_utf16 a1 a2 a3 = Op 147 [FromLabel a1, FromUntagged a2, erase fromSource a3]
+bs_put_utf16 :: (IsSource a3) => Label -> Int -> a3 -> Op
+bs_put_utf16 a1 a2 a3 = Op 147 [FromLabel a1, FromUntagged a2, fromSource a3]
 
-bs_put_utf32 :: (Source a3) => Label -> Int -> a3 -> Op
-bs_put_utf32 a1 a2 a3 = Op 148 [FromLabel a1, FromUntagged a2, erase fromSource a3]
+bs_put_utf32 :: (IsSource a3) => Label -> Int -> a3 -> Op
+bs_put_utf32 a1 a2 a3 = Op 148 [FromLabel a1, FromUntagged a2, fromSource a3]
 
 on_load :: Op
 on_load  = Op 149 []
@@ -593,29 +593,29 @@ recv_set :: Label -> Op
 recv_set a1 = Op 151 [FromLabel a1]
 
 -- | Same as 'gc_bif1', but with three source arguments.
-gc_bif3 :: (Bif3 a3, Source a4, Source a5, Source a6, Register a7) => Label -> Int -> a3 -> a4 -> a5 -> a6 -> a7 -> Op
-gc_bif3 a1 a2 a3 a4 a5 a6 a7 = Op 152 [FromLabel a1, FromUntagged a2, FromImport (importBif3 a3), erase fromSource a4, erase fromSource a5, erase fromSource a6, erase fromRegister a7]
+gc_bif3 :: (Bif3 a3, IsSource a4, IsSource a5, IsSource a6, IsRegister a7) => Label -> Int -> a3 -> a4 -> a5 -> a6 -> a7 -> Op
+gc_bif3 a1 a2 a3 a4 a5 a6 a7 = Op 152 [FromLabel a1, FromUntagged a2, FromImport (importBif3 a3), fromSource a4, fromSource a5, fromSource a6, fromRegister a7]
 
 line :: Int -> Op
 line a1 = Op 153 [FromUntagged a1]
 
-put_map_assoc :: (Source a2, Register a3) => Label -> a2 -> a3 -> [Pair] -> Op
-put_map_assoc a1 a2 a3 a4 = Op 154 [FromLabel a1, erase fromSource a2, erase fromRegister a3, FromPairs a4]
+put_map_assoc :: (IsSource a2, IsRegister a3) => Label -> a2 -> a3 -> [(Source, Source)] -> Op
+put_map_assoc a1 a2 a3 a4 = Op 154 [FromLabel a1, fromSource a2, fromRegister a3, fromPairs a4]
 
-put_map_exact :: (Source a2, Register a3) => Label -> a2 -> a3 -> [Pair] -> Op
-put_map_exact a1 a2 a3 a4 = Op 155 [FromLabel a1, erase fromSource a2, erase fromRegister a3, FromPairs a4]
+put_map_exact :: (IsSource a2, IsRegister a3) => Label -> a2 -> a3 -> [(Source, Source)] -> Op
+put_map_exact a1 a2 a3 a4 = Op 155 [FromLabel a1, fromSource a2, fromRegister a3, fromPairs a4]
 
-is_map :: (Source a2) => Label -> a2 -> Op
-is_map a1 a2 = Op 156 [FromLabel a1, erase fromSource a2]
+is_map :: (IsSource a2) => Label -> a2 -> Op
+is_map a1 a2 = Op 156 [FromLabel a1, fromSource a2]
 
-has_map_fields :: (Source a2) => Label -> a2 -> [Field] -> Op
-has_map_fields a1 a2 a3 = Op 157 [FromLabel a1, erase fromSource a2, FromFields a3]
+has_map_fields :: (IsSource a2) => Label -> a2 -> [Source] -> Op
+has_map_fields a1 a2 a3 = Op 157 [FromLabel a1, fromSource a2, FromList (map fromSource a3)]
 
-get_map_elements :: (Source a2) => Label -> a2 -> [Pair] -> Op
-get_map_elements a1 a2 a3 = Op 158 [FromLabel a1, erase fromSource a2, FromPairs a3]
+get_map_elements :: (IsSource a2) => Label -> a2 -> [(Source, Source)] -> Op
+get_map_elements a1 a2 a3 = Op 158 [FromLabel a1, fromSource a2, fromPairs a3]
 
 -- | Test the type of source and jumps to label if it is not a tuple.
 --   Test the arity of Reg and jumps to label if it is not of the given size.
 --   Test the first element of the tuple and jumps to label if it is not given atom.
-is_tagged_tuple :: (Source a2) => Label -> a2 -> Int -> ByteString -> Op
-is_tagged_tuple a1 a2 a3 a4 = Op 159 [FromLabel a1, erase fromSource a2, FromUntagged a3, FromByteString a4]
+is_tagged_tuple :: (IsSource a2) => Label -> a2 -> Int -> ByteString -> Op
+is_tagged_tuple a1 a2 a3 a4 = Op 159 [FromLabel a1, fromSource a2, FromUntagged a3, FromByteString a4]

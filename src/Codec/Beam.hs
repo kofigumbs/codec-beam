@@ -2,11 +2,9 @@ module Codec.Beam
   ( encode, Export(..)
     -- * Syntax
   , Op, X(..), Y(..), F(..), Nil(..), Label(..), Literal(..), Lambda(..), Import(..)
-    -- * Variadic arguments
-  , Destination, destination, Pair, {- TODO pair -} Field {- TODO field -}
     -- * Argument constraints
-  , Register(fromRegister), Source(fromSource)
-  , RegisterF(fromRegisterF), SourceF(fromSourceF)
+  , Register, IsRegister(toRegister), Source, IsSource(toSource)
+  , RegisterF, IsRegisterF(toRegisterF), SourceF, IsSourceF(toSourceF)
     -- * BIFs (Built-In Functions)
   , NoGC, importBif0, importBif1, importBif2, importBif3, importBif4
   , Bif0, Bif1, Bif2, Bif3, Bif4
@@ -95,7 +93,7 @@ encodeOp env (Op opCode args) =
       env { _maxOpCode = max opCode (_maxOpCode env) }
 
 
-encodeArgument :: Env -> Argument a -> Env
+encodeArgument :: Env -> Argument -> Env
 encodeArgument env argument =
   case argument of
     FromUntagged value ->
@@ -170,18 +168,8 @@ encodeArgument env argument =
       in
       appendTag (encodeExt 4 value) $ env { _literalTable = newTable }
 
-    FromDestinations destinations ->
-      let
-        list =
-          reverse (concatMap _destination_args destinations)
-      in
-      foldl encodeArgument (appendTag (encodeExt 1 (length list)) env) list
-
-    FromPairs _pairs ->
-      undefined
-
-    FromFields _fields ->
-      undefined
+    FromList list ->
+      foldr (flip encodeArgument) (appendTag (encodeExt 1 (length list)) env) list
 
 
 appendTag :: [Word8] -> Env -> Env
