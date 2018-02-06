@@ -423,7 +423,6 @@ positive n bytes =
 
 
 withBottom8 :: (Int -> [Word8] -> a) -> Int -> [Word8] -> a
-{-# INLINE withBottom8 #-}
 withBottom8 f n bytes =
   f (Bits.shiftR n 8) (fromIntegral n : bytes)
 

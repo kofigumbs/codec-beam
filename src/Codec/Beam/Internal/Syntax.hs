@@ -93,74 +93,73 @@ data Import = Import
 class NoGC a
 
 -- | Convert BIF to a normal import with zero arguments,
---   whichcan be used with 'Codec.Beam.Instructions.call' and friends.
+--   which can be used with 'Codec.Beam.Instructions.call' and friends.
 importBif0 :: Bif0 a => a -> Import
-importBif0 = bif_ 0
+importBif0 = unBif 0
+class IsBif a => Bif0 a
 
 -- | Convert BIF to a normal import with one argument.
 importBif1 :: Bif1 a => a -> Import
-importBif1 = bif_ 1
+importBif1 = unBif 1
+class IsBif a => Bif1 a
 
 -- | Convert BIF to a normal import with two arguments.
 importBif2 :: Bif2 a => a -> Import
-importBif2 = bif_ 2
+importBif2 = unBif 2
+class IsBif a => Bif2 a
 
 -- | Convert BIF to a normal import with three arguments.
 importBif3 :: Bif3 a => a -> Import
-importBif3 = bif_ 3
+importBif3 = unBif 3
+class IsBif a => Bif3 a
 
 -- | Convert BIF to a normal import with four arguments.
 importBif4 :: Bif4 a => a -> Import
-importBif4 = bif_ 4
-
-class Bif_ a => Bif0 a
-class Bif_ a => Bif1 a
-class Bif_ a => Bif2 a
-class Bif_ a => Bif3 a
-class Bif_ a => Bif4 a
+importBif4 = unBif 4
+class IsBif a => Bif4 a
 
 
 -- | Either type of stack register, 'X' or 'Y'.
 --   Instructions that work with this type, use 'IsRegister' for convenience.
 newtype  Register  = Register { unRegister :: Argument }
 class    IsRegister a        where toRegister :: a -> Register
-instance IsRegister Register where toRegister = id               ;{-# INLINE toRegister #-}
-instance IsRegister X        where toRegister = Register . FromX ;{-# INLINE toRegister #-}
-instance IsRegister Y        where toRegister = Register . FromY ;{-# INLINE toRegister #-}
+instance IsRegister Register where toRegister = id
+instance IsRegister X        where toRegister = Register . FromX
+instance IsRegister Y        where toRegister = Register . FromY
 
 
 -- | Any sort of Erlang value.
 --   Instructions that work with this type, use 'IsSource' for convenience.
 newtype  Source = Source { unSource :: Argument }
 class    IsSource a          where toSource :: a -> Source
-instance IsSource Source     where toSource = id                      ;{-# INLINE toSource #-}
-instance IsSource X          where toSource = Source . FromX          ;{-# INLINE toSource #-}
-instance IsSource Y          where toSource = Source . FromY          ;{-# INLINE toSource #-}
-instance IsSource Nil        where toSource = Source . FromNil        ;{-# INLINE toSource #-}
-instance IsSource ByteString where toSource = Source . FromByteString ;{-# INLINE toSource #-}
-instance IsSource Literal    where toSource = Source . FromLiteral    ;{-# INLINE toSource #-}
-instance IsSource Int        where toSource = Source . FromInt        ;{-# INLINE toSource #-}
+instance IsSource Source     where toSource = id
+instance IsSource X          where toSource = Source . FromX
+instance IsSource Y          where toSource = Source . FromY
+instance IsSource Nil        where toSource = Source . FromNil
+instance IsSource ByteString where toSource = Source . FromByteString
+instance IsSource Literal    where toSource = Source . FromLiteral
+instance IsSource Int        where toSource = Source . FromInt
 
 
 -- | Memory for manipulating 'F', for use with 'Codec.Beam.Instructions.fmove'.
 --   Instructions that work with this type, use 'IsRegisterF' for convenience.
 newtype  RegisterF = RegisterF { unRegisterF :: Argument }
 class    IsRegisterF a         where toRegisterF :: a -> RegisterF
-instance IsRegisterF RegisterF where toRegisterF = id                ;{-# INLINE toRegisterF #-}
-instance IsRegisterF F         where toRegisterF = RegisterF . FromF ;{-# INLINE toRegisterF #-}
-instance IsRegisterF X         where toRegisterF = RegisterF . FromX ;{-# INLINE toRegisterF #-}
-instance IsRegisterF Y         where toRegisterF = RegisterF . FromY ;{-# INLINE toRegisterF #-}
+instance IsRegisterF RegisterF where toRegisterF = id
+instance IsRegisterF F         where toRegisterF = RegisterF . FromF
+instance IsRegisterF X         where toRegisterF = RegisterF . FromX
+instance IsRegisterF Y         where toRegisterF = RegisterF . FromY
 
 
 -- | Something that can be coerced into 'F', for use with 'Codec.Beam.Instructions.fmove'.
 --   Instructions that work with this type, use 'IsSourceF' for convenience.
 newtype  SourceF = SourceF { unSourceF :: Argument }
 class    IsSourceF a          where toSourceF :: a -> SourceF
-instance IsSourceF SourceF    where toSourceF = id                       ;{-# INLINE toSourceF #-}
-instance IsSourceF F          where toSourceF = SourceF . FromF          ;{-# INLINE toSourceF #-}
-instance IsSourceF X          where toSourceF = SourceF . FromX          ;{-# INLINE toSourceF #-}
-instance IsSourceF Y          where toSourceF = SourceF . FromY          ;{-# INLINE toSourceF #-}
-instance IsSourceF Literal    where toSourceF = SourceF . FromLiteral    ;{-# INLINE toSourceF #-}
+instance IsSourceF SourceF    where toSourceF = id
+instance IsSourceF F          where toSourceF = SourceF . FromF
+instance IsSourceF X          where toSourceF = SourceF . FromX
+instance IsSourceF Y          where toSourceF = SourceF . FromY
+instance IsSourceF Literal    where toSourceF = SourceF . FromLiteral
 
 
 
@@ -185,35 +184,29 @@ data Argument
 
 
 fromRegister :: IsRegister a => a -> Argument
-{-# INLINE fromRegister #-}
 fromRegister = unRegister . toRegister
 
 
 fromSource :: IsSource a => a -> Argument
-{-# INLINE fromSource #-}
 fromSource = unSource . toSource
 
 
 fromRegisterF :: IsRegisterF a => a -> Argument
-{-# INLINE fromRegisterF #-}
 fromRegisterF = unRegisterF . toRegisterF
 
 
 fromSourceF :: IsSourceF a => a -> Argument
-{-# INLINE fromSourceF #-}
 fromSourceF = unSourceF . toSourceF
 
 
 fromPairs :: [(Source, Source)] -> Argument
-{-# INLINE fromPairs #-}
 fromPairs =
   FromList . concatMap (\x -> [fromSource (fst x), fromSource (snd x)])
 
 
 fromDestinations :: [(Label, Source)] -> Argument
-{-# INLINE fromDestinations #-}
 fromDestinations =
   FromList . concatMap (\x -> [FromLabel (fst x), fromSource (snd x)])
 
 
-class Bif_ a where bif_ :: Int -> a -> Import
+class IsBif a where unBif :: Int -> a -> Import
