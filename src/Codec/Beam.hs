@@ -5,9 +5,8 @@ module Codec.Beam
     -- * Argument constraints
   , Register, IsRegister(toRegister), Source, IsSource(toSource)
   , RegisterF, IsRegisterF(toRegisterF), SourceF, IsSourceF(toSourceF)
-    -- * BIFs (Built-In Functions)
-  , NoGC, importBif0, importBif1, importBif2, importBif3, importBif4
-  , Bif0, Bif1, Bif2, Bif3, Bif4
+    -- * BIF helpers
+  , importBif0, importBif1, importBif2, importBif3, importBif4
   ) where
 
 

@@ -11,7 +11,7 @@ This example writes a simple module to a file:
 ```haskell
 import qualified Data.ByteString.Lazy as LBS
 
-import Codec.Beam.Instructions
+import Codec.Beam.Instructions (func_info, label, move, return_)
 import qualified Codec.Beam as Beam
 
 main : IO ()
