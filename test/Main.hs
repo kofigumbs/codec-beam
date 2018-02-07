@@ -264,6 +264,22 @@ main =
         , return_
         ]
 
+    , Eunit.test "get_from_map"
+        [ Beam.Export "test" 2 ]
+        [ "?assertEqual(5, get_from_map:test(#{a=>5}, a))"
+        ]
+        [ label (Beam.Label 1)
+        , func_info "test" 2
+        , label (Beam.Label 2)
+        , get_map_elements (Beam.Label 3) (Beam.X 0)
+            [ (Beam.toRegister (Beam.X 1), Beam.toRegister (Beam.X 0))
+            ]
+        , return_
+        , label (Beam.Label 3)
+        , move ("error" :: ByteString) (Beam.X 0)
+        , return_
+        ]
+
     , Eunit.test "get_da_list"
         [ Beam.Export "second" 1 ]
         [ "?assertEqual(2, get_da_list:second([1,2,3]))"

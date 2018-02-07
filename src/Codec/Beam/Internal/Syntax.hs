@@ -198,19 +198,17 @@ fromSourceF :: IsSourceF a => a -> Argument
 fromSourceF = unSourceF . toSourceF
 
 
-fromPutMaps :: [(Source, Source)] -> Argument
-fromPutMaps =
-  FromList . foldr (\x a -> fromSource (snd x) : fromSource (fst x) : a) []
-
-
-fromGetMaps :: [(Source, Register)] -> Argument
-fromGetMaps =
-  FromList . foldr (\x a -> fromRegister (snd x) : fromSource (fst x) : a) []
-
-
 fromDestinations :: [(Label, Source)] -> Argument
 fromDestinations =
   FromList . foldr (\x a -> FromLabel (fst x) : fromSource (snd x) : a) []
+
+
+-- NOTE: This function reverses tuple order.
+--       Seems to be necessary, but it's rather unintuitive,
+--       given that 'fromDestinations' has opposite behavior.
+fromPairs :: (a -> Argument) -> [(a, a)] -> Argument
+fromPairs from =
+  FromList . foldr (\x a -> from (snd x) : from (fst x) : a) []
 
 
 class IsBif a where unBif :: Int -> a -> Import
