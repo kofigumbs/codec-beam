@@ -201,7 +201,7 @@ toLazyByteString
 
   where
     sections =
-         "Atom" <> alignSection (atoms atomTable)
+         "AtU8" <> alignSection (atoms atomTable)
       <> "StrT" <> alignSection (strings)
       <> "LitT" <> alignSection (literals literalTable)
       <> "FunT" <> alignSection (lambdas lambdaTable atomTable)

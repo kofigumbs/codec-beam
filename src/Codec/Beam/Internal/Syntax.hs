@@ -198,14 +198,19 @@ fromSourceF :: IsSourceF a => a -> Argument
 fromSourceF = unSourceF . toSourceF
 
 
-fromPairs :: [(Source, Source)] -> Argument
-fromPairs =
-  FromList . concatMap (\x -> [fromSource (fst x), fromSource (snd x)])
+fromPutMaps :: [(Source, Source)] -> Argument
+fromPutMaps =
+  FromList . foldr (\x a -> fromSource (snd x) : fromSource (fst x) : a) []
+
+
+fromGetMaps :: [(Source, Register)] -> Argument
+fromGetMaps =
+  FromList . foldr (\x a -> fromRegister (snd x) : fromSource (fst x) : a) []
 
 
 fromDestinations :: [(Label, Source)] -> Argument
 fromDestinations =
-  FromList . concatMap (\x -> [FromLabel (fst x), fromSource (snd x)])
+  FromList . foldr (\x a -> FromLabel (fst x) : fromSource (snd x) : a) []
 
 
 class IsBif a where unBif :: Int -> a -> Import

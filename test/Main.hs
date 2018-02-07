@@ -250,6 +250,20 @@ main =
         , return_
         ]
 
+    , Eunit.test "make_a_map"
+        [ Beam.Export "test" 0 ]
+        [ "?assertEqual(#{a=>1, 2=>b}, make_a_map:test())"
+        ]
+        [ label (Beam.Label 1)
+        , func_info "test" 0
+        , label (Beam.Label 2)
+        , put_map_assoc (Beam.Label 0) (Beam.Map []) (Beam.X 0)
+            [ (Beam.toSource (Beam.Atom "a"), Beam.toSource (1 :: Int))
+            , (Beam.toSource (2 :: Int), Beam.toSource (Beam.Atom "b"))
+            ]
+        , return_
+        ]
+
     , Eunit.test "get_da_list"
         [ Beam.Export "second" 1 ]
         [ "?assertEqual(2, get_da_list:second([1,2,3]))"
