@@ -266,7 +266,8 @@ main =
 
     , Eunit.test "get_from_map"
         [ Beam.Export "test" 2 ]
-        [ "?assertEqual(5, get_from_map:test(#{a=>5}, a))"
+        [ "?assertEqual(5, get_from_map:test(#{a=>5}, a)),"
+        , "?assertEqual(error, get_from_map:test(#{}, a))"
         ]
         [ label (Beam.Label 1)
         , func_info "test" 2
