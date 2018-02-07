@@ -25,7 +25,6 @@ Library
     build-depends: base,
                    bytestring,
                    containers,
-                   process,
                    zlib,
                    text
 
