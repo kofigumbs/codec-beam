@@ -45,7 +45,7 @@ data Nil = Nil
 data Lambda = Lambda
   { _lambda_name :: ByteString -- ^ unique name for this lambda
   , _lambda_arity :: Int
-  , _lambda_label :: Label     -- ^ where to find the backing functino
+  , _lambda_label :: Label     -- ^ where to find the backing function
   , _lambda_free :: Int        -- ^ how many variables to capture from calling scope
   }
   deriving (Eq, Ord, Show)
@@ -64,7 +64,6 @@ data Literal
 
 
 {- TODO
-  | String ByteString
   | Port ...
   | Pid ProcessId
   | Fun ProcessId ModuleName Lambda [Literal]
@@ -199,14 +198,17 @@ fromSourceF :: IsSourceF a => a -> Argument
 fromSourceF = unSourceF . toSourceF
 
 
-fromPairs :: [(Source, Source)] -> Argument
-fromPairs =
-  FromList . concatMap (\x -> [fromSource (fst x), fromSource (snd x)])
-
-
 fromDestinations :: [(Label, Source)] -> Argument
 fromDestinations =
-  FromList . concatMap (\x -> [FromLabel (fst x), fromSource (snd x)])
+  FromList . foldr (\x a -> FromLabel (fst x) : fromSource (snd x) : a) []
+
+
+-- NOTE: This function reverses tuple order.
+--       Seems to be necessary, but it's rather unintuitive,
+--       given that 'fromDestinations' has opposite behavior.
+fromPairs :: (a -> Argument) -> [(a, a)] -> Argument
+fromPairs from =
+  FromList . foldr (\x a -> from (snd x) : from (fst x) : a) []
 
 
 class IsBif a where unBif :: Int -> a -> Import

@@ -42,7 +42,7 @@ and you can find a more complete [`./example` project here](example).
 
 ### Build
 
-Using [Stack](https://www.haskellstack.org)
+Use [Stack](https://www.haskellstack.org):
 
 ```bash
 stack build --test
@@ -55,7 +55,7 @@ This library is pre-release and under active development.
 If you are interested in helping, [please reach out](https://twitter.com/messages/compose?recipient_id=365768225).
 It will be much easier to coordinate work if we have a conversation first.
 
-I generally prefer [this style guide](https://gist.github.com/evancz/0a1f3717c92fe71702be).
+I generally prefer [this style](https://gist.github.com/evancz/0a1f3717c92fe71702be).
 
 
 ### Acknowledgements

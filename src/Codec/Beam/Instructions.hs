@@ -600,10 +600,10 @@ line :: Int -> Op
 line a1 = Op 153 [FromUntagged a1]
 
 put_map_assoc :: (IsSource a2, IsRegister a3) => Label -> a2 -> a3 -> [(Source, Source)] -> Op
-put_map_assoc a1 a2 a3 a4 = Op 154 [FromLabel a1, fromSource a2, fromRegister a3, fromPairs a4]
+put_map_assoc a1 a2 a3 a4 = Op 154 [FromLabel a1, fromSource a2, fromRegister a3, FromUntagged (length a4 + 1), fromPairs fromSource a4]
 
 put_map_exact :: (IsSource a2, IsRegister a3) => Label -> a2 -> a3 -> [(Source, Source)] -> Op
-put_map_exact a1 a2 a3 a4 = Op 155 [FromLabel a1, fromSource a2, fromRegister a3, fromPairs a4]
+put_map_exact a1 a2 a3 a4 = Op 155 [FromLabel a1, fromSource a2, fromRegister a3, FromUntagged (length a4 + 1), fromPairs fromSource a4]
 
 is_map :: (IsSource a2) => Label -> a2 -> Op
 is_map a1 a2 = Op 156 [FromLabel a1, fromSource a2]
@@ -611,8 +611,14 @@ is_map a1 a2 = Op 156 [FromLabel a1, fromSource a2]
 has_map_fields :: (IsSource a2) => Label -> a2 -> [Source] -> Op
 has_map_fields a1 a2 a3 = Op 157 [FromLabel a1, fromSource a2, FromList (map fromSource a3)]
 
-get_map_elements :: (IsSource a2) => Label -> a2 -> [(Source, Source)] -> Op
-get_map_elements a1 a2 a3 = Op 158 [FromLabel a1, fromSource a2, fromPairs a3]
+-- | Get multiple values out of a map
+get_map_elements
+  :: (IsSource a2)
+    => Label                  -- ^ jump here on failure
+    -> a2                     -- ^ where the map is
+    -> [(Register, Register)] -- ^ list of (what key to use, where to put value)
+    -> Op
+get_map_elements a1 a2 a3 = Op 158 [FromLabel a1, fromSource a2, fromPairs fromRegister a3]
 
 -- | Test the type of source and jumps to label if it is not a tuple.
 --   Test the arity of Reg and jumps to label if it is not of the given size.

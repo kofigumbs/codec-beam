@@ -181,16 +181,16 @@ withArgs f list =
 finish :: Name -> Int -> [Beam.Op]
 finish name stack =
   if _raw name == "main" then
-    [ call_ext_last (Beam.importBif1 Erlang_display) stack ]
+    [ call_ext_last (Beam.importBif1 Erlang'display) stack ]
   else
     [ deallocate stack, return_ ]
 
 
 stdlibMath :: Operator -> Beam.Source -> Beam.Source -> Beam.Y -> Beam.Op
-stdlibMath Plus   = bif2 noFailure Erlang_splus_2
-stdlibMath Minus  = bif2 noFailure Erlang_sminus_2
-stdlibMath Times  = bif2 noFailure Erlang_stimes_2
-stdlibMath Divide = bif2 noFailure Erlang_div_2
+stdlibMath Plus   = bif2 noFailure Erlang'splus_2
+stdlibMath Minus  = bif2 noFailure Erlang'sminus_2
+stdlibMath Times  = bif2 noFailure Erlang'stimes_2
+stdlibMath Divide = bif2 noFailure Erlang'div_2
 
 
 returnAddress :: Beam.X
