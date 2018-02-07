@@ -64,7 +64,6 @@ data Literal
 
 
 {- TODO
-  | String ByteString
   | Port ...
   | Pid ProcessId
   | Fun ProcessId ModuleName Lambda [Literal]
