@@ -1,5 +1,5 @@
 module Codec.Beam
-  ( encode, Export(..)
+  ( encode, Metadata, export
     -- * Syntax
   , Op, X(..), Y(..), F(..), Nil(..), Label(..), Literal(..), Lambda(..), Import(..)
     -- * Argument constraints
@@ -25,19 +25,26 @@ import Codec.Beam.Internal.Table (Table)
 import qualified Codec.Beam.Internal.Table as Table
 
 
--- | Create code for a BEAM module!
+-- | Create code for a BEAM module.
 encode
   :: BS.ByteString -- ^ module name
-  -> [Export]      -- ^ functions that should be public
+  -> [Metadata]
   -> [Op]          -- ^ instructions
-  -> BS.ByteString -- ^ return encoded BEAM
+  -> BS.ByteString
 encode name exports =
   toLazyByteString . foldl encodeOp (initialEnv name exports)
 
 
--- | Name and arity of functions to export
-data Export = Export BS.ByteString Int
+
+-- | Extra information regarding the contents of a BEAM module.
+data Metadata
+  = Export BS.ByteString Int
   deriving (Eq, Ord, Show)
+
+
+-- | Mark functions that should be made public.
+export :: BS.ByteString -> Int -> Metadata
+export = Export
 
 
 -- ASSEMBLER
@@ -61,8 +68,8 @@ data Env =
     }
 
 
-initialEnv :: BS.ByteString -> [Export] -> Env
-initialEnv name exports =
+initialEnv :: BS.ByteString -> [Metadata] -> Env
+initialEnv name metadata =
   Env
     { _moduleName = name
     , _labelCount = 0
@@ -80,7 +87,7 @@ initialEnv name exports =
 
   where
     exporting name arity =
-      Set.member (Export name arity) (Set.fromList exports)
+      Set.member (Export name arity) (Set.fromList metadata)
 
 
 encodeOp :: Env -> Op -> Env
@@ -223,15 +230,15 @@ atoms table =
 --
 -- Why not support explicit string literals?
 --  1. Since Erlang strings are really integer lists,
---     they are easy to add to the literal table!
+--     they are easy to add to the literal table.
 --     This can be done in "user-land" without library support:
 --     @string :: [Int] -> Beam.Literal@
 --  2. Since Erlang strings are really integer lists,
---     they are probably a bad idea for your compiler!
+--     they are probably a bad idea for your compiler.
 --     It seems that most compile-through-Erlang languages prefer bitstrings,
 --     which are supported via the 'Binary' literal.
 --
---  If your use case requires this table, please reach out!
+--  If your use case requires this table, please reach out.
 strings :: BS.ByteString
 strings =
   pack32 0

@@ -30,9 +30,9 @@ type Test =
   IO String
 
 
-test :: String -> [Beam.Export] -> [String] -> [Beam.Op] -> Test
-test name exports body =
-  test_ name body . Beam.encode (fromString name) exports
+test :: String -> [Beam.Metadata] -> [String] -> [Beam.Op] -> Test
+test name metadata body =
+  test_ name body . Beam.encode (fromString name) metadata
 
 
 test_ :: String -> [String] -> BS.ByteString -> Test
