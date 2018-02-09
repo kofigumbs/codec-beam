@@ -2,7 +2,7 @@ module Codec.Beam.Internal.Syntax where
 
 import Data.ByteString.Lazy (ByteString)
 import Data.Void (Void)
-import Data.Word (Word8)
+import Data.Word (Word8, Word32)
 import Unsafe.Coerce (unsafeCoerce)
 
 
@@ -61,6 +61,7 @@ data Literal
   | List [Literal]
   | Map [(Literal, Literal)]
   | ExternalFun Import
+  | Reference ByteString Word8 [Word32]
   deriving (Eq, Ord, Show)
 
 

@@ -355,6 +355,15 @@ encodeLiteral lit =
         , encodeInteger arity
         ]
 
+    Reference node creation ids ->
+      mconcat
+        [ pack8 114
+        , pack16 (length ids)
+        , encodeAtom node
+        , pack8 creation
+        , mconcat $ map pack32 ids
+        ]
+
 
 encodeAtom :: BS.ByteString -> BS.ByteString
 encodeAtom value =
@@ -461,6 +470,12 @@ withSize f bytes =
 pack8 :: Integral n => n -> BS.ByteString
 pack8 =
   BS.singleton . fromIntegral
+
+
+pack16 :: Integral n => n -> BS.ByteString
+pack16 =
+  Builder.toLazyByteString . Builder.word16BE . fromIntegral
+
 
 
 pack32 :: Integral n => n -> BS.ByteString

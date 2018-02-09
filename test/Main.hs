@@ -382,6 +382,20 @@ main =
         , move ("five" :: ByteString) (Beam.X 0)
         , return_
         ]
+
+    -- https://gist.github.com/physacco/5802293
+    -- https://github.com/erlang/otp/blob/83e20c62057ebc1d8064bf57b01be560cd244e1d/lib/erl_interface/test/erl_eterm_SUITE.erl#L1069
+    , Eunit.test "make_ref"
+        [ Beam.Export "test" 0 ]
+        [ "?assertMatch([\"#Ref\", _ | [\"80\", \"0\", \"0\"]], \
+            \ string:tokens(erlang:ref_to_list(make_ref:test()), \"<.>\"))"
+        ]
+        [ label (Beam.Label 1)
+        , func_info "test" 0
+        , label (Beam.Label 2)
+        , move (Beam.Reference "test@localhost" 0 [0, 0, 80]) (Beam.X 0)
+        , return_
+        ]
     ]
 
 
