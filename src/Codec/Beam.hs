@@ -306,17 +306,14 @@ literals table =
 encodeLiteral :: Literal -> BS.ByteString
 encodeLiteral lit =
   case lit of
-    Integer value | value < 256 ->
-      pack8 97 <> pack8 value
+    Atom value ->
+      encodeAtom value
 
     Integer value ->
-      pack8 98 <> pack32 value
+      encodeInteger value
 
     Float value ->
       pack8 70 <> packDouble value
-
-    Atom value ->
-      pack8 119 <> withSize pack8 value
 
     Binary value ->
       pack8 109 <> withSize pack32 value
@@ -360,10 +357,21 @@ encodeLiteral lit =
     ExternalFun (Import module_ function arity) ->
       mconcat
         [ pack8 113
-        , encodeLiteral (Atom module_)
-        , encodeLiteral (Atom function)
-        , encodeLiteral (Integer arity)
+        , encodeAtom module_
+        , encodeAtom function
+        , encodeInteger arity
         ]
+
+
+encodeAtom :: BS.ByteString -> BS.ByteString
+encodeAtom value =
+  pack8 119 <> withSize pack8 value
+
+
+encodeInteger :: Int -> BS.ByteString
+encodeInteger value
+  | value < 256 = pack8 97 <> pack8 value
+  | otherwise   = pack8 98 <> pack32 value
 
 
 encodeTag :: Word8 -> Int -> [Word8]
