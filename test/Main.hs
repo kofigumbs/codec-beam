@@ -195,6 +195,16 @@ main =
         , return_
         ]
 
+    , Eunit.test "external_fun"
+        [ Beam.Export "test" 0 ]
+        [ "?assertEqual(3, (external_fun:test())(1, 2))" ]
+        [ label (Beam.Label 1)
+        , func_info "test" 0
+        , label (Beam.Label 2)
+        , move (Beam.ExternalFun (Beam.Import "erlang" "+" 2)) (Beam.X 0)
+        , return_
+        ]
+
     , Eunit.test "get_tuple_element"
         [ Beam.Export "first" 1
         , Beam.Export "second" 1

@@ -60,6 +60,7 @@ data Literal
   | Tuple [Literal]
   | List [Literal]
   | Map [(Literal, Literal)]
+  | ExternalFun Import
   deriving (Eq, Ord, Show)
 
 
