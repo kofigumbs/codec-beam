@@ -64,20 +64,6 @@ data Literal
   deriving (Eq, Ord, Show)
 
 
-{- TODO
-  | Port ...
-  | Pid ProcessId
-  | Fun ProcessId ModuleName Lambda [Literal]
-
-data ModuleName
-  = This
-  | External ByteString
-
-data ProcessId
-  = ProcessId ...
--}
-
-
 -- | Reference a function from another module.
 --   For example, @Import "array" "map" 2@ refers to the stdlib function: @array:map/2@.
 data Import = Import
@@ -92,30 +78,40 @@ data Import = Import
 --   which means they can be called without concern for garbage collection.
 class NoGC a
 
+
 -- | Convert BIF to a normal import with zero arguments,
 --   which can be used with 'Codec.Beam.Instructions.call' and friends.
 importBif0 :: Bif0 a => a -> Import
 importBif0 = unBif 0
+
 class IsBif a => Bif0 a
+
 
 -- | Convert BIF to a normal import with one argument.
 importBif1 :: Bif1 a => a -> Import
 importBif1 = unBif 1
+
 class IsBif a => Bif1 a
+
 
 -- | Convert BIF to a normal import with two arguments.
 importBif2 :: Bif2 a => a -> Import
 importBif2 = unBif 2
+
 class IsBif a => Bif2 a
+
 
 -- | Convert BIF to a normal import with three arguments.
 importBif3 :: Bif3 a => a -> Import
 importBif3 = unBif 3
+
 class IsBif a => Bif3 a
+
 
 -- | Convert BIF to a normal import with four arguments.
 importBif4 :: Bif4 a => a -> Import
 importBif4 = unBif 4
+
 class IsBif a => Bif4 a
 
 
