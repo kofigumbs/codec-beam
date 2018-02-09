@@ -1,5 +1,5 @@
 module Codec.Beam
-  ( encode, Metadata, export
+  ( encode, Metadata, export, insertModuleInfo
     -- * Syntax
   , Op, X(..), Y(..), F(..), Nil(..), Label(..), Literal(..), Lambda(..), Import(..)
     -- * Argument constraints
@@ -31,20 +31,30 @@ encode
   -> [Metadata]
   -> [Op]          -- ^ instructions
   -> BS.ByteString
-encode name exports =
-  toLazyByteString . foldl encodeOp (initialEnv name exports)
-
+encode name metadata =
+  toLazyByteString . foldl encodeOp (setup metadata (initialEnv name))
 
 
 -- | Extra information regarding the contents of a BEAM module.
-data Metadata
-  = Export BS.ByteString Int
-  deriving (Eq, Ord, Show)
+newtype Metadata = Metadata (Env -> Env)
 
 
--- | Mark functions that should be made public.
+-- | Name and arity of a function that should be made public.
 export :: BS.ByteString -> Int -> Metadata
-export = Export
+export name arity =
+  Metadata $ \env -> env { _exporting = Set.insert (name, arity) (_exporting env) }
+
+
+-- | The Erlang compiler inserts two functions when compiling source files:
+--   @module_info/0@ and @module_info/1@.
+--   Some pieces of the Erlang toolchain expect this function to exist.
+--   For instance, the shell will crash if you try to use TAB (for auto-completion)
+--   on a BEAM module without these functions present.
+--   These functions have the same implementation, so you can use this 'Metadata'
+--   to have this library generate them for you.
+insertModuleInfo :: Metadata
+insertModuleInfo =
+  Metadata id
 
 
 -- ASSEMBLER
@@ -62,17 +72,17 @@ data Env =
     , _importTable :: Table Import
     , _exportTable :: Table (BS.ByteString, Int, Int)
     , _exportNextLabel :: Maybe (BS.ByteString, Int)
-    , _exporting :: BS.ByteString -> Int -> Bool
+    , _exporting :: Set.Set (BS.ByteString, Int)
     , _maxOpCode :: Word8
     , _code :: Builder.Builder
     }
 
 
-initialEnv :: BS.ByteString -> [Metadata] -> Env
-initialEnv name metadata =
+initialEnv :: BS.ByteString -> Env
+initialEnv name =
   Env
     { _moduleName = name
-    , _labelCount = 0
+    , _labelCount = 1
     , _functionCount = 0
     , _atomTable = Table.singleton name 1
     , _literalTable = Table.empty
@@ -80,14 +90,20 @@ initialEnv name metadata =
     , _importTable = Table.empty
     , _exportTable = Table.empty
     , _exportNextLabel = Nothing
-    , _exporting = exporting
+    , _exporting = Set.empty
     , _maxOpCode = 1
     , _code = mempty
     }
 
-  where
-    exporting name arity =
-      Set.member (Export name arity) (Set.fromList metadata)
+
+setup :: [Metadata] -> Env -> Env
+setup list env =
+  case list of
+    [] ->
+      env
+
+    Metadata run : rest ->
+      setup rest (run env)
 
 
 encodeOp :: Env -> Op -> Env
@@ -145,7 +161,10 @@ encodeArgument env argument =
       appendTag (encodeTag 2 1) $ env
         { _functionCount = 1 + _functionCount env
         , _exportNextLabel =
-            if _exporting env name arity then Just (name, arity) else Nothing
+            if Set.member (name, arity) (_exporting env) then
+              Just (name, arity)
+            else
+              Nothing
         }
 
     FromByteString name ->
@@ -214,7 +233,7 @@ toLazyByteString
       <> "FunT" <> alignSection (lambdas lambdaTable atomTable)
       <> "ImpT" <> alignSection (imports importTable atomTable)
       <> "ExpT" <> alignSection (exports exportTable atomTable)
-      <> "Code" <> alignSection (code bytes (labels + 1) functions maxOpCode)
+      <> "Code" <> alignSection (code bytes labels functions maxOpCode)
 
 
 

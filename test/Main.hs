@@ -12,11 +12,11 @@ import qualified Eunit
 main :: IO ()
 main =
   Eunit.run
-    [ Eunit.test "loads_empty" []
+    [ Eunit.test "loads_empty"
+        [ Beam.insertModuleInfo ]
         [ "?assertMatch({module, loads_empty}, code:load_file(loads_empty))"
-        -- TODO: auto-insert module_info
         -- , "?assertEqual(erlang:get_module_info(loads_empty), loads_empty:module_info()),"
-        -- , "?assertEqual(erlang:get_module_info(loads_empty), loads_empty:module_info())"
+        -- , "?assertEqual(erlang:get_module_info(loads_empty, attributes), loads_empty:module_info(attributes))"
         ]
         []
 
