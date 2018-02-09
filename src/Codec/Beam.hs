@@ -347,13 +347,6 @@ encodeLiteral lit =
         , mconcat $ fmap (\(x, y) -> encodeLiteral x <> encodeLiteral y) pairs
         ]
 
-    Map pairs ->
-      mconcat
-        [ pack8 116
-        , pack32 (length pairs)
-        , mconcat $ fmap (\(x, y) -> encodeLiteral x <> encodeLiteral y) pairs
-        ]
-
     ExternalFun (Import module_ function arity) ->
       mconcat
         [ pack8 113
