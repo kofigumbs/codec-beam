@@ -65,6 +65,7 @@ Thanks to the following projects, which helped me understand the BEAM file forma
  - https://github.com/happi/theBeamBook
  - https://github.com/jerlang/jerlang
  - https://github.com/kolmodin/herl
+ - https://github.com/lindenbaum/hinterface
  - https://github.com/mbrock/HBEAM
  - https://github.com/erlang/otp
 
