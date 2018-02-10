@@ -89,7 +89,6 @@ insertModuleInfo =
 data Env =
   Env
     { _moduleName :: BS.ByteString
-    , _functionCount :: Word32
     , _labelTable :: Table Int
     , _atomTable :: Table BS.ByteString
     , _literalTable :: Table Literal
@@ -98,6 +97,7 @@ data Env =
     , _exportTable :: Table (BS.ByteString, Int, Int)
     , _exportNextLabel :: Maybe (BS.ByteString, Int)
     , _exporting :: Set.Set (BS.ByteString, Int)
+    , _functionCount :: Word32
     , _maxOpCode :: Word8
     , _code :: Builder.Builder
     }
@@ -107,7 +107,6 @@ initialEnv :: BS.ByteString -> Env
 initialEnv name =
   Env
     { _moduleName = name
-    , _functionCount = 0
     , _labelTable = Table.singleton 0 0
     , _atomTable = Table.singleton name 1
     , _literalTable = Table.empty
@@ -116,6 +115,7 @@ initialEnv name =
     , _exportTable = Table.empty
     , _exportNextLabel = Nothing
     , _exporting = Set.empty
+    , _functionCount = 0
     , _maxOpCode = 1
     , _code = mempty
     }
@@ -244,7 +244,6 @@ toLazyByteString :: Env -> BS.ByteString
 toLazyByteString
   ( Env
       _
-      functions
       labelTable
       atomTable
       literalTable
@@ -253,6 +252,7 @@ toLazyByteString
       exportTable
       _
       _
+      functions
       maxOpCode
       bytes
   ) =
