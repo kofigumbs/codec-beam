@@ -53,7 +53,7 @@ func_info
   :: ByteString -- ^ function name
   -> Int        -- ^ arity
   -> Op
-func_info a1 a2 = Op 2 [FromFunctionModule a1 a2, FromByteString a1, FromUntagged a2]
+func_info a1 a2 = Op 2 [FromNewFunction a1 a2, FromByteString a1, FromUntagged a2]
 
 -- | Call the function at label.
 --   Save the next instruction as the return address in the CP register.

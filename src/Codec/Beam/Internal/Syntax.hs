@@ -13,6 +13,7 @@ data Op = Op Word8 [Argument]
 
 
 -- | Mark a spot in the code, so that you can jump to it with a function or condition.
+--   __Start with @Label 1@ and go up from there.__
 newtype Label = Label Int
   deriving (Eq, Ord, Show)
 
@@ -176,7 +177,7 @@ data Argument
   | FromLiteral Literal
   | FromLambda Lambda
   | FromList [Argument]
-  | FromFunctionModule ByteString Int
+  | FromNewFunction ByteString Int
 
 
 fromRegister :: IsRegister a => a -> Argument

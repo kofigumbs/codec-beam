@@ -42,7 +42,7 @@ newtype Metadata = Metadata (Env -> Env)
 -- | Name and arity of a function that should be made public.
 export :: BS.ByteString -> Int -> Metadata
 export name arity =
-  Metadata $ addExport name arity
+  Metadata $ \env -> env { _exporting = Set.insert (name, arity) (_exporting env) }
 
 
 -- | The Erlang compiler inserts two functions when compiling source files:
@@ -56,29 +56,29 @@ insertModuleInfo :: Metadata
 insertModuleInfo =
   Metadata $ \env ->
     let
-      withExports =
-        addExport "module_info" 0 $ addExport "module_info" 1 env
+      withExports = env
+        { _exporting =
+            _exporting env <> Set.fromList [("module_info", 0), ("module_info", 1)]
+        }
     in
     foldl encodeOp withExports
-      [ Op 1  [FromNewLabel (Label 1)]
-      , Op 2  [FromFunctionModule "module_info" 0, FromByteString "module_info", FromUntagged 0]
-      , Op 1  [FromNewLabel (Label 2)]
+      -- Negative numbers here prevent clashes with user-defined labels.
+      -- Since negative numbers are not valid labels,
+      -- this decision does not affect the external semantics of the library.
+      [ Op 1  [FromNewLabel (Label (-1))]
+      , Op 2  [FromNewFunction "module_info" 0, FromByteString "module_info", FromUntagged 0]
+      , Op 1  [FromNewLabel (Label (-2))]
       , Op 64 [FromByteString (_moduleName env), FromX (X 0)]
       , Op 78 [FromUntagged 1, FromImport (Import "erlang" "get_module_info" 1)]
       , Op 19 []
-      , Op 1  [FromNewLabel (Label 3)]
-      , Op 2  [FromFunctionModule "module_info" 1, FromByteString "module_info", FromUntagged 1]
-      , Op 1  [FromNewLabel (Label 4)]
+      , Op 1  [FromNewLabel (Label (-3))]
+      , Op 2  [FromNewFunction "module_info" 1, FromByteString "module_info", FromUntagged 1]
+      , Op 1  [FromNewLabel (Label (-4))]
       , Op 64 [FromX (X 0), FromX (X 1)]
       , Op 64 [FromByteString (_moduleName env), FromX (X 0)]
       , Op 78 [FromUntagged 2, FromImport (Import "erlang" "get_module_info" 2)]
       , Op 19 []
       ]
-
-
-addExport :: BS.ByteString -> Int -> Env -> Env
-addExport name arity env =
-  env { _exporting = Set.insert (name, arity) (_exporting env) }
 
 
 
@@ -89,8 +89,8 @@ addExport name arity env =
 data Env =
   Env
     { _moduleName :: BS.ByteString
-    , _labelCount :: Word32
     , _functionCount :: Word32
+    , _labelTable :: Table Int
     , _atomTable :: Table BS.ByteString
     , _literalTable :: Table Literal
     , _lambdaTable :: Table Lambda
@@ -107,8 +107,8 @@ initialEnv :: BS.ByteString -> Env
 initialEnv name =
   Env
     { _moduleName = name
-    , _labelCount = 1
     , _functionCount = 0
+    , _labelTable = Table.singleton 0 0
     , _atomTable = Table.singleton name 1
     , _literalTable = Table.empty
     , _lambdaTable = Table.empty
@@ -146,9 +146,13 @@ encodeArgument env argument =
     FromUntagged value ->
       appendTag (encodeTag 0 value) env
 
-    FromNewLabel (Label value) ->
+    FromNewLabel (Label raw) ->
+      let
+        (value, newTable) =
+          Table.index raw (_labelTable env)
+      in
       appendTag (encodeTag 0 value) $ env
-        { _labelCount = 1 + _labelCount env
+        { _labelTable = newTable
         , _exportNextLabel = Nothing
         , _exportTable =
             maybe id
@@ -182,7 +186,7 @@ encodeArgument env argument =
     FromNil Nil ->
       appendTag (encodeTag 2 0) env
 
-    FromFunctionModule name arity ->
+    FromNewFunction name arity ->
       appendTag (encodeTag 2 1) $ env
         { _functionCount = 1 + _functionCount env
         , _exportNextLabel =
@@ -205,8 +209,12 @@ encodeArgument env argument =
     FromY (Y value) ->
       appendTag (encodeTag 4 value) env
 
-    FromLabel (Label value) ->
-      appendTag (encodeTag 5 value) env
+    FromLabel (Label raw) ->
+      let
+        (value, newTable) =
+          Table.index raw (_labelTable env)
+      in
+      appendTag (encodeTag 5 value) $ env { _labelTable = newTable }
 
     FromF (F value) ->
       appendTag (encodeExt 2 value) env
@@ -236,8 +244,8 @@ toLazyByteString :: Env -> BS.ByteString
 toLazyByteString
   ( Env
       _
-      labels
       functions
+      labelTable
       atomTable
       literalTable
       lambdaTable
@@ -255,10 +263,10 @@ toLazyByteString
          "AtU8" <> alignSection (atoms atomTable)
       <> "StrT" <> alignSection (strings)
       <> "LitT" <> alignSection (literals literalTable)
-      <> "FunT" <> alignSection (lambdas lambdaTable atomTable)
+      <> "FunT" <> alignSection (lambdas lambdaTable atomTable labelTable)
       <> "ImpT" <> alignSection (imports importTable atomTable)
       <> "ExpT" <> alignSection (exports exportTable atomTable)
-      <> "Code" <> alignSection (code bytes labels functions maxOpCode)
+      <> "Code" <> alignSection (code bytes labelTable functions maxOpCode)
 
 
 
@@ -288,29 +296,29 @@ strings =
   pack32 0
 
 
-code :: Builder.Builder -> Word32 -> Word32 -> Word8 -> BS.ByteString
-code builder labelCount functionCount maxOpCode =
+code :: Builder.Builder -> Table Int -> Word32 -> Word8 -> BS.ByteString
+code builder labelTable functionCount maxOpCode =
   mconcat
     [ pack32 16  -- header length
     , pack32 0   -- instruction set id
     , pack32 maxOpCode
-    , pack32 labelCount
+    , pack32 (Table.size labelTable)
     , pack32 functionCount
     , Builder.toLazyByteString builder
     , pack8 3    -- int_code_end
     ]
 
 
-lambdas :: Table Lambda -> Table BS.ByteString -> BS.ByteString
-lambdas lambdaTable atomTable =
+lambdas :: Table Lambda -> Table BS.ByteString -> Table Int -> BS.ByteString
+lambdas lambdaTable atomTable labelTable =
   pack32 (Table.size lambdaTable) <> Table.encode fromLambda lambdaTable
 
   where
-    fromLambda lambda@(Lambda name arity (Label label) free) =
+    fromLambda lambda@(Lambda name arity (Label raw) free) =
       mconcat
         [ pack32 (forceIndex name atomTable)
         , pack32 arity
-        , pack32 label
+        , pack32 (forceIndex raw labelTable)
         , pack32 (forceIndex lambda lambdaTable)
         , pack32 free
         , pack32 0 -- old unique
