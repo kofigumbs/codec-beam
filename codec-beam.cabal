@@ -14,7 +14,6 @@ Source-Repository head
     location: git://github.com/hkgumbs/codec-beam.git
 
 Library
-    ghc-options: -O2
     extensions: OverloadedStrings
     hs-source-dirs: src
     exposed-modules: Codec.Beam

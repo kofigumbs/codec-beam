@@ -18,7 +18,7 @@ main : IO ()
 main =
   LBS.writeFile "test_module.beam" $
     Beam.encode "test_module"
-      [ Beam.Export "tuple_of_one" 0
+      [ Beam.export "tuple_of_one" 0
       ]
       [ label 1
       , func_info "tuple_of_one" 0

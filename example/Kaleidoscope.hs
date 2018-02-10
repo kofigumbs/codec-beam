@@ -40,7 +40,7 @@ makeExecutable name ops =
   do  let output = name ++ ".beam"
       writeFile output "#!/usr/bin/env escript\n"
       BS.appendFile output $
-        Beam.encode (fromString name) [Beam.Export "main" 1] ops
+        Beam.encode (fromString name) [Beam.export "main" 1] ops
       setFileMode output accessModes
 
 

@@ -1,5 +1,5 @@
 module Codec.Beam
-  ( encode, Export(..)
+  ( encode, Metadata, export, insertModuleInfo
     -- * Syntax
   , Op, X(..), Y(..), F(..), Nil(..), Label(..), Literal(..), Lambda(..), Import(..)
     -- * Argument constraints
@@ -25,19 +25,61 @@ import Codec.Beam.Internal.Table (Table)
 import qualified Codec.Beam.Internal.Table as Table
 
 
--- | Create code for a BEAM module!
+-- | Create code for a BEAM module.
 encode
   :: BS.ByteString -- ^ module name
-  -> [Export]      -- ^ functions that should be public
+  -> [Metadata]
   -> [Op]          -- ^ instructions
-  -> BS.ByteString -- ^ return encoded BEAM
-encode name exports =
-  toLazyByteString . foldl encodeOp (initialEnv name exports)
+  -> BS.ByteString
+encode name metadata =
+  toLazyByteString . foldl encodeOp (setup metadata (initialEnv name))
 
 
--- | Name and arity of functions to export
-data Export = Export BS.ByteString Int
-  deriving (Eq, Ord, Show)
+-- | Extra information regarding the contents of a BEAM module.
+newtype Metadata = Metadata (Env -> Env)
+
+
+-- | Name and arity of a function that should be made public.
+export :: BS.ByteString -> Int -> Metadata
+export name arity =
+  Metadata $ \env -> env { _exporting = Set.insert (name, arity) (_exporting env) }
+
+
+-- | The Erlang compiler inserts two functions when compiling source files:
+--   @module_info/0@ and @module_info/1@.
+--   Some pieces of the Erlang toolchain expect this function to exist.
+--   For instance, the shell will crash if you try to use TAB (for auto-completion)
+--   on a BEAM module without these functions present.
+--   These functions have the same implementation, so you can use this 'Metadata'
+--   to have this library generate them for you.
+insertModuleInfo :: Metadata
+insertModuleInfo =
+  Metadata $ \env ->
+    let
+      withExports = env
+        { _exporting =
+            _exporting env <> Set.fromList [("module_info", 0), ("module_info", 1)]
+        }
+    in
+    foldl encodeOp withExports
+      -- Negative numbers here prevent clashes with user-defined labels.
+      -- Since negative numbers are not valid labels,
+      -- this decision does not affect the external semantics of the library.
+      [ Op 1  [FromNewLabel (Label (-1))]
+      , Op 2  [FromNewFunction "module_info" 0, FromByteString "module_info", FromUntagged 0]
+      , Op 1  [FromNewLabel (Label (-2))]
+      , Op 64 [FromByteString (_moduleName env), FromX (X 0)]
+      , Op 78 [FromUntagged 1, FromImport (Import "erlang" "get_module_info" 1)]
+      , Op 19 []
+      , Op 1  [FromNewLabel (Label (-3))]
+      , Op 2  [FromNewFunction "module_info" 1, FromByteString "module_info", FromUntagged 1]
+      , Op 1  [FromNewLabel (Label (-4))]
+      , Op 64 [FromX (X 0), FromX (X 1)]
+      , Op 64 [FromByteString (_moduleName env), FromX (X 0)]
+      , Op 78 [FromUntagged 2, FromImport (Import "erlang" "get_module_info" 2)]
+      , Op 19 []
+      ]
+
 
 
 -- ASSEMBLER
@@ -47,40 +89,46 @@ data Export = Export BS.ByteString Int
 data Env =
   Env
     { _moduleName :: BS.ByteString
-    , _labelCount :: Word32
-    , _functionCount :: Word32
+    , _labelTable :: Table Int
     , _atomTable :: Table BS.ByteString
     , _literalTable :: Table Literal
     , _lambdaTable :: Table Lambda
     , _importTable :: Table Import
     , _exportTable :: Table (BS.ByteString, Int, Int)
     , _exportNextLabel :: Maybe (BS.ByteString, Int)
-    , _exporting :: BS.ByteString -> Int -> Bool
+    , _exporting :: Set.Set (BS.ByteString, Int)
+    , _functionCount :: Word32
     , _maxOpCode :: Word8
     , _code :: Builder.Builder
     }
 
 
-initialEnv :: BS.ByteString -> [Export] -> Env
-initialEnv name exports =
+initialEnv :: BS.ByteString -> Env
+initialEnv name =
   Env
     { _moduleName = name
-    , _labelCount = 0
-    , _functionCount = 0
+    , _labelTable = Table.singleton 0 0
     , _atomTable = Table.singleton name 1
     , _literalTable = Table.empty
     , _lambdaTable = Table.empty
     , _importTable = Table.empty
     , _exportTable = Table.empty
     , _exportNextLabel = Nothing
-    , _exporting = exporting
+    , _exporting = Set.empty
+    , _functionCount = 0
     , _maxOpCode = 1
     , _code = mempty
     }
 
-  where
-    exporting name arity =
-      Set.member (Export name arity) (Set.fromList exports)
+
+setup :: [Metadata] -> Env -> Env
+setup list env =
+  case list of
+    [] ->
+      env
+
+    Metadata run : rest ->
+      setup rest (run env)
 
 
 encodeOp :: Env -> Op -> Env
@@ -98,9 +146,13 @@ encodeArgument env argument =
     FromUntagged value ->
       appendTag (encodeTag 0 value) env
 
-    FromNewLabel (Label value) ->
+    FromNewLabel (Label raw) ->
+      let
+        (value, newTable) =
+          Table.index raw (_labelTable env)
+      in
       appendTag (encodeTag 0 value) $ env
-        { _labelCount = 1 + _labelCount env
+        { _labelTable = newTable
         , _exportNextLabel = Nothing
         , _exportTable =
             maybe id
@@ -134,11 +186,14 @@ encodeArgument env argument =
     FromNil Nil ->
       appendTag (encodeTag 2 0) env
 
-    FromFunctionModule name arity ->
+    FromNewFunction name arity ->
       appendTag (encodeTag 2 1) $ env
         { _functionCount = 1 + _functionCount env
         , _exportNextLabel =
-            if _exporting env name arity then Just (name, arity) else Nothing
+            if Set.member (name, arity) (_exporting env) then
+              Just (name, arity)
+            else
+              Nothing
         }
 
     FromByteString name ->
@@ -154,8 +209,12 @@ encodeArgument env argument =
     FromY (Y value) ->
       appendTag (encodeTag 4 value) env
 
-    FromLabel (Label value) ->
-      appendTag (encodeTag 5 value) env
+    FromLabel (Label raw) ->
+      let
+        (value, newTable) =
+          Table.index raw (_labelTable env)
+      in
+      appendTag (encodeTag 5 value) $ env { _labelTable = newTable }
 
     FromF (F value) ->
       appendTag (encodeExt 2 value) env
@@ -185,8 +244,7 @@ toLazyByteString :: Env -> BS.ByteString
 toLazyByteString
   ( Env
       _
-      labels
-      functions
+      labelTable
       atomTable
       literalTable
       lambdaTable
@@ -194,6 +252,7 @@ toLazyByteString
       exportTable
       _
       _
+      functions
       maxOpCode
       bytes
   ) =
@@ -204,10 +263,10 @@ toLazyByteString
          "AtU8" <> alignSection (atoms atomTable)
       <> "StrT" <> alignSection (strings)
       <> "LitT" <> alignSection (literals literalTable)
-      <> "FunT" <> alignSection (lambdas lambdaTable atomTable)
+      <> "FunT" <> alignSection (lambdas lambdaTable atomTable labelTable)
       <> "ImpT" <> alignSection (imports importTable atomTable)
       <> "ExpT" <> alignSection (exports exportTable atomTable)
-      <> "Code" <> alignSection (code bytes (labels + 1) functions maxOpCode)
+      <> "Code" <> alignSection (code bytes labelTable functions maxOpCode)
 
 
 
@@ -223,43 +282,43 @@ atoms table =
 --
 -- Why not support explicit string literals?
 --  1. Since Erlang strings are really integer lists,
---     they are easy to add to the literal table!
+--     they are easy to add to the literal table.
 --     This can be done in "user-land" without library support:
 --     @string :: [Int] -> Beam.Literal@
 --  2. Since Erlang strings are really integer lists,
---     they are probably a bad idea for your compiler!
+--     they are probably a bad idea for your compiler.
 --     It seems that most compile-through-Erlang languages prefer bitstrings,
 --     which are supported via the 'Binary' literal.
 --
---  If your use case requires this table, please reach out!
+--  If your use case requires this table, please reach out.
 strings :: BS.ByteString
 strings =
   pack32 0
 
 
-code :: Builder.Builder -> Word32 -> Word32 -> Word8 -> BS.ByteString
-code builder labelCount functionCount maxOpCode =
+code :: Builder.Builder -> Table Int -> Word32 -> Word8 -> BS.ByteString
+code builder labelTable functionCount maxOpCode =
   mconcat
     [ pack32 16  -- header length
     , pack32 0   -- instruction set id
     , pack32 maxOpCode
-    , pack32 labelCount
+    , pack32 (Table.size labelTable)
     , pack32 functionCount
     , Builder.toLazyByteString builder
     , pack8 3    -- int_code_end
     ]
 
 
-lambdas :: Table Lambda -> Table BS.ByteString -> BS.ByteString
-lambdas lambdaTable atomTable =
+lambdas :: Table Lambda -> Table BS.ByteString -> Table Int -> BS.ByteString
+lambdas lambdaTable atomTable labelTable =
   pack32 (Table.size lambdaTable) <> Table.encode fromLambda lambdaTable
 
   where
-    fromLambda lambda@(Lambda name arity (Label label) free) =
+    fromLambda lambda@(Lambda name arity (Label raw) free) =
       mconcat
         [ pack32 (forceIndex name atomTable)
         , pack32 arity
-        , pack32 label
+        , pack32 (forceIndex raw labelTable)
         , pack32 (forceIndex lambda lambdaTable)
         , pack32 free
         , pack32 0 -- old unique
@@ -306,17 +365,14 @@ literals table =
 encodeLiteral :: Literal -> BS.ByteString
 encodeLiteral lit =
   case lit of
-    Integer value | value < 256 ->
-      pack8 97 <> pack8 value
+    Atom value ->
+      encodeAtom value
 
     Integer value ->
-      pack8 98 <> pack32 value
+      encodeInteger value
 
     Float value ->
       pack8 70 <> packDouble value
-
-    Atom value ->
-      pack8 119 <> withSize pack8 value
 
     Binary value ->
       pack8 109 <> withSize pack32 value
@@ -349,6 +405,25 @@ encodeLiteral lit =
         , pack32 (length pairs)
         , mconcat $ fmap (\(x, y) -> encodeLiteral x <> encodeLiteral y) pairs
         ]
+
+    ExternalFun (Import module_ function arity) ->
+      mconcat
+        [ pack8 113
+        , encodeAtom module_
+        , encodeAtom function
+        , encodeInteger arity
+        ]
+
+
+encodeAtom :: BS.ByteString -> BS.ByteString
+encodeAtom value =
+  pack8 119 <> withSize pack8 value
+
+
+encodeInteger :: Int -> BS.ByteString
+encodeInteger value
+  | value < 256 = pack8 97 <> pack8 value
+  | otherwise   = pack8 98 <> pack32 value
 
 
 encodeTag :: Word8 -> Int -> [Word8]
