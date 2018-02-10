@@ -42,7 +42,7 @@ newtype Metadata = Metadata (Env -> Env)
 -- | Name and arity of a function that should be made public.
 export :: BS.ByteString -> Int -> Metadata
 export name arity =
-  Metadata $ \env -> env { _exporting = Set.insert (name, arity) (_exporting env) }
+  Metadata $ addExport name arity
 
 
 -- | The Erlang compiler inserts two functions when compiling source files:
@@ -54,7 +54,32 @@ export name arity =
 --   to have this library generate them for you.
 insertModuleInfo :: Metadata
 insertModuleInfo =
-  Metadata id
+  Metadata $ \env ->
+    let
+      withExports =
+        addExport "module_info" 0 $ addExport "module_info" 1 env
+    in
+    foldl encodeOp withExports
+      [ Op 1  [FromNewLabel (Label 1)]
+      , Op 2  [FromFunctionModule "module_info" 0, FromByteString "module_info", FromUntagged 0]
+      , Op 1  [FromNewLabel (Label 2)]
+      , Op 64 [FromByteString (_moduleName env), FromX (X 0)]
+      , Op 78 [FromUntagged 1, FromImport (Import "erlang" "get_module_info" 1)]
+      , Op 19 []
+      , Op 1  [FromNewLabel (Label 3)]
+      , Op 2  [FromFunctionModule "module_info" 1, FromByteString "module_info", FromUntagged 1]
+      , Op 1  [FromNewLabel (Label 4)]
+      , Op 64 [FromX (X 0), FromX (X 1)]
+      , Op 64 [FromByteString (_moduleName env), FromX (X 0)]
+      , Op 78 [FromUntagged 2, FromImport (Import "erlang" "get_module_info" 2)]
+      , Op 19 []
+      ]
+
+
+addExport :: BS.ByteString -> Int -> Env -> Env
+addExport name arity env =
+  env { _exporting = Set.insert (name, arity) (_exporting env) }
+
 
 
 -- ASSEMBLER
