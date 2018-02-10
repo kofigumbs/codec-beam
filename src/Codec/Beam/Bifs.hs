@@ -915,73 +915,73 @@ instance IsBif Erlang'not where unBif arity _ = Import "erlang" "not" arity
 data Erlang'sgt_2 = Erlang'sgt_2
 instance NoGC  Erlang'sgt_2
 instance Bif2  Erlang'sgt_2
-instance IsBif Erlang'sgt_2 where unBif arity _ = Import "erlang" ">" arity ; {-# INLINE unBif #-}
+instance IsBif Erlang'sgt_2 where unBif arity _ = Import "erlang" ">" arity
 
 -- | The @>=@ operator.
 data Erlang'sge_2 = Erlang'sge_2
 instance NoGC  Erlang'sge_2
 instance Bif2  Erlang'sge_2
-instance IsBif Erlang'sge_2 where unBif arity _ = Import "erlang" ">=" arity ; {-# INLINE unBif #-}
+instance IsBif Erlang'sge_2 where unBif arity _ = Import "erlang" ">=" arity
 
 -- | The @<@ operator.
 data Erlang'slt_2 = Erlang'slt_2
 instance NoGC  Erlang'slt_2
 instance Bif2  Erlang'slt_2
-instance IsBif Erlang'slt_2 where unBif arity _ = Import "erlang" "<" arity ; {-# INLINE unBif #-}
+instance IsBif Erlang'slt_2 where unBif arity _ = Import "erlang" "<" arity
 
 -- | The @=<@ operator.
 data Erlang'sle_2 = Erlang'sle_2
 instance NoGC  Erlang'sle_2
 instance Bif2  Erlang'sle_2
-instance IsBif Erlang'sle_2 where unBif arity _ = Import "erlang" "=<" arity ; {-# INLINE unBif #-}
+instance IsBif Erlang'sle_2 where unBif arity _ = Import "erlang" "=<" arity
 
 -- | The @=:=@ operator.
 data Erlang'seq_2 = Erlang'seq_2
 instance NoGC  Erlang'seq_2
 instance Bif2  Erlang'seq_2
-instance IsBif Erlang'seq_2 where unBif arity _ = Import "erlang" "=:=" arity ; {-# INLINE unBif #-}
+instance IsBif Erlang'seq_2 where unBif arity _ = Import "erlang" "=:=" arity
 
 -- | The @==@ operator.
 data Erlang'seqeq_2 = Erlang'seqeq_2
 instance NoGC  Erlang'seqeq_2
 instance Bif2  Erlang'seqeq_2
-instance IsBif Erlang'seqeq_2 where unBif arity _ = Import "erlang" "==" arity ; {-# INLINE unBif #-}
+instance IsBif Erlang'seqeq_2 where unBif arity _ = Import "erlang" "==" arity
 
 -- | The @=/=@ operator.
 data Erlang'sneq_2 = Erlang'sneq_2
 instance NoGC  Erlang'sneq_2
 instance Bif2  Erlang'sneq_2
-instance IsBif Erlang'sneq_2 where unBif arity _ = Import "erlang" "=/=" arity ; {-# INLINE unBif #-}
+instance IsBif Erlang'sneq_2 where unBif arity _ = Import "erlang" "=/=" arity
 
 -- | The @/=@ operator.
 data Erlang'sneqeq_2 = Erlang'sneqeq_2
 instance NoGC  Erlang'sneqeq_2
 instance Bif2  Erlang'sneqeq_2
-instance IsBif Erlang'sneqeq_2 where unBif arity _ = Import "erlang" "/=" arity ; {-# INLINE unBif #-}
+instance IsBif Erlang'sneqeq_2 where unBif arity _ = Import "erlang" "/=" arity
 
 -- | The @+@ operator.
 data Erlang'splus_2 = Erlang'splus_2
 instance NoGC  Erlang'splus_2
 instance Bif2  Erlang'splus_2
-instance IsBif Erlang'splus_2 where unBif arity _ = Import "erlang" "+" arity ; {-# INLINE unBif #-}
+instance IsBif Erlang'splus_2 where unBif arity _ = Import "erlang" "+" arity
 
 -- | The @-@ operator.
 data Erlang'sminus_2 = Erlang'sminus_2
 instance NoGC  Erlang'sminus_2
 instance Bif2  Erlang'sminus_2
-instance IsBif Erlang'sminus_2 where unBif arity _ = Import "erlang" "-" arity ; {-# INLINE unBif #-}
+instance IsBif Erlang'sminus_2 where unBif arity _ = Import "erlang" "-" arity
 
 -- | The @*@ operator.
 data Erlang'stimes_2 = Erlang'stimes_2
 instance NoGC  Erlang'stimes_2
 instance Bif2  Erlang'stimes_2
-instance IsBif Erlang'stimes_2 where unBif arity _ = Import "erlang" "*" arity ; {-# INLINE unBif #-}
+instance IsBif Erlang'stimes_2 where unBif arity _ = Import "erlang" "*" arity
 
 -- | The @/@ operator.
 data Erlang'div_2 = Erlang'div_2
 instance NoGC  Erlang'div_2
 instance Bif2  Erlang'div_2
-instance IsBif Erlang'div_2 where unBif arity _ = Import "erlang" "/" arity ; {-# INLINE unBif #-}
+instance IsBif Erlang'div_2 where unBif arity _ = Import "erlang" "/" arity
 
 data Erlang'div = Erlang'div
 instance NoGC  Erlang'div
@@ -1027,19 +1027,19 @@ instance IsBif Erlang'bnot where unBif arity _ = Import "erlang" "bnot" arity
 data Erlang'sminus_1 = Erlang'sminus_1
 instance NoGC  Erlang'sminus_1
 instance Bif1  Erlang'sminus_1
-instance IsBif Erlang'sminus_1 where unBif arity _ = Import "erlang" "-" arity ; {-# INLINE unBif #-}
+instance IsBif Erlang'sminus_1 where unBif arity _ = Import "erlang" "-" arity
 
 -- | The @+@ operator.
 data Erlang'splus_1 = Erlang'splus_1
 instance NoGC  Erlang'splus_1
 instance Bif1  Erlang'splus_1
-instance IsBif Erlang'splus_1 where unBif arity _ = Import "erlang" "+" arity ; {-# INLINE unBif #-}
+instance IsBif Erlang'splus_1 where unBif arity _ = Import "erlang" "+" arity
 
 -- | The @!@ operator.
 data Erlang'ebif_bang_2 = Erlang'ebif_bang_2
 instance NoGC  Erlang'ebif_bang_2
 instance Bif2  Erlang'ebif_bang_2
-instance IsBif Erlang'ebif_bang_2 where unBif arity _ = Import "erlang" "!" arity ; {-# INLINE unBif #-}
+instance IsBif Erlang'ebif_bang_2 where unBif arity _ = Import "erlang" "!" arity
 
 data Erlang'send = Erlang'send
 instance NoGC  Erlang'send
@@ -1062,7 +1062,7 @@ instance IsBif Erlang'append where unBif arity _ = Import "erlang" "append" arit
 data Erlang'ebif_minusminus_2 = Erlang'ebif_minusminus_2
 instance NoGC  Erlang'ebif_minusminus_2
 instance Bif2  Erlang'ebif_minusminus_2
-instance IsBif Erlang'ebif_minusminus_2 where unBif arity _ = Import "erlang" "--" arity ; {-# INLINE unBif #-}
+instance IsBif Erlang'ebif_minusminus_2 where unBif arity _ = Import "erlang" "--" arity
 
 data Erlang'subtract = Erlang'subtract
 instance NoGC  Erlang'subtract
