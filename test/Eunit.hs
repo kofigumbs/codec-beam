@@ -4,8 +4,8 @@ import Data.Monoid ((<>))
 import System.FilePath ((</>), (<.>))
 import System.Process (callProcess)
 import qualified Data.ByteString.Lazy as BS
+import qualified Data.Text as Text
 
-import ByteStringConversion (fromString)
 import qualified Codec.Beam as Beam
 
 
@@ -32,7 +32,7 @@ type Test =
 
 test :: String -> [Beam.Metadata] -> [String] -> [Beam.Op] -> Test
 test name metadata body =
-  test_ name body . Beam.encode (fromString name) metadata
+  test_ name body . Beam.encode (Text.pack name) metadata
 
 
 test_ :: String -> [String] -> BS.ByteString -> Test

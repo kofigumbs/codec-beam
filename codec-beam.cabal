@@ -34,7 +34,6 @@ Test-Suite codec-beam-tests
     type: exitcode-stdio-1.0
     main-is: Main.hs
     other-modules: Eunit
-                   ByteStringConversion
     build-depends: codec-beam,
                    base,
                    bytestring,
