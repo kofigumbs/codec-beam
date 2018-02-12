@@ -53,7 +53,7 @@ func_info
   :: Text -- ^ function name
   -> Int  -- ^ arity
   -> Op
-func_info a1 a2 = Op 2 [FromNewFunction a1 a2, FromText a1, FromUntagged a2]
+func_info a1 a2 = Op 2 [FromNewFunction a1 a2, FromAtom a1, FromUntagged a2]
 
 -- | Call the function at label.
 --   Save the next instruction as the return address in the CP register.
@@ -624,4 +624,4 @@ get_map_elements a1 a2 a3 = Op 158 [FromLabel a1, fromSource a2, fromPairs fromR
 --   Test the arity of Reg and jumps to label if it is not of the given size.
 --   Test the first element of the tuple and jumps to label if it is not given atom.
 is_tagged_tuple :: (IsSource a2) => Label -> a2 -> Int -> Text -> Op
-is_tagged_tuple a1 a2 a3 a4 = Op 159 [FromLabel a1, fromSource a2, FromUntagged a3, FromText a4]
+is_tagged_tuple a1 a2 a3 a4 = Op 159 [FromLabel a1, fromSource a2, FromUntagged a3, FromAtom a4]

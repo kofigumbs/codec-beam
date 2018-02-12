@@ -71,16 +71,16 @@ insertModuleInfo =
       -- Since negative numbers are not valid labels,
       -- this decision does not affect the external semantics of the library.
       [ Op 1  [FromNewLabel (Label (-1))]
-      , Op 2  [FromNewFunction "module_info" 0, FromText "module_info", FromUntagged 0]
+      , Op 2  [FromNewFunction "module_info" 0, FromAtom "module_info", FromUntagged 0]
       , Op 1  [FromNewLabel (Label (-2))]
-      , Op 64 [FromText (_moduleName env), FromX (X 0)]
+      , Op 64 [FromAtom (_moduleName env), FromX (X 0)]
       , Op 78 [FromUntagged 1, FromImport (Import "erlang" "get_module_info" 1)]
       , Op 19 []
       , Op 1  [FromNewLabel (Label (-3))]
-      , Op 2  [FromNewFunction "module_info" 1, FromText "module_info", FromUntagged 1]
+      , Op 2  [FromNewFunction "module_info" 1, FromAtom "module_info", FromUntagged 1]
       , Op 1  [FromNewLabel (Label (-4))]
       , Op 64 [FromX (X 0), FromX (X 1)]
-      , Op 64 [FromText (_moduleName env), FromX (X 0)]
+      , Op 64 [FromAtom (_moduleName env), FromX (X 0)]
       , Op 78 [FromUntagged 2, FromImport (Import "erlang" "get_module_info" 2)]
       , Op 19 []
       ]
@@ -201,7 +201,7 @@ encodeArgument env argument =
               Nothing
         }
 
-    FromText name ->
+    FromAtom name ->
       let
         (value, newTable) =
           Table.index name (_atomTable env)

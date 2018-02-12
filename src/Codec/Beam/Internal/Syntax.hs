@@ -128,13 +128,15 @@ instance IsRegister Y        where toRegister = Register . FromY
 
 -- | Any sort of Erlang value.
 --   Instructions that work with this type, use 'IsSource' for convenience.
+--   Note the 'IsSource' instance for 'Text', which represents a stack atom
+--   (in contrast with the 'Atom' constructor in 'Literal', which is heap-stored).
 newtype  Source = Source { unSource :: Argument }
 class    IsSource a       where toSource :: a -> Source
 instance IsSource Source  where toSource = id
 instance IsSource X       where toSource = Source . FromX
 instance IsSource Y       where toSource = Source . FromY
 instance IsSource Nil     where toSource = Source . FromNil
-instance IsSource Text    where toSource = Source . FromText
+instance IsSource Text    where toSource = Source . FromAtom
 instance IsSource Literal where toSource = Source . FromLiteral
 instance IsSource Int     where toSource = Source . FromInt
 
@@ -173,7 +175,7 @@ data Argument
   | FromUntagged Int
   | FromInt Int
   | FromNil Nil
-  | FromText Text
+  | FromAtom Text
   | FromLabel Label
   | FromLiteral Literal
   | FromLambda Lambda
