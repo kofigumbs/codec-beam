@@ -129,14 +129,14 @@ instance IsRegister Y        where toRegister = Register . FromY
 -- | Any sort of Erlang value.
 --   Instructions that work with this type, use 'IsSource' for convenience.
 newtype  Source = Source { unSource :: Argument }
-class    IsSource a          where toSource :: a -> Source
-instance IsSource Source     where toSource = id
-instance IsSource X          where toSource = Source . FromX
-instance IsSource Y          where toSource = Source . FromY
-instance IsSource Nil        where toSource = Source . FromNil
-instance IsSource Text where toSource = Source . FromText
-instance IsSource Literal    where toSource = Source . FromLiteral
-instance IsSource Int        where toSource = Source . FromInt
+class    IsSource a       where toSource :: a -> Source
+instance IsSource Source  where toSource = id
+instance IsSource X       where toSource = Source . FromX
+instance IsSource Y       where toSource = Source . FromY
+instance IsSource Nil     where toSource = Source . FromNil
+instance IsSource Text    where toSource = Source . FromText
+instance IsSource Literal where toSource = Source . FromLiteral
+instance IsSource Int     where toSource = Source . FromInt
 
 
 -- | Memory for manipulating 'F', for use with 'Codec.Beam.Instructions.fmove'.
@@ -152,12 +152,12 @@ instance IsRegisterF Y         where toRegisterF = RegisterF . FromY
 -- | Something that can be coerced into 'F', for use with 'Codec.Beam.Instructions.fmove'.
 --   Instructions that work with this type, use 'IsSourceF' for convenience.
 newtype  SourceF = SourceF { unSourceF :: Argument }
-class    IsSourceF a          where toSourceF :: a -> SourceF
-instance IsSourceF SourceF    where toSourceF = id
-instance IsSourceF F          where toSourceF = SourceF . FromF
-instance IsSourceF X          where toSourceF = SourceF . FromX
-instance IsSourceF Y          where toSourceF = SourceF . FromY
-instance IsSourceF Literal    where toSourceF = SourceF . FromLiteral
+class    IsSourceF a       where toSourceF :: a -> SourceF
+instance IsSourceF SourceF where toSourceF = id
+instance IsSourceF F       where toSourceF = SourceF . FromF
+instance IsSourceF X       where toSourceF = SourceF . FromX
+instance IsSourceF Y       where toSourceF = SourceF . FromY
+instance IsSourceF Literal where toSourceF = SourceF . FromLiteral
 
 
 
