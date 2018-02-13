@@ -1,9 +1,9 @@
 module Main where
 
-import Data.ByteString.Lazy (ByteString)
 import Data.Monoid ((<>))
+import Data.Text (Text)
+import qualified Data.Text as Text
 
-import ByteStringConversion (toString)
 import Codec.Beam.Instructions
 import qualified Codec.Beam as Beam
 import qualified Eunit
@@ -31,8 +31,8 @@ main =
     , withConstant "number_very_large_positive" id (429496729501 :: Int)
 
     -- Atom table encodings
-    , withConstant "arbitrary_atom" id ("hello" :: ByteString)
-    , withConstant "module_name_atom" id ("module_name_atom" :: ByteString)
+    , withConstant "arbitrary_atom" id ("hello" :: Text)
+    , withConstant "module_name_atom" id ("module_name_atom" :: Text)
     , withConstant_ "constant_nil" Beam.Nil "[]"
 
     -- Comparisons
@@ -231,7 +231,7 @@ main =
         [ label (Beam.Label 1)
         , func_info "make" 1
         , label (Beam.Label 2)
-        , set_tuple_element ("dream" :: ByteString) (Beam.X 0) 0
+        , set_tuple_element ("dream" :: Text) (Beam.X 0) 0
         , return_
         ]
 
@@ -243,7 +243,7 @@ main =
         , func_info "test" 0
         , label (Beam.Label 2)
         , put_list (Beam.Integer 2) Beam.Nil (Beam.X 0)
-        , put_list ("one" :: ByteString) (Beam.X 0) (Beam.X 0)
+        , put_list ("one" :: Text) (Beam.X 0) (Beam.X 0)
         , return_
         ]
 
@@ -255,7 +255,7 @@ main =
         , func_info "test" 0
         , label (Beam.Label 2)
         , put_tuple (2 :: Int) (Beam.X 0)
-        , put ("one" :: ByteString)
+        , put ("one" :: Text)
         , put (2 :: Int)
         , return_
         ]
@@ -287,7 +287,7 @@ main =
             ]
         , return_
         , label (Beam.Label 3)
-        , move ("error" :: ByteString) (Beam.X 0)
+        , move ("error" :: Text) (Beam.X 0)
         , return_
         ]
 
@@ -312,7 +312,7 @@ main =
         , label (Beam.Label 2)
         , jump (Beam.Label 4)
         , label (Beam.Label 3)
-        , move ("yay" :: ByteString) (Beam.X 0)
+        , move ("yay" :: Text) (Beam.X 0)
         , return_
         , label (Beam.Label 4)
         , jump (Beam.Label 3)
@@ -373,13 +373,13 @@ main =
             , (Beam.Label 5, Beam.toSource (5 :: Int))
             ]
         , label (Beam.Label 3)
-        , move ("neither" :: ByteString) (Beam.X 0)
+        , move ("neither" :: Text) (Beam.X 0)
         , return_
         , label (Beam.Label 4)
-        , move ("four" :: ByteString) (Beam.X 0)
+        , move ("four" :: Text) (Beam.X 0)
         , return_
         , label (Beam.Label 5)
-        , move ("five" :: ByteString) (Beam.X 0)
+        , move ("five" :: Text) (Beam.X 0)
         , return_
         ]
     ]
@@ -425,10 +425,10 @@ jumpFunction args decision =
   , func_info "test" args
   , label (Beam.Label 2)
   , decision (Beam.Label 3)
-  , move ("true" :: ByteString) (Beam.X 0)
+  , move ("true" :: Text) (Beam.X 0)
   , return_
   , label (Beam.Label 3)
-  , move ("false" :: ByteString) (Beam.X 0)
+  , move ("false" :: Text) (Beam.X 0)
   , return_
   ]
 
@@ -443,8 +443,8 @@ class ErlangLiteral a where
 instance ErlangLiteral a => ErlangLiteral [a] where
   erlang = mconcat . map erlang
 
-instance ErlangLiteral ByteString where
-  erlang = toString
+instance ErlangLiteral Text where
+  erlang = Text.unpack
 
 instance ErlangLiteral Int where
   erlang = erlang . show

@@ -1,6 +1,7 @@
 module Codec.Beam.Internal.Syntax where
 
 import Data.ByteString.Lazy (ByteString)
+import Data.Text (Text)
 import Data.Void (Void)
 import Data.Word (Word8)
 import Unsafe.Coerce (unsafeCoerce)
@@ -44,10 +45,10 @@ data Nil = Nil
 
 -- | Turn a named function into a @fun@, for use with 'Codec.Beam.Instructions.make_fun2'.
 data Lambda = Lambda
-  { _lambda_name :: ByteString -- ^ unique name for this lambda
+  { _lambda_name :: Text   -- ^ unique name for this lambda
   , _lambda_arity :: Int
-  , _lambda_label :: Label     -- ^ where to find the backing function
-  , _lambda_free :: Int        -- ^ how many variables to capture from calling scope
+  , _lambda_label :: Label -- ^ where to find the backing function
+  , _lambda_free :: Int    -- ^ how many variables to capture from calling scope
   }
   deriving (Eq, Ord, Show)
 
@@ -56,7 +57,7 @@ data Lambda = Lambda
 data Literal
   = Integer Int
   | Float Double
-  | Atom ByteString
+  | Atom Text
   | Binary ByteString
   | Tuple [Literal]
   | List [Literal]
@@ -68,8 +69,8 @@ data Literal
 -- | Reference a function from another module.
 --   For example, @Import "array" "map" 2@ refers to the stdlib function: @array:map/2@.
 data Import = Import
-  { _import_module :: ByteString
-  , _import_function :: ByteString
+  { _import_module :: Text
+  , _import_function :: Text
   , _import_arity :: Int
   }
   deriving (Eq, Ord, Show)
@@ -127,15 +128,17 @@ instance IsRegister Y        where toRegister = Register . FromY
 
 -- | Any sort of Erlang value.
 --   Instructions that work with this type, use 'IsSource' for convenience.
+--   Note the 'IsSource' instance for 'Text', which represents a stack atom
+--   (in contrast with the 'Atom' constructor in 'Literal', which is heap-stored).
 newtype  Source = Source { unSource :: Argument }
-class    IsSource a          where toSource :: a -> Source
-instance IsSource Source     where toSource = id
-instance IsSource X          where toSource = Source . FromX
-instance IsSource Y          where toSource = Source . FromY
-instance IsSource Nil        where toSource = Source . FromNil
-instance IsSource ByteString where toSource = Source . FromByteString
-instance IsSource Literal    where toSource = Source . FromLiteral
-instance IsSource Int        where toSource = Source . FromInt
+class    IsSource a       where toSource :: a -> Source
+instance IsSource Source  where toSource = id
+instance IsSource X       where toSource = Source . FromX
+instance IsSource Y       where toSource = Source . FromY
+instance IsSource Nil     where toSource = Source . FromNil
+instance IsSource Text    where toSource = Source . FromAtom
+instance IsSource Literal where toSource = Source . FromLiteral
+instance IsSource Int     where toSource = Source . FromInt
 
 
 -- | Memory for manipulating 'F', for use with 'Codec.Beam.Instructions.fmove'.
@@ -151,12 +154,12 @@ instance IsRegisterF Y         where toRegisterF = RegisterF . FromY
 -- | Something that can be coerced into 'F', for use with 'Codec.Beam.Instructions.fmove'.
 --   Instructions that work with this type, use 'IsSourceF' for convenience.
 newtype  SourceF = SourceF { unSourceF :: Argument }
-class    IsSourceF a          where toSourceF :: a -> SourceF
-instance IsSourceF SourceF    where toSourceF = id
-instance IsSourceF F          where toSourceF = SourceF . FromF
-instance IsSourceF X          where toSourceF = SourceF . FromX
-instance IsSourceF Y          where toSourceF = SourceF . FromY
-instance IsSourceF Literal    where toSourceF = SourceF . FromLiteral
+class    IsSourceF a       where toSourceF :: a -> SourceF
+instance IsSourceF SourceF where toSourceF = id
+instance IsSourceF F       where toSourceF = SourceF . FromF
+instance IsSourceF X       where toSourceF = SourceF . FromX
+instance IsSourceF Y       where toSourceF = SourceF . FromY
+instance IsSourceF Literal where toSourceF = SourceF . FromLiteral
 
 
 
@@ -172,12 +175,12 @@ data Argument
   | FromUntagged Int
   | FromInt Int
   | FromNil Nil
-  | FromByteString ByteString
+  | FromAtom Text
   | FromLabel Label
   | FromLiteral Literal
   | FromLambda Lambda
   | FromList [Argument]
-  | FromNewFunction ByteString Int
+  | FromNewFunction Text Int
 
 
 fromRegister :: IsRegister a => a -> Argument

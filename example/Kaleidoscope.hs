@@ -1,12 +1,12 @@
 import Control.Monad.State (State, evalState)
-import Data.Text.Lazy (pack)
-import Data.Text.Lazy.Encoding (encodeUtf8)
+import Data.Text (Text)
 import System.FilePath (takeBaseName)
 import System.Environment (getArgs)
 import System.Posix.Files (accessModes, setFileMode)
 import qualified Control.Monad.State as State
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Map.Lazy as Map
+import qualified Data.Text as Text
 
 import Text.Parsec hiding (State, label)
 import Text.Parsec.Error (ParseError)
@@ -40,7 +40,7 @@ makeExecutable name ops =
   do  let output = name ++ ".beam"
       writeFile output "#!/usr/bin/env escript\n"
       BS.appendFile output $
-        Beam.encode (fromString name) [Beam.export "main" 1] ops
+        Beam.encode (Text.pack name) [ Beam.export "main" 1 ] ops
       setFileMode output accessModes
 
 
@@ -84,7 +84,7 @@ genBegin name args =
         }
       return
         [ label x
-        , func_info (toBytes name) (length args)
+        , func_info (_raw name) (length args)
         , label y
         ]
 
@@ -119,7 +119,7 @@ genExpr expr =
           Right (lbl, arity) ->
             do  tmp <- nextTmp
                 return
-                  ( [ make_fun2 (Beam.Lambda (toBytes name) arity lbl 0) ]
+                  ( [ make_fun2 (Beam.Lambda (_raw name) arity lbl 0) ]
                   , Beam.toSource tmp
                   )
 
@@ -165,7 +165,7 @@ lookupVar name =
       case (Map.lookup name locals, Map.lookup name functions) of
         (Just register, _) -> return $ Left register
         (_, Just funcInfo) -> return $ Right funcInfo
-        (Nothing, Nothing) -> error  $ "`" ++ _raw name ++ "` is undefined!"
+        (Nothing, Nothing) -> error  $ "`" ++ show name ++ "` is undefined!"
 
 
 usedVars :: State Env Int
@@ -203,16 +203,6 @@ noFailure =
   Beam.Label 0
 
 
-toBytes :: Name -> BS.ByteString
-toBytes =
-  fromString . _raw
-
-
-fromString :: String -> BS.ByteString
-fromString =
-  encodeUtf8 . pack
-
-
 
 -- SYNTAX
 
@@ -236,8 +226,8 @@ data Operator
 
 
 newtype Name
-  = Name { _raw :: String }
-  deriving (Eq, Ord)
+  = Name { _raw :: Text }
+  deriving (Eq, Ord, Show)
 
 
 
@@ -287,7 +277,7 @@ factor =
 
 identifier :: Parser Name
 identifier =
-  Name <$> Token.identifier lexer
+  Name . Text.pack <$> Token.identifier lexer
 
 
 parens :: Parser a -> Parser a

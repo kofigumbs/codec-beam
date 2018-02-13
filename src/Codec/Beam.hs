@@ -11,14 +11,19 @@ module Codec.Beam
 
 
 import Data.Bits ((.|.), (.&.))
+import Data.ByteString.Builder (Builder)
+import Data.ByteString.Lazy (ByteString)
 import Data.Int (Int64)
 import Data.Monoid ((<>))
+import Data.Text (Text)
+import Data.Text.Encoding (encodeUtf8)
 import Data.Word (Word8, Word32)
 import qualified Codec.Compression.Zlib as Zlib
 import qualified Data.Bits as Bits
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Set as Set
+import qualified Data.Text as Text
 
 import Codec.Beam.Internal.Syntax
 import Codec.Beam.Internal.Table (Table)
@@ -27,10 +32,10 @@ import qualified Codec.Beam.Internal.Table as Table
 
 -- | Create code for a BEAM module.
 encode
-  :: BS.ByteString -- ^ module name
+  :: Text -- ^ module name
   -> [Metadata]
-  -> [Op]          -- ^ instructions
-  -> BS.ByteString
+  -> [Op] -- ^ instructions
+  -> ByteString
 encode name metadata =
   toLazyByteString . foldl encodeOp (setup metadata (initialEnv name))
 
@@ -40,7 +45,7 @@ newtype Metadata = Metadata (Env -> Env)
 
 
 -- | Name and arity of a function that should be made public.
-export :: BS.ByteString -> Int -> Metadata
+export :: Text -> Int -> Metadata
 export name arity =
   Metadata $ \env -> env { _exporting = Set.insert (name, arity) (_exporting env) }
 
@@ -66,16 +71,16 @@ insertModuleInfo =
       -- Since negative numbers are not valid labels,
       -- this decision does not affect the external semantics of the library.
       [ Op 1  [FromNewLabel (Label (-1))]
-      , Op 2  [FromNewFunction "module_info" 0, FromByteString "module_info", FromUntagged 0]
+      , Op 2  [FromNewFunction "module_info" 0, FromAtom "module_info", FromUntagged 0]
       , Op 1  [FromNewLabel (Label (-2))]
-      , Op 64 [FromByteString (_moduleName env), FromX (X 0)]
+      , Op 64 [FromAtom (_moduleName env), FromX (X 0)]
       , Op 78 [FromUntagged 1, FromImport (Import "erlang" "get_module_info" 1)]
       , Op 19 []
       , Op 1  [FromNewLabel (Label (-3))]
-      , Op 2  [FromNewFunction "module_info" 1, FromByteString "module_info", FromUntagged 1]
+      , Op 2  [FromNewFunction "module_info" 1, FromAtom "module_info", FromUntagged 1]
       , Op 1  [FromNewLabel (Label (-4))]
       , Op 64 [FromX (X 0), FromX (X 1)]
-      , Op 64 [FromByteString (_moduleName env), FromX (X 0)]
+      , Op 64 [FromAtom (_moduleName env), FromX (X 0)]
       , Op 78 [FromUntagged 2, FromImport (Import "erlang" "get_module_info" 2)]
       , Op 19 []
       ]
@@ -88,22 +93,22 @@ insertModuleInfo =
 
 data Env =
   Env
-    { _moduleName :: BS.ByteString
+    { _moduleName :: Text
     , _labelTable :: Table Int
-    , _atomTable :: Table BS.ByteString
+    , _atomTable :: Table Text
     , _literalTable :: Table Literal
     , _lambdaTable :: Table Lambda
     , _importTable :: Table Import
-    , _exportTable :: Table (BS.ByteString, Int, Int)
-    , _exportNextLabel :: Maybe (BS.ByteString, Int)
-    , _exporting :: Set.Set (BS.ByteString, Int)
+    , _exportTable :: Table (Text, Int, Int)
+    , _exportNextLabel :: Maybe (Text, Int)
+    , _exporting :: Set.Set (Text, Int)
     , _functionCount :: Word32
     , _maxOpCode :: Word8
-    , _code :: Builder.Builder
+    , _code :: Builder
     }
 
 
-initialEnv :: BS.ByteString -> Env
+initialEnv :: Text -> Env
 initialEnv name =
   Env
     { _moduleName = name
@@ -196,7 +201,7 @@ encodeArgument env argument =
               Nothing
         }
 
-    FromByteString name ->
+    FromAtom name ->
       let
         (value, newTable) =
           Table.index name (_atomTable env)
@@ -232,15 +237,15 @@ encodeArgument env argument =
 
 appendTag :: [Word8] -> Env -> Env
 appendTag words env =
-    appendCode env . Builder.lazyByteString $ BS.pack words
+    appendCode env $ foldMap Builder.word8 words
 
 
-appendCode :: Env -> Builder.Builder -> Env
+appendCode :: Env -> Builder -> Env
 appendCode env bytes =
   env { _code = _code env <> bytes }
 
 
-toLazyByteString :: Env -> BS.ByteString
+toLazyByteString :: Env -> ByteString
 toLazyByteString
   ( Env
       _
@@ -273,9 +278,9 @@ toLazyByteString
 -- SECTIONS
 
 
-atoms :: Table BS.ByteString -> BS.ByteString
+atoms :: Table Text -> ByteString
 atoms table =
-  pack32 (Table.size table) <> Table.encode (withSize pack8) table
+  pack32 (Table.size table) <> Table.encode (withSize pack8 . packAtom) table
 
 
 -- Explicit string literals are unsupported by this library, but mandatory in BEAM.
@@ -291,12 +296,12 @@ atoms table =
 --     which are supported via the 'Binary' literal.
 --
 --  If your use case requires this table, please reach out.
-strings :: BS.ByteString
+strings :: ByteString
 strings =
   pack32 0
 
 
-code :: Builder.Builder -> Table Int -> Word32 -> Word8 -> BS.ByteString
+code :: Builder -> Table Int -> Word32 -> Word8 -> ByteString
 code builder labelTable functionCount maxOpCode =
   mconcat
     [ pack32 16  -- header length
@@ -309,7 +314,7 @@ code builder labelTable functionCount maxOpCode =
     ]
 
 
-lambdas :: Table Lambda -> Table BS.ByteString -> Table Int -> BS.ByteString
+lambdas :: Table Lambda -> Table Text -> Table Int -> ByteString
 lambdas lambdaTable atomTable labelTable =
   pack32 (Table.size lambdaTable) <> Table.encode fromLambda lambdaTable
 
@@ -325,7 +330,7 @@ lambdas lambdaTable atomTable labelTable =
         ]
 
 
-imports :: Table Import -> Table BS.ByteString -> BS.ByteString
+imports :: Table Import -> Table Text -> ByteString
 imports importTable atomTable =
   pack32 (Table.size importTable) <> Table.encode fromImport importTable
 
@@ -338,7 +343,7 @@ imports importTable atomTable =
         ]
 
 
-exports :: Table (BS.ByteString, Int, Int) -> Table BS.ByteString -> BS.ByteString
+exports :: Table (Text, Int, Int) -> Table Text -> ByteString
 exports exportTable atomTable =
   pack32 (Table.size exportTable) <> Table.encode fromTuple exportTable
 
@@ -347,7 +352,7 @@ exports exportTable atomTable =
       pack32 (forceIndex name atomTable) <> pack32 arity <> pack32 label
 
 
-literals :: Table Literal -> BS.ByteString
+literals :: Table Literal -> ByteString
 literals table =
   pack32 (BS.length terms) <> Zlib.compress terms
 
@@ -362,7 +367,7 @@ literals table =
 -- http://beam-wisdoms.clau.se/en/latest/indepth-beam-file.html#beam-term-format
 
 
-encodeLiteral :: Literal -> BS.ByteString
+encodeLiteral :: Literal -> ByteString
 encodeLiteral lit =
   case lit of
     Atom value ->
@@ -381,21 +386,21 @@ encodeLiteral lit =
       mconcat
         [ pack8 104
         , pack8 (length elements)
-        , mconcat $ map encodeLiteral elements
+        , foldMap encodeLiteral elements
         ]
 
     Tuple elements ->
       mconcat
         [ pack8 105
         , pack32 (length elements)
-        , mconcat $ map encodeLiteral elements
+        , foldMap encodeLiteral elements
         ]
 
     List elements ->
       mconcat
         [ pack8 108
         , pack32 (length elements)
-        , mconcat $ map encodeLiteral elements
+        , foldMap encodeLiteral elements
         , pack8 106
         ]
 
@@ -403,7 +408,7 @@ encodeLiteral lit =
       mconcat
         [ pack8 116
         , pack32 (length pairs)
-        , mconcat $ fmap (\(x, y) -> encodeLiteral x <> encodeLiteral y) pairs
+        , foldMap (\(x, y) -> encodeLiteral x <> encodeLiteral y) pairs
         ]
 
     ExternalFun (Import module_ function arity) ->
@@ -415,12 +420,12 @@ encodeLiteral lit =
         ]
 
 
-encodeAtom :: BS.ByteString -> BS.ByteString
+encodeAtom :: Text -> ByteString
 encodeAtom value =
-  pack8 119 <> withSize pack8 value
+  pack8 119 <> withSize pack8 (packAtom value)
 
 
-encodeInteger :: Int -> BS.ByteString
+encodeInteger :: Int -> ByteString
 encodeInteger value
   | value < 256 = pack8 97 <> pack8 value
   | otherwise   = pack8 98 <> pack32 value
@@ -501,7 +506,7 @@ withBottom8 f n bytes =
   f (Bits.shiftR n 8) (fromIntegral n : bytes)
 
 
-alignSection :: BS.ByteString -> BS.ByteString
+alignSection :: ByteString -> ByteString
 alignSection bytes =
   withSize pack32 bytes <> padding
 
@@ -512,22 +517,27 @@ alignSection bytes =
         r -> BS.replicate (4 - r) 0
 
 
-withSize :: (Int64 -> BS.ByteString) -> BS.ByteString -> BS.ByteString
+withSize :: (Int64 -> ByteString) -> ByteString -> ByteString
 withSize f bytes =
   f (BS.length bytes) <> bytes
 
 
-pack8 :: Integral n => n -> BS.ByteString
+packAtom :: Text -> ByteString
+packAtom =
+  BS.fromStrict . encodeUtf8
+
+
+pack8 :: Integral n => n -> ByteString
 pack8 =
   BS.singleton . fromIntegral
 
 
-pack32 :: Integral n => n -> BS.ByteString
+pack32 :: Integral n => n -> ByteString
 pack32 =
   Builder.toLazyByteString . Builder.word32BE . fromIntegral
 
 
-packDouble :: Double -> BS.ByteString
+packDouble :: Double -> ByteString
 packDouble =
   Builder.toLazyByteString . Builder.doubleBE
 
