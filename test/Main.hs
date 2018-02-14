@@ -14,8 +14,8 @@ main =
   Eunit.run
     [ Eunit.test "loads_empty"
         [ Beam.insertModuleInfo ]
-        [ "?assertMatch({module, loads_empty}, code:load_file(loads_empty)),"
-        , "?assertEqual(erlang:get_module_info(loads_empty), loads_empty:module_info()),"
+        [ "?assertMatch({module, loads_empty}, code:load_file(loads_empty))"
+        , "?assertEqual(erlang:get_module_info(loads_empty), loads_empty:module_info())"
         , "?assertEqual(erlang:get_module_info(loads_empty, attributes), loads_empty:module_info(attributes))"
         ]
         []
@@ -38,49 +38,49 @@ main =
     -- Comparisons
     , Eunit.test "is_equal"
         [ Beam.export "test" 2 ]
-        [ "?assertNot(is_equal:test(2, 3)),"
-        , "?assertNot(is_equal:test(2.0, 3)),"
-        , "?assert(is_equal:test(2.0, 2)),"
+        [ "?assertNot(is_equal:test(2, 3))"
+        , "?assertNot(is_equal:test(2.0, 3))"
+        , "?assert(is_equal:test(2.0, 2))"
         , "?assert(is_equal:test(2.0, 2.0))"
         ]
         $ withCmp is_eq
     , Eunit.test "is_not_equal"
         [ Beam.export "test" 2 ]
-        [ "?assert(is_not_equal:test(2, 3)),"
-        , "?assert(is_not_equal:test(2.0, 3)),"
-        , "?assertNot(is_not_equal:test(2.0, 2)),"
+        [ "?assert(is_not_equal:test(2, 3))"
+        , "?assert(is_not_equal:test(2.0, 3))"
+        , "?assertNot(is_not_equal:test(2.0, 2))"
         , "?assertNot(is_not_equal:test(2.0, 2.0))"
         ]
         $ withCmp is_ne
     , Eunit.test "is_exactly_equal"
         [ Beam.export "test" 2 ]
-        [ "?assertNot(is_exactly_equal:test(2, 3)),"
-        , "?assertNot(is_exactly_equal:test(2.0, 3)),"
-        , "?assertNot(is_exactly_equal:test(2.0, 2)),"
+        [ "?assertNot(is_exactly_equal:test(2, 3))"
+        , "?assertNot(is_exactly_equal:test(2.0, 3))"
+        , "?assertNot(is_exactly_equal:test(2.0, 2))"
         , "?assert(is_exactly_equal:test(2.0, 2.0))"
         ]
         $ withCmp is_eq_exact
     , Eunit.test "is_not_exactly_equal"
         [ Beam.export "test" 2 ]
-        [ "?assert(is_not_exactly_equal:test(2, 3)),"
-        , "?assert(is_not_exactly_equal:test(2.0, 3)),"
-        , "?assert(is_not_exactly_equal:test(2.0, 2)),"
+        [ "?assert(is_not_exactly_equal:test(2, 3))"
+        , "?assert(is_not_exactly_equal:test(2.0, 3))"
+        , "?assert(is_not_exactly_equal:test(2.0, 2))"
         , "?assertNot(is_not_exactly_equal:test(2.0, 2.0))"
         ]
         $ withCmp is_ne_exact
     , Eunit.test "is_less_than"
         [ Beam.export "test" 2 ]
-        [ "?assert(is_less_than:test(5, 6)),"
-        , "?assertNot(is_less_than:test(6, 5)),"
-        , "?assertNot(is_less_than:test(5.0, 5)),"
+        [ "?assert(is_less_than:test(5, 6))"
+        , "?assertNot(is_less_than:test(6, 5))"
+        , "?assertNot(is_less_than:test(5.0, 5))"
         , "?assertNot(is_less_than:test(6.0, 5.0))"
         ]
         $ withCmp is_lt
     , Eunit.test "is_greater_than_or_equal"
         [ Beam.export "test" 2 ]
-        [ "?assertNot(is_greater_than_or_equal:test(5, 6)),"
-        , "?assert(is_greater_than_or_equal:test(6, 5)),"
-        , "?assert(is_greater_than_or_equal:test(5.0, 5)),"
+        [ "?assertNot(is_greater_than_or_equal:test(5, 6))"
+        , "?assert(is_greater_than_or_equal:test(6, 5))"
+        , "?assert(is_greater_than_or_equal:test(5.0, 5))"
         , "?assert(is_greater_than_or_equal:test(6.0, 5.0))"
         ]
         $ withCmp is_ge
@@ -98,7 +98,7 @@ main =
 
     , Eunit.test "large_tuple"
         [ Beam.export "test" 0 ]
-        [ "?assertEqual(300, tuple_size(large_tuple:test())),"
+        [ "?assertEqual(300, tuple_size(large_tuple:test()))"
         , "?assertEqual(300, element(300, large_tuple:test()))"
         ]
         [ label (Beam.Label 1)
@@ -139,29 +139,29 @@ main =
     -- Type checks
     , Eunit.test "is_nil"
         [ Beam.export "test" 1 ]
-        [ "?assert(is_nil:test([])),"
-        , "?assertNot(is_nil:test(23)),"
+        [ "?assert(is_nil:test([]))"
+        , "?assertNot(is_nil:test(23))"
         , "?assertNot(is_nil:test([23]))"
         ]
         $ withType is_nil
     , Eunit.test "is_list"
         [ Beam.export "test" 1 ]
-        [ "?assert(is_list:test([])),"
-        , "?assertNot(is_list:test(23)),"
+        [ "?assert(is_list:test([]))"
+        , "?assertNot(is_list:test(23))"
         , "?assert(is_list:test([23]))"
         ]
         $ withType is_list
     , Eunit.test "is_nonempty_list"
         [ Beam.export "test" 1 ]
-        [ "?assertNot(is_nonempty_list:test([])),"
-        , "?assertNot(is_nonempty_list:test(23)),"
+        [ "?assertNot(is_nonempty_list:test([]))"
+        , "?assertNot(is_nonempty_list:test(23))"
         , "?assert(is_nonempty_list:test([23]))"
         ]
         $ withType is_nonempty_list
     , Eunit.test "is_map"
         [ Beam.export "test" 1 ]
-        [ "?assert(is_map:test(#{})),"
-        , "?assertNot(is_map:test(23)),"
+        [ "?assert(is_map:test(#{}))"
+        , "?assertNot(is_map:test(23))"
         , "?assert(is_map:test(#{a=>23}))"
         ]
         $ withType is_map
@@ -169,7 +169,7 @@ main =
     -- Based on https://happi.github.io/theBeamBook/#x_and_y_regs_in_memory
     , Eunit.test "allocate_for_call_fun"
         [ Beam.export "apply2" 3 ]
-        [ "_add = fun 'erlang':'+'/2,"
+        [ "_add = fun 'erlang':'+'/2"
         , "?assertEqual(4, allocate_for_call_fun:apply2(2, 2, _add))"
         ]
         [ label (Beam.Label 1)
@@ -209,7 +209,7 @@ main =
         [ Beam.export "first" 1
         , Beam.export "second" 1
         ]
-        [ "?assertEqual(2, get_tuple_element:first({2})),"
+        [ "?assertEqual(2, get_tuple_element:first({2}))"
         , "?assertEqual(hi, get_tuple_element:second({oh, hi, there}))"
         ]
         [ label (Beam.Label 1)
@@ -276,7 +276,7 @@ main =
 
     , Eunit.test "get_from_map"
         [ Beam.export "test" 2 ]
-        [ "?assertEqual(5, get_from_map:test(#{a=>5}, a)),"
+        [ "?assertEqual(5, get_from_map:test(#{a=>5}, a))"
         , "?assertEqual(error, get_from_map:test(#{}, a))"
         ]
         [ label (Beam.Label 1)
@@ -361,8 +361,8 @@ main =
 
     , Eunit.test "destinations"
         [ Beam.export "test" 1 ]
-        [ "?assertEqual(four, destinations:test(4)),"
-        , "?assertEqual(five, destinations:test(5)),"
+        [ "?assertEqual(four, destinations:test(4))"
+        , "?assertEqual(five, destinations:test(5))"
         , "?assertEqual(neither, destinations:test(6))"
         ]
         [ label (Beam.Label 1)
