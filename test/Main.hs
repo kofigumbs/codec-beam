@@ -105,7 +105,7 @@ main =
         , func_info "test" 0
         , label (Beam.Label 2)
         , move (Beam.Tuple (map Beam.Integer [1..300])) (Beam.X 0)
-        , return_
+        , return'
         ]
 
     , Eunit.test "multiple_literals"
@@ -117,7 +117,7 @@ main =
         , label (Beam.Label 2)
         , move (Beam.Atom "dummy") (Beam.X 0)
         , move (Beam.Atom "true") (Beam.X 0)
-        , return_
+        , return'
         ]
 
     , Eunit.test "call_into_identity"
@@ -129,11 +129,11 @@ main =
         , label (Beam.Label 2)
         , move (Beam.Integer 1023) (Beam.X 0)
         , call_only 1 (Beam.Label 4)
-        , return_
+        , return'
         , label (Beam.Label 3)
         , func_info "identity" 1
         , label (Beam.Label 4)
-        , return_
+        , return'
         ]
 
     -- Type checks
@@ -188,11 +188,11 @@ main =
         , move (Beam.Y 0) (Beam.X 0)
         , call_fun 2
         , deallocate 2
-        , return_
+        , return'
         , label (Beam.Label 3)
         , func_info "identity" 1
         , label (Beam.Label 4)
-        , return_
+        , return'
         ]
 
     , Eunit.test "external_fun"
@@ -202,7 +202,7 @@ main =
         , func_info "test" 0
         , label (Beam.Label 2)
         , move (Beam.ExternalFun (Beam.Import "erlang" "+" 2)) (Beam.X 0)
-        , return_
+        , return'
         ]
 
     , Eunit.test "get_tuple_element"
@@ -216,12 +216,12 @@ main =
         , func_info "first" 1
         , label (Beam.Label 2)
         , get_tuple_element (Beam.X 0) 0 (Beam.X 0)
-        , return_
+        , return'
         , label (Beam.Label 3)
         , func_info "second" 1
         , label (Beam.Label 4)
         , get_tuple_element (Beam.X 0) 1 (Beam.X 0)
-        , return_
+        , return'
         ]
 
     , Eunit.test "set_tuple_element"
@@ -232,7 +232,7 @@ main =
         , func_info "make" 1
         , label (Beam.Label 2)
         , set_tuple_element ("dream" :: Text) (Beam.X 0) 0
-        , return_
+        , return'
         ]
 
     , Eunit.test "put_list"
@@ -244,7 +244,7 @@ main =
         , label (Beam.Label 2)
         , put_list (Beam.Integer 2) Beam.Nil (Beam.X 0)
         , put_list ("one" :: Text) (Beam.X 0) (Beam.X 0)
-        , return_
+        , return'
         ]
 
     , Eunit.test "make_a_tuple"
@@ -257,7 +257,7 @@ main =
         , put_tuple (2 :: Int) (Beam.X 0)
         , put ("one" :: Text)
         , put (2 :: Int)
-        , return_
+        , return'
         ]
 
     , Eunit.test "make_a_map"
@@ -271,7 +271,7 @@ main =
             [ (Beam.toSource (Beam.Atom "a"), Beam.toSource (1 :: Int))
             , (Beam.toSource (2 :: Int), Beam.toSource (Beam.Atom "b"))
             ]
-        , return_
+        , return'
         ]
 
     , Eunit.test "get_from_map"
@@ -285,10 +285,10 @@ main =
         , get_map_elements (Beam.Label 3) (Beam.X 0)
             [ (Beam.toRegister (Beam.X 1), Beam.toRegister (Beam.X 0))
             ]
-        , return_
+        , return'
         , label (Beam.Label 3)
         , move ("error" :: Text) (Beam.X 0)
-        , return_
+        , return'
         ]
 
     , Eunit.test "get_da_list"
@@ -300,7 +300,7 @@ main =
         , label (Beam.Label 2)
         , get_list (Beam.X 0) (Beam.X 1) (Beam.X 0)
         , get_list (Beam.X 0) (Beam.X 0) (Beam.X 1)
-        , return_
+        , return'
         ]
 
     , Eunit.test "jumping_around"
@@ -313,7 +313,7 @@ main =
         , jump (Beam.Label 4)
         , label (Beam.Label 3)
         , move ("yay" :: Text) (Beam.X 0)
-        , return_
+        , return'
         , label (Beam.Label 4)
         , jump (Beam.Label 3)
         ]
@@ -326,11 +326,11 @@ main =
         , func_info "test" 1
         , label (Beam.Label 2)
         , make_fun2 (Beam.Lambda "lambda_function" 0 (Beam.Label 4) 1)
-        , return_
+        , return'
         , label (Beam.Label 3)
         , func_info "lambda_function" 1
         , label (Beam.Label 4)
-        , return_
+        , return'
         ]
 
     , Eunit.test "external_call"
@@ -341,7 +341,7 @@ main =
         , func_info "test" 2
         , label (Beam.Label 2)
         , call_ext_only (Beam.Import "erlang" "+" 2)
-        , return_
+        , return'
         ]
 
     , Eunit.test "float_math"
@@ -356,7 +356,7 @@ main =
         , fclearerror
         , fadd (Beam.F 0) (Beam.F 1) (Beam.F 0)
         , fmove (Beam.F 0) (Beam.X 0)
-        , return_
+        , return'
         ]
 
     , Eunit.test "destinations"
@@ -374,13 +374,13 @@ main =
             ]
         , label (Beam.Label 3)
         , move ("neither" :: Text) (Beam.X 0)
-        , return_
+        , return'
         , label (Beam.Label 4)
         , move ("four" :: Text) (Beam.X 0)
-        , return_
+        , return'
         , label (Beam.Label 5)
         , move ("five" :: Text) (Beam.X 0)
-        , return_
+        , return'
         ]
     ]
 
@@ -406,7 +406,7 @@ withConstant name toSource value =
     , func_info "check" 0
     , label (Beam.Label 2)
     , move (toSource value) (Beam.X 0)
-    , return_
+    , return'
     ]
 
 withCmp :: (Beam.Label -> Beam.X -> Beam.X -> Beam.Op) -> [Beam.Op]
@@ -426,10 +426,10 @@ jumpFunction args decision =
   , label (Beam.Label 2)
   , decision (Beam.Label 3)
   , move ("true" :: Text) (Beam.X 0)
-  , return_
+  , return'
   , label (Beam.Label 3)
   , move ("false" :: Text) (Beam.X 0)
-  , return_
+  , return'
   ]
 
 

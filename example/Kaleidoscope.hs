@@ -183,7 +183,7 @@ finish name stack =
   if _raw name == "main" then
     [ call_ext_last (Beam.importBif1 Erlang'display) stack ]
   else
-    [ deallocate stack, return_ ]
+    [ deallocate stack, return' ]
 
 
 stdlibMath :: Operator -> Beam.Source -> Beam.Source -> Beam.Y -> Beam.Op
