@@ -1,5 +1,5 @@
 -- | This module represents a type-safe port of Erlang's general instructions.
---   In the end state, there should only be few variations,
+--   In the end, there should only be few variations,
 --   existing only to promote ease of use and correctness!
 --
 --   <https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab>
@@ -9,7 +9,7 @@ module Codec.Beam.Instructions
   -- * Function and BIF calls
   , call, call_last, call_only, call_ext, call_ext_last, bif0, bif1, bif2, call_ext_only, apply, apply_last, gc_bif1, gc_bif2, gc_bif3
   -- * Allocating, deallocating and returning
-  , allocate, allocate_heap, allocate_zero, allocate_heap_zero, test_heap, init_, deallocate, return_, trim
+  , allocate, allocate_heap, allocate_zero, allocate_heap_zero, test_heap, init', deallocate, return', trim
   -- * Sending and receiving
   , send, remove_message, timeout, loop_rec, loop_rec_end, wait, wait_timeout, recv_mark, recv_set
   -- * Comparision
@@ -158,8 +158,8 @@ test_heap
 test_heap a1 a2 = Op 16 [FromUntagged a1, FromUntagged a2]
 
 -- | Clear the stack word. (By writing NIL.)
-init_ :: Y -> Op
-init_ a1 = Op 17 [FromY a1]
+init' :: Y -> Op
+init' a1 = Op 17 [FromY a1]
 
 -- | Restore the continuation pointer (CP) from the stack and deallocate
 --   N+1 words from the stack (the + 1 is for the CP).
@@ -167,8 +167,8 @@ deallocate :: Int -> Op
 deallocate a1 = Op 18 [FromUntagged a1]
 
 -- | Return to the address in the continuation pointer (CP).
-return_ :: Op
-return_  = Op 19 []
+return' :: Op
+return'  = Op 19 []
 
 -- | Send argument in x(1) as a message to the destination process in x(0).
 --   The message in x(1) ends up as the result of the send in x(0).

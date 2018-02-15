@@ -1,5 +1,6 @@
 module Eunit (Test, run, test) where
 
+import Data.List (intercalate)
 import Data.Monoid ((<>))
 import System.FilePath ((</>), (<.>))
 import System.Process (callProcess)
@@ -42,7 +43,7 @@ test_ name body code =
 
       BS.writeFile fixture code
 
-      return $ name <> "_test() ->\n" <> unlines body <> "."
+      return $ name <> "_test() ->\n" <> intercalate ",\n" body <> "."
 
 
 run :: [Test] -> IO ()
