@@ -11,7 +11,7 @@ This example writes a simple module to a file:
 ```haskell
 import qualified Data.ByteString.Lazy as LBS
 
-import Codec.Beam.Instructions (func_info, label, move, return_)
+import Codec.Beam.Instructions (func_info, label, move, return')
 import qualified Codec.Beam as Beam
 
 main : IO ()
@@ -24,8 +24,8 @@ main =
       , func_info "tuple_of_one" 0
       , label 2
       , move (Beam.Tuple [Beam.Integer 1]) (Beam.X 0)
-      , return_
-      ]
+      , return'
+      ]
 ```
 
 After you run that program, you can load the resulting module from the Erlang shell!
