@@ -396,7 +396,7 @@ withConstant_ name term =
   withConstant name (const term)
 
 
-withConstant :: (ErlangLiteral a, Beam.IsSource s) => String -> (a -> s) -> a -> Eunit.Test
+withConstant :: (Erlang a, Beam.IsSource s) => String -> (a -> s) -> a -> Eunit.Test
 withConstant name toSource value =
   Eunit.test name
     [ Beam.export "check" 0 ]
@@ -437,17 +437,17 @@ jumpFunction args decision =
 -- PRINT ERLANG LITERALS
 
 
-class ErlangLiteral a where
+class Erlang a where
   erlang :: a -> String
 
-instance ErlangLiteral a => ErlangLiteral [a] where
+instance Erlang a => Erlang [a] where
   erlang = mconcat . map erlang
 
-instance ErlangLiteral Text where
+instance Erlang Text where
   erlang = Text.unpack
 
-instance ErlangLiteral Int where
+instance Erlang Int where
   erlang = erlang . show
 
-instance ErlangLiteral Char where
+instance Erlang Char where
   erlang x = [x]
