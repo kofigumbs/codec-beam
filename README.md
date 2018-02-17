@@ -36,7 +36,8 @@ $ erl
 {1}
 ```
 
-You can find an [example project on GitHub](https://github.com/hkgumbs/codec-beam/tree/master/example).
+The full documentation lives at https://kofi.sexy/codec-beam,
+and you can find an [example project on GitHub](https://github.com/hkgumbs/codec-beam/tree/master/example).
 
 
 ### Build
