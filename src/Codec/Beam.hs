@@ -23,7 +23,6 @@ import qualified Data.Bits as Bits
 import qualified Data.ByteString.Builder as Builder
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Set as Set
-import qualified Data.Text as Text
 
 import Codec.Beam.Internal.Syntax
 import Codec.Beam.Internal.Table (Table)

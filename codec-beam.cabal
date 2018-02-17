@@ -28,7 +28,6 @@ Library
                    text
 
 Test-Suite codec-beam-tests
-    ghc-options: -W -Werror
     extensions: OverloadedStrings
     hs-source-dirs: test
     type: exitcode-stdio-1.0
