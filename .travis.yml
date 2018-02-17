@@ -22,15 +22,7 @@ install:
 - stack --no-terminal --install-ghc build --only-dependencies
 
 script:
-- stack build --no-terminal --test --haddock --no-haddock-deps --haddock-arguments "--odir=./docs"
-
-deploy:
-  provider: pages
-  local_dir: docs
-  skip_cleanup: true
-  github_token: $GITHUB_TOKEN
-  on:
-    branch: master
+- stack build --no-terminal --test
 
 notifications:
   email: false
