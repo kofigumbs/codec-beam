@@ -1,7 +1,7 @@
 [![Build Status](https://travis-ci.org/hkgumbs/codec-beam.svg?branch=master)](https://travis-ci.org/hkgumbs/codec-beam)
 [![Erlant/OTP Release](https://img.shields.io/badge/Erlang-OTP--20.2-red.svg)](https://github.com/erlang/otp/releases/tag/OTP-20.2)
 
-BEAM (Erlang Virtual Machine) byte code syntax tree and encoder, for implementing compile-to-beam languages.
+Erlang VM byte code assembler for implementing compile-to-beam languages.
 The goal is to a provide delightful API for generating BEAM instructions from pure Haskell.
 
 ### Usage
@@ -11,7 +11,7 @@ This example writes a simple module to a file:
 ```haskell
 import qualified Data.ByteString.Lazy as LBS
 
-import Codec.Beam.Instructions (func_info, label, move, return_)
+import Codec.Beam.Instructions (func_info, label, move, return')
 import qualified Codec.Beam as Beam
 
 main : IO ()
@@ -24,8 +24,8 @@ main =
       , func_info "tuple_of_one" 0
       , label 2
       , move (Beam.Tuple [Beam.Integer 1]) (Beam.X 0)
-      , return_
-      ]
+      , return'
+      ]
 ```
 
 After you run that program, you can load the resulting module from the Erlang shell!
@@ -37,7 +37,7 @@ $ erl
 ```
 
 The full documentation lives at https://kofi.sexy/codec-beam,
-and you can find a more complete [`./example` project here](example).
+and you can find an [example project on GitHub](https://github.com/hkgumbs/codec-beam/tree/master/example).
 
 
 ### Build

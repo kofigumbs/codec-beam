@@ -2,9 +2,7 @@ module Codec.Beam.Internal.Syntax where
 
 import Data.ByteString.Lazy (ByteString)
 import Data.Text (Text)
-import Data.Void (Void)
 import Data.Word (Word8)
-import Unsafe.Coerce (unsafeCoerce)
 
 
 -- | A virtual machine instruction—the main unit this library deals with.

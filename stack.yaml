@@ -5,3 +5,5 @@ packages:
 - location: './example'
 resolver: lts-8.23
 pvp-bounds: both
+ghc-options:
+  "$locals": -W -Werror

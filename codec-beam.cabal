@@ -1,14 +1,18 @@
 Name: codec-beam
+Category: Language, Codec
 Version: 0.1.0
+Maintainer: h.kofigumbs@gmail.com
+Synopsis: Erlang VM byte code assembler
+Extra-Source-Files: README.md
 
 License: BSD3
 License-File: LICENSE
 
-Category: Codec
-
 Cabal-Version: >=1.9
 Build-Type: Simple
 
+Bug-Reports: https://github.com/hkgumbs/codec-beam/issues
+Homepage: https://github.com/hkgumbs/codec-beam#readme
 Source-Repository head
     type:     git
     location: git://github.com/hkgumbs/codec-beam.git
@@ -28,7 +32,6 @@ Library
                    text
 
 Test-Suite codec-beam-tests
-    ghc-options: -W -Werror
     extensions: OverloadedStrings
     hs-source-dirs: test
     type: exitcode-stdio-1.0
