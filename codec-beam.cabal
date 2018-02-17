@@ -1,19 +1,18 @@
 Name: codec-beam
+Category: Language, Codec
 Version: 0.1.0
-Synopsis: BEAM (Erlang Virtual Machine) byte code assembler
-Description: See README at <https://github.com/hkgumbs/codec-beam#readme>.
 Maintainer: h.kofigumbs@gmail.com
-Homepage: https://github.com/hkgumbs/codec-beam#readme
-Bug-Reports: https://github.com/hkgumbs/codec-beam/issues
+Synopsis: Erlang VM byte code assembler
+Extra-Source-Files: README.md
 
 License: BSD3
 License-File: LICENSE
 
-Category: Codec
-
 Cabal-Version: >=1.9
 Build-Type: Simple
 
+Bug-Reports: https://github.com/hkgumbs/codec-beam/issues
+Homepage: https://github.com/hkgumbs/codec-beam#readme
 Source-Repository head
     type:     git
     location: git://github.com/hkgumbs/codec-beam.git

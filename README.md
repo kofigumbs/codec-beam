@@ -1,7 +1,7 @@
 [![Build Status](https://travis-ci.org/hkgumbs/codec-beam.svg?branch=master)](https://travis-ci.org/hkgumbs/codec-beam)
 [![Erlant/OTP Release](https://img.shields.io/badge/Erlang-OTP--20.2-red.svg)](https://github.com/erlang/otp/releases/tag/OTP-20.2)
 
-BEAM (Erlang Virtual Machine) byte code syntax tree and encoder, for implementing compile-to-beam languages.
+Erlang VM byte code assembler for implementing compile-to-beam languages.
 The goal is to a provide delightful API for generating BEAM instructions from pure Haskell.
 
 ### Usage
@@ -36,8 +36,7 @@ $ erl
 {1}
 ```
 
-The full documentation lives at https://kofi.sexy/codec-beam,
-and you can find a more complete [`./example` project here](example).
+You can find an [example project on GitHub](https://github.com/hkgumbs/codec-beam/tree/master/example).
 
 
 ### Build
