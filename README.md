@@ -1,6 +1,11 @@
 [![Build Status](https://travis-ci.org/hkgumbs/codec-beam.svg?branch=master)](https://travis-ci.org/hkgumbs/codec-beam)
 [![Erlant/OTP Release](https://img.shields.io/badge/Erlang-OTP--20.2-red.svg)](https://github.com/erlang/otp/releases/tag/OTP-20.2)
 
+> NOTE: Participation is encouraged!
+> Make issues, ask questions, submit pull requests
+> (even if it’s your first time contributing to open-source — you’ll get lots of help),
+> and give feedback!
+
 Erlang VM byte code assembler for implementing compile-to-beam languages.
 The goal is to a provide delightful API for generating BEAM instructions from pure Haskell.
 
