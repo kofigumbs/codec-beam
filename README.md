@@ -54,15 +54,6 @@ stack build --test
 ```
 
 
-### Contributing
-
-This library is pre-release and under active development.
-If you are interested in helping, [please reach out](https://twitter.com/messages/compose?recipient_id=365768225).
-It will be much easier to coordinate work if we have a conversation first.
-
-I generally prefer [this style](https://gist.github.com/evancz/0a1f3717c92fe71702be).
-
-
 ### Acknowledgements
 
 Thanks to the following projects, which helped me understand the BEAM file format:
