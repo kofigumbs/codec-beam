@@ -1,3 +1,7 @@
+-- | If this is your first exposure to BEAM, __I highly recommend Erik Stenman's book:
+--   <https://happi.github.io/theBeamBook>__,
+--   which discusses BEAM's architecture in much more detail.
+
 module Codec.Beam
   ( encode, Metadata, export, insertModuleInfo
     -- * Syntax
