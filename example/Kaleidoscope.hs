@@ -9,7 +9,6 @@ import qualified Data.Map.Lazy as Map
 import qualified Data.Text as Text
 
 import Text.Parsec hiding (State, label)
-import Text.Parsec.Error (ParseError)
 import Text.Parsec.Language (emptyDef)
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec.Expr as Expr
