@@ -35,16 +35,21 @@ import qualified Codec.Beam.Internal.Table as Table
 
 -- | Create code for a BEAM module.
 encode
-  :: Text -- ^ module name
-  -> [Metadata]
-  -> [Op] -- ^ instructions
+  :: (Foldable f1, Foldable f2)
+  => Text  -- ^ module name
+  -> f1 Metadata
+  -> f2 Op -- ^ instructions
   -> ByteString
 encode name metadata =
-  toLazyByteString . foldl encodeOp (setup metadata (initialEnv name))
+  let
+    withMetadata =
+      foldr _run (initialEnv name) metadata
+  in
+  toLazyByteString . foldl encodeOp withMetadata
 
 
 -- | Extra information regarding the contents of a BEAM module.
-newtype Metadata = Metadata (Env -> Env)
+newtype Metadata = Metadata { _run :: Env -> Env }
 
 
 -- | Name and arity of a function that should be made public.
@@ -59,7 +64,7 @@ export name arity =
 --   For instance, the shell will crash if you try to use TAB (for auto-completion)
 --   on a BEAM module without these functions present.
 --   These functions have the same implementation, so you can use this 'Metadata'
---   to have this library generate them for you.
+--   to have the library generate and export them for you.
 insertModuleInfo :: Metadata
 insertModuleInfo =
   Metadata $ \env ->
@@ -127,16 +132,6 @@ initialEnv name =
     , _maxOpCode = 1
     , _code = mempty
     }
-
-
-setup :: [Metadata] -> Env -> Env
-setup list env =
-  case list of
-    [] ->
-      env
-
-    Metadata run : rest ->
-      setup rest (run env)
 
 
 encodeOp :: Env -> Op -> Env
