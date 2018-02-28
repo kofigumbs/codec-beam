@@ -1,8 +1,9 @@
 -- | This module represents a type-safe port of Erlang's general instructions.
---   In the end, there should only be few variations,
---   existing only to promote ease of use and correctness!
---
---   <https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab>
+--   If this is your first exposure to BEAM, __I highly recommend Erik Stenman's book:
+--   <https://happi.github.io/theBeamBook>__.
+--   The documentation in this module point there derives directly from there,
+--   the <https://github.com/jerlang/jerlang Jerlang> project,
+--   and <https://github.com/erlang/otp/blob/master/lib/compiler/src/genop.tab Erlang's source code>.
 
 module Codec.Beam.Instructions
   ( label, func_info, on_load, line
