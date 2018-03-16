@@ -26,11 +26,11 @@ Library
                      Codec.Beam.Instructions
     other-modules: Codec.Beam.Internal.Syntax
                    Codec.Beam.Internal.Table
-    build-depends: base,
-                   bytestring,
-                   containers,
-                   zlib,
-                   text
+    build-depends: base >=4.8 && <5,
+                   bytestring >=0.10.6,
+                   containers >=0.5.6.2,
+                   zlib >=0.6.1.1,
+                   text >=1.2.2
 
 Test-Suite codec-beam-tests
     extensions: OverloadedStrings
@@ -39,7 +39,7 @@ Test-Suite codec-beam-tests
     main-is: Main.hs
     other-modules: Eunit
     build-depends: codec-beam,
-                   base,
+                   base >=4.8 && <5,
                    bytestring,
                    filepath,
                    process,
