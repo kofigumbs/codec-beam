@@ -23,7 +23,7 @@ empty =
  -  I\'m surprised '_offset' is needed at all, but without it there are
  -  off-by-one encoding errors.
  -}
-singleton :: Ord k => k -> Int -> Table k
+singleton :: k -> Int -> Table k
 singleton key initialValue =
   Table initialValue (Map.singleton key initialValue)
 
