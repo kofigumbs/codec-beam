@@ -2,6 +2,7 @@ module Codec.Beam.Internal.Table
   ( Table, empty, singleton, index, ensure, encode, size
   ) where
 
+import Prelude hiding (map)
 import qualified Data.Map as Map
 import qualified Data.List as List
 
