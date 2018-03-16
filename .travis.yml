@@ -14,10 +14,10 @@ addons:
       - libgmp-dev
 
 env:
-  - STACK_LTS_VERSION=11.0
-  - STACK_LTS_VERSION=9.21
-  - STACK_LTS_VERSION=7.24
-  - STACK_LTS_VERSION=6.35
+  - STACK_LTS_VERSION=lts-11.0
+  - STACK_LTS_VERSION=lts-9.21
+  - STACK_LTS_VERSION=lts-7.24
+  - STACK_LTS_VERSION=lts-6.35
 
 before_install:
 - mkdir -p ~/.local/bin
