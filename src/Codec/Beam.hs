@@ -35,16 +35,21 @@ import qualified Codec.Beam.Internal.Table as Table
 
 -- | Create code for a BEAM module.
 encode
-  :: Text -- ^ module name
-  -> [Metadata]
-  -> [Op] -- ^ instructions
+  :: (Foldable f1, Foldable f2)
+  => Text  -- ^ module name
+  -> f1 Metadata
+  -> f2 Op -- ^ instructions
   -> ByteString
 encode name metadata =
-  toLazyByteString . foldl encodeOp (setup metadata (initialEnv name))
+  let
+    withMetadata =
+      foldr _run (initialEnv name) metadata
+  in
+  toLazyByteString . foldl encodeOp withMetadata
 
 
 -- | Extra information regarding the contents of a BEAM module.
-newtype Metadata = Metadata (Env -> Env)
+newtype Metadata = Metadata { _run :: Env -> Env }
 
 
 -- | Name and arity of a function that should be made public.
@@ -59,7 +64,7 @@ export name arity =
 --   For instance, the shell will crash if you try to use TAB (for auto-completion)
 --   on a BEAM module without these functions present.
 --   These functions have the same implementation, so you can use this 'Metadata'
---   to have this library generate them for you.
+--   to have the library generate and export them for you.
 insertModuleInfo :: Metadata
 insertModuleInfo =
   Metadata $ \env ->
@@ -127,16 +132,6 @@ initialEnv name =
     , _maxOpCode = 1
     , _code = mempty
     }
-
-
-setup :: [Metadata] -> Env -> Env
-setup list env =
-  case list of
-    [] ->
-      env
-
-    Metadata run : rest ->
-      setup rest (run env)
 
 
 encodeOp :: Env -> Op -> Env
@@ -239,8 +234,8 @@ encodeArgument env argument =
 
 
 appendTag :: [Word8] -> Env -> Env
-appendTag words env =
-    appendCode env $ foldMap Builder.word8 words
+appendTag bytes env =
+    appendCode env $ foldMap Builder.word8 bytes
 
 
 appendCode :: Env -> Builder -> Env
@@ -301,19 +296,19 @@ atoms table =
 --  If your use case requires this table, please reach out.
 strings :: ByteString
 strings =
-  pack32 0
+  pack32 (0 :: Integer)
 
 
 code :: Builder -> Table Int -> Word32 -> Word8 -> ByteString
 code builder labelTable functionCount maxOpCode =
   mconcat
-    [ pack32 16  -- header length
-    , pack32 0   -- instruction set id
+    [ pack32 (16 :: Integer)  -- header length
+    , pack32 (0 :: Integer)   -- instruction set id
     , pack32 maxOpCode
     , pack32 (Table.size labelTable)
     , pack32 functionCount
     , Builder.toLazyByteString builder
-    , pack8 3    -- int_code_end
+    , pack8 (3 :: Integer)    -- int_code_end
     ]
 
 
@@ -329,7 +324,7 @@ lambdas lambdaTable atomTable labelTable =
         , pack32 (forceIndex raw labelTable)
         , pack32 (forceIndex lambda lambdaTable)
         , pack32 free
-        , pack32 0 -- old unique
+        , pack32 (0 :: Integer) -- old unique
         ]
 
 
@@ -380,43 +375,43 @@ encodeLiteral lit =
       encodeInteger value
 
     Float value ->
-      pack8 70 <> packDouble value
+      pack8 (70 :: Integer) <> packDouble value
 
     Binary value ->
-      pack8 109 <> withSize pack32 value
+      pack8 (109 :: Integer) <> withSize pack32 value
 
     Tuple elements | length elements < 256 ->
       mconcat
-        [ pack8 104
+        [ pack8 (104 :: Integer)
         , pack8 (length elements)
         , foldMap encodeLiteral elements
         ]
 
     Tuple elements ->
       mconcat
-        [ pack8 105
+        [ pack8 (105 :: Integer)
         , pack32 (length elements)
         , foldMap encodeLiteral elements
         ]
 
     List elements ->
       mconcat
-        [ pack8 108
+        [ pack8 (108 :: Integer)
         , pack32 (length elements)
         , foldMap encodeLiteral elements
-        , pack8 106
+        , pack8 (106 :: Integer)
         ]
 
     Map pairs ->
       mconcat
-        [ pack8 116
+        [ pack8 (116 :: Integer)
         , pack32 (length pairs)
         , foldMap (\(x, y) -> encodeLiteral x <> encodeLiteral y) pairs
         ]
 
     ExternalFun (Import module_ function arity) ->
       mconcat
-        [ pack8 113
+        [ pack8 (113 :: Integer)
         , encodeAtom module_
         , encodeAtom function
         , encodeInteger arity
@@ -425,13 +420,13 @@ encodeLiteral lit =
 
 encodeAtom :: Text -> ByteString
 encodeAtom value =
-  pack8 119 <> withSize pack8 (packAtom value)
+  pack8 (119 :: Integer) <> withSize pack8 (packAtom value)
 
 
 encodeInteger :: Int -> ByteString
 encodeInteger value
-  | value < 256 = pack8 97 <> pack8 value
-  | otherwise   = pack8 98 <> pack32 value
+  | value < 256 = pack8 (97 :: Integer) <> pack8 value
+  | otherwise   = pack8 (98 :: Integer) <> pack32 value
 
 
 encodeTag :: Word8 -> Int -> [Word8]

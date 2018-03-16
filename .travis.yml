@@ -13,24 +13,23 @@ addons:
     packages:
       - libgmp-dev
 
+env:
+  - STACK_LTS_VERSION="lts-11.0" STACK_TEST_FLAGS="--pedantic"
+  - STACK_LTS_VERSION="lts-9.21" STACK_TEST_FLAGS="--pedantic"
+  - STACK_LTS_VERSION="lts-8.23" STACK_TEST_FLAGS="--pedantic"
+  - STACK_LTS_VERSION="lts-7.24" STACK_TEST_FLAGS="--pedantic --ghc-options=-Wno-redundant-constraints"
+  - STACK_LTS_VERSION="lts-6.35" STACK_TEST_FLAGS="--pedantic"
+
 before_install:
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
 - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 
 install:
-- stack --no-terminal --install-ghc build --only-dependencies
+- stack --resolver=$STACK_LTS_VERSION --no-terminal --install-ghc build --only-dependencies --pedantic
 
 script:
-- stack build --no-terminal --test --haddock --no-haddock-deps --haddock-arguments "--odir=./docs"
-
-deploy:
-  provider: pages
-  local_dir: docs
-  skip_cleanup: true
-  github_token: $GITHUB_TOKEN
-  on:
-    branch: master
+- stack --resolver=$STACK_LTS_VERSION build --no-terminal --test $STACK_TEST_FLAGS
 
 notifications:
   email: false

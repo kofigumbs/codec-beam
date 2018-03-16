@@ -97,8 +97,8 @@ genLocal name source =
 
 
 genExpr :: Expr -> State Env ([Beam.Op], Beam.Source)
-genExpr expr =
-  case expr of
+genExpr input =
+  case input of
     Float f ->
       return ([], Beam.toSource (Beam.Float f))
 

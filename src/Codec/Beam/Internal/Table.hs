@@ -2,6 +2,7 @@ module Codec.Beam.Internal.Table
   ( Table, empty, singleton, index, ensure, encode, size
   ) where
 
+import Prelude hiding (map)
 import qualified Data.Map as Map
 import qualified Data.List as List
 
@@ -22,7 +23,7 @@ empty =
  -  I\'m surprised '_offset' is needed at all, but without it there are
  -  off-by-one encoding errors.
  -}
-singleton :: Ord k => k -> Int -> Table k
+singleton :: k -> Int -> Table k
 singleton key initialValue =
   Table initialValue (Map.singleton key initialValue)
 
