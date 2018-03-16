@@ -13,16 +13,22 @@ addons:
     packages:
       - libgmp-dev
 
+env:
+  - STACK_LTS_VERSION=11.0
+  - STACK_LTS_VERSION=9.21
+  - STACK_LTS_VERSION=7.24
+  - STACK_LTS_VERSION=6.35
+
 before_install:
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
 - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 
 install:
-- stack --no-terminal --install-ghc build --only-dependencies
+- stack --resolver=$STACK_LTS_VERSION --no-terminal --install-ghc build --only-dependencies --pedantic
 
 script:
-- stack build --no-terminal --test
+- stack --resolver=$STACK_LTS_VERSION build --no-terminal --test --pedantic
 
 notifications:
   email: false
