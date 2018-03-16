@@ -3,7 +3,7 @@ Category: Language, Codec
 Version: 0.1.0
 Maintainer: h.kofigumbs@gmail.com
 Synopsis: Erlang VM byte code assembler
-Description: Erlang VM byte code assembler
+Description: Erlang VM byte code assembler.
 Extra-Source-Files: README.md
 
 License: BSD3
