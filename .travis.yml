@@ -14,10 +14,11 @@ addons:
       - libgmp-dev
 
 env:
-  - STACK_LTS_VERSION=lts-11.0
-  - STACK_LTS_VERSION=lts-9.21
-  - STACK_LTS_VERSION=lts-7.24
-  - STACK_LTS_VERSION=lts-6.35
+  - STACK_LTS_VERSION="lts-11.0" STACK_TEST_FLAGS="--pedantic"
+  - STACK_LTS_VERSION="lts-9.21" STACK_TEST_FLAGS="--pedantic"
+  - STACK_LTS_VERSION="lts-8.23" STACK_TEST_FLAGS="--pedantic"
+  - STACK_LTS_VERSION="lts-7.24" STACK_TEST_FLAGS="--pedantic --ghc-options=-Wno-redundant-constraints"
+  - STACK_LTS_VERSION="lts-6.35" STACK_TEST_FLAGS="--pedantic"
 
 before_install:
 - mkdir -p ~/.local/bin
@@ -28,7 +29,7 @@ install:
 - stack --resolver=$STACK_LTS_VERSION --no-terminal --install-ghc build --only-dependencies --pedantic
 
 script:
-- stack --resolver=$STACK_LTS_VERSION build --no-terminal --test --pedantic
+- stack --resolver=$STACK_LTS_VERSION build --no-terminal --test $STACK_TEST_FLAGS
 
 notifications:
   email: false
