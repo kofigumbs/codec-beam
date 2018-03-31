@@ -14,6 +14,8 @@ The goal is to a provide delightful API for generating BEAM instructions from pu
 This example writes a simple module to a file:
 
 ```haskell
+{-# LANGUAGE OverloadedStrings #-}
+module Main where
 import qualified Data.ByteString.Lazy as LBS
 
 import Codec.Beam.Instructions (func_info, label, move, return')
@@ -25,9 +27,9 @@ main =
     Beam.encode "test_module"
       [ Beam.export "tuple_of_one" 0
       ]
-      [ label 1
+      [ label (Beam.Label 1)
       , func_info "tuple_of_one" 0
-      , label 2
+      , label (Beam.Label 2)
       , move (Beam.Tuple [Beam.Integer 1]) (Beam.X 0)
       , return'
       ]
@@ -37,7 +39,8 @@ After you run that program, you can load the resulting module from the Erlang sh
 
 ```
 $ erl
-1> test_module:tuple_of_one().
+1> l(test_module).
+2> test_module:tuple_of_one().
 {1}
 ```
 
