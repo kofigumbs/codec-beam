@@ -21,7 +21,7 @@ import qualified Data.ByteString.Lazy as LBS
 import Codec.Beam.Instructions (func_info, label, move, return')
 import qualified Codec.Beam as Beam
 
-main : IO ()
+main :: IO ()
 main =
   LBS.writeFile "test_module.beam" $
     Beam.encode "test_module"

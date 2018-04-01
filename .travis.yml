@@ -30,6 +30,9 @@ install:
 
 script:
 - stack --resolver=$STACK_LTS_VERSION build --no-terminal --test $STACK_TEST_FLAGS
+- |
+  sed -n '/^```haskell$/,/^```$/p' README.md | grep -v '```' | stack --resolver=$STACK_LTS_VERSION runghc
+  [[ $(erl -noshell -eval 'io:format("~p\n", [test_module:tuple_of_one()])' -s init stop) == "{1}" ]]
 
 notifications:
   email: false
