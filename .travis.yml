@@ -14,6 +14,7 @@ addons:
       - libgmp-dev
 
 env:
+  - STACK_LTS_VERSION="nightly"  STACK_TEST_FLAGS="--pedantic"
   - STACK_LTS_VERSION="lts-11.0" STACK_TEST_FLAGS="--pedantic"
   - STACK_LTS_VERSION="lts-9.21" STACK_TEST_FLAGS="--pedantic"
   - STACK_LTS_VERSION="lts-8.23" STACK_TEST_FLAGS="--pedantic"
