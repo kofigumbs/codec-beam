@@ -27,8 +27,7 @@ erlangModuleName =
 -- Create and run an Eunit test file
 
 
-type Test =
-  IO String
+type Test = IO String
 
 
 test :: String -> [Beam.Metadata] -> [String] -> [Beam.Op] -> Test

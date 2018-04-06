@@ -1,7 +1,7 @@
 # Kaleidoscope: An example compiler
 
 [Kaleidoscope.hs](Kaleidoscope.hs) implements a functioning programming language!
-The idea is copied from [Stephen Diehl's LLVM tutorial](http://www.stephendiehl.com/llvm/).
+The idea is taken from [Stephen Diehl's LLVM tutorial](http://www.stephendiehl.com/llvm/).
 
 > This tutorial will be illustrated with a toy language that we'll call Kaleidoscope
 > (derived from "meaning beautiful, form, and view" or "observer of beautiful forms").
