@@ -431,8 +431,8 @@ encodeInteger value
 
 encodeTag :: Word8 -> Int -> [Word8]
 encodeTag tag n
-  | n < 0 = manyBytes tag (negative n [])
-  | n < 0x10 = oneByte tag n
+  | n < 0     = manyBytes tag (negative n [])
+  | n < 0x10  = oneByte tag n
   | n < 0x800 = twoBytes tag n
   | otherwise = manyBytes tag (positive n [])
 
