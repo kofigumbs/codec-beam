@@ -283,7 +283,7 @@ main =
         , func_info "test" 2
         , label (Beam.Label 2)
         , get_map_elements (Beam.Label 3) (Beam.X 0)
-            [ (Beam.toRegister (Beam.X 1), Beam.toRegister (Beam.X 0))
+            [ (Beam.toSource (Beam.X 1), Beam.toRegister (Beam.X 0))
             ]
         , return'
         , label (Beam.Label 3)

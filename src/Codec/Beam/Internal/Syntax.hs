@@ -205,9 +205,9 @@ fromDestinations =
 -- NOTE: This function reverses tuple order.
 --       Seems to be necessary, but it's rather unintuitive,
 --       given that 'fromDestinations' has opposite behavior.
-fromPairs :: (a -> Argument) -> [(a, a)] -> Argument
-fromPairs from =
-  FromList . foldr (\x a -> from (snd x) : from (fst x) : a) []
+fromPairs :: (a -> Argument) -> (b -> Argument) -> [(a, b)] -> Argument
+fromPairs fromA fromB =
+  FromList . foldr (\(a, b) x -> fromB b : fromA a : x) []
 
 
 class IsBif a where unBif :: Int -> a -> Import
