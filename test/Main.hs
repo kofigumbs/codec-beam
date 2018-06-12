@@ -328,7 +328,7 @@ main =
         , make_fun2 (Beam.Lambda "lambda_function" 0 (Beam.Label 4) 1)
         , return'
         , label (Beam.Label 3)
-        , func_info "lambda_function" 1
+        , func_info "backing_function" 1
         , label (Beam.Label 4)
         , return'
         ]

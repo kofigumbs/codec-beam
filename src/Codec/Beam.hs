@@ -181,7 +181,10 @@ encodeArgument env argument =
         (value, newTable) =
           Table.index lambda (_lambdaTable env)
       in
-      appendTag (encodeTag 0 value) $ env { _lambdaTable = newTable }
+      appendTag (encodeTag 0 value) $ env
+        { _lambdaTable = newTable
+        , _atomTable = Table.ensure (_lambda_name lambda) $ _atomTable env
+        }
 
     FromInt value ->
       appendTag (encodeTag 1 value) env
