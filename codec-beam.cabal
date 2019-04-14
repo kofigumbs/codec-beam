@@ -7,7 +7,6 @@ Description: Erlang VM byte code assembler.
 
 Extra-Source-Files:
   README.md
-  test/.eunit/.gitkeep
 
 License: BSD3
 License-File: LICENSE
@@ -44,6 +43,7 @@ Test-Suite codec-beam-tests
     build-depends: codec-beam,
                    base >=4.8 && <5,
                    bytestring,
+                   directory,
                    filepath,
                    process,
                    text

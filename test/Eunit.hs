@@ -2,6 +2,7 @@ module Eunit (Test, run, test) where
 
 import Data.List (intercalate)
 import Data.Monoid ((<>))
+import System.Directory (createDirectoryIfMissing)
 import System.FilePath ((</>), (<.>))
 import System.Process (callProcess)
 import qualified Data.ByteString.Lazy as BS
@@ -39,34 +40,28 @@ test_ :: String -> [String] -> BS.ByteString -> Test
 test_ name body code =
   do  let fixture =
             erlangDir </> name <.> "beam"
-
       BS.writeFile fixture code
-
       return $ name <> "_test() ->\n" <> intercalate ",\n" body <> "."
+
+
+testModule :: [String] -> String
+testModule functions =
+  unlines $
+    "-module(" <> erlangModuleName <> ")."
+      : "-include_lib(\"eunit/include/eunit.hrl\")."
+      : functions
 
 
 run :: [Test] -> IO ()
 run tests =
-  do  functions <-
-        sequence tests
-
-      let fileContents =
-            unlines $
-              "-module(" <> erlangModuleName <> ")."
-                : "-include_lib(\"eunit/include/eunit.hrl\")."
-                : functions
-
-          filename =
+  do  let filename =
             erlangDir </> erlangModuleName <.> "erl"
-
           runnerCode =
             "case eunit:test(" <> erlangModuleName <> ", [verbose]) of \
             \   error -> init:stop(1); \
-            \   _ -> init:stop() \
+            \   _     -> init:stop()   \
             \ end."
-
-      writeFile filename fileContents
-
+      createDirectoryIfMissing False erlangDir
+      writeFile filename =<< testModule <$> sequence tests
       callProcess "erlc" ["-o", erlangDir, filename]
-
       callProcess "erl" ["-noshell", "-pa", erlangDir , "-eval", runnerCode]
