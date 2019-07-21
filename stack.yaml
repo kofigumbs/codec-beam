@@ -1,8 +1,8 @@
 flags: {}
 extra-package-dbs: []
 packages:
-- location: '.'
-- location: './example'
+- '.'
+- './example'
 resolver: lts-8.23
 ghc-options:
   "$locals": -W -Werror
