@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/hkgumbs/codec-beam.svg?branch=master)](https://travis-ci.org/hkgumbs/codec-beam)
-[![Erlant/OTP Release](https://img.shields.io/badge/Erlang-OTP--20.2-red.svg)](https://github.com/erlang/otp/releases/tag/OTP-20.2)
+[![Erlant/OTP Release](https://img.shields.io/badge/Erlang-OTP--20.3-red.svg)](https://github.com/erlang/otp/releases/tag/OTP-20.3)
 
 > NOTE: Participation is encouraged!
 > Make issues, ask questions, submit pull requests

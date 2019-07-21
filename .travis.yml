@@ -2,7 +2,7 @@ sudo: false
 
 language: erlang
 otp_release:
-  - 20.2
+  - 20.3
 
 cache:
   directories:
