@@ -1,0 +1,15 @@
+Name: bootstrap	
+Version: 0.1.0	
+
+Cabal-Version: >=1.9	
+Build-Type: Simple	
+
+Executable bootstrap	
+    ghc-options: -W -Werror	
+    extensions: OverloadedStrings	
+    hs-source-dirs: .	
+    main-is: Main.hs	
+    build-depends: base,	
+                   bytestring,	
+                   containers,	
+                   parsec	

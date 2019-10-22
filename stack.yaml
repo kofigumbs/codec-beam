@@ -3,6 +3,7 @@ extra-package-dbs: []
 packages:
 - '.'
 - './example'
+- './gen'
 resolver: lts-8.23
 ghc-options:
   "$locals": -W -Werror
