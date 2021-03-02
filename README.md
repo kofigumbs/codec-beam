@@ -44,7 +44,7 @@ $ erl
 {1}
 ```
 
-You can find an [example project on GitHub](https://github.com/hkgumbs/codec-beam/tree/master/example).
+You can find [a small example on GitHub](https://github.com/hkgumbs/codec-beam/tree/master/example) and a larger one in [my `elm-beam` project](https://github.com/kofigumbs/elm-beam).
 
 
 ### Build
